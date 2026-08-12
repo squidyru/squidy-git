@@ -1,0 +1,5 @@
+squidygit (@PROJECT_VERSION@-@SQUIDYGIT_DEBIAN_RELEASE@) unstable; urgency=medium
+
+  * Initial release.
+
+ -- Sergey Yakunin <sergey@squidy.ru>  Wed, 12 Aug 2026 22:31:46 +0300

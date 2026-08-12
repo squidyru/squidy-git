@@ -99,6 +99,18 @@ cmake --build build --parallel
 cmake --install build --prefix ~/.local
 ```
 
+Сборка DEB-пакета для Debian/Ubuntu:
+
+```bash
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build --target deb_package
+```
+
+Цель `deb_package` всегда использует отдельную Release-сборку, даже если
+текущий профиль CLion настроен на Debug. В CLion обновите CMake, выберите
+`deb_package` в окне CMake и запустите сборку цели. Готовый пакет будет создан в
+`build/dist`.
+
 ### Windows
 
 Установите Qt 6 с MinGW и передайте CMake путь к Qt:

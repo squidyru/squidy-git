@@ -99,6 +99,17 @@ To install the application, desktop entry and icons for the current user:
 cmake --install build --prefix ~/.local
 ```
 
+To build a DEB package for Debian or Ubuntu:
+
+```bash
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build --target deb_package
+```
+
+The `deb_package` target always uses a separate Release build, even when the active CLion
+profile is configured for Debug. Reload CMake in CLion, select `deb_package` in the CMake
+tool window and build the target. The resulting package is written to `build/dist`.
+
 ### Windows
 
 Install Qt 6 with MinGW, then point CMake to your Qt installation:

@@ -1,0 +1,18 @@
+.TH SQUIDYGIT 1 "August 2026" "SquidyGit @PROJECT_VERSION@" "User Commands"
+.SH NAME
+SquidyGit \- native desktop Git client
+.SH SYNOPSIS
+.B SquidyGit
+.SH DESCRIPTION
+.B SquidyGit
+is a graphical Git client with repository history, staging, branch management,
+and a built-in log of executed Git commands.
+.SH FILES
+.I ~/.config/SquidyGit/
+.RS
+Per-user application settings.
+.RE
+.SH SEE ALSO
+.BR git (1)
+.SH AUTHOR
+Sergey Yakunin <sergey@squidy.ru>

@@ -4,6 +4,13 @@ cmake_minimum_required(VERSION 3.16)
 
 project(SquidyGit VERSION 0.0.1 LANGUAGES CXX)
 
+include(GNUInstallDirs)
+
+set(CMAKE_INSTALL_DEFAULT_DIRECTORY_PERMISSIONS
+        OWNER_READ OWNER_WRITE OWNER_EXECUTE
+        GROUP_READ GROUP_EXECUTE
+        WORLD_READ WORLD_EXECUTE)
+
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
@@ -91,7 +98,7 @@ if (WIN32)
 endif ()
 
 install(TARGETS SquidyGit
-        RUNTIME DESTINATION bin
+        RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
         BUNDLE DESTINATION .)
 
 # Desktop integration. GNOME shows a Dock icon only for windows it can match to
@@ -100,30 +107,121 @@ install(TARGETS SquidyGit
 if (UNIX AND NOT APPLE)
     foreach (icon_size IN ITEMS 16 32 48 64 128 256 512)
         install(FILES resources/squidygit-${icon_size}.png
-                DESTINATION share/icons/hicolor/${icon_size}x${icon_size}/apps
+                DESTINATION ${CMAKE_INSTALL_DATADIR}/icons/hicolor/${icon_size}x${icon_size}/apps
                 RENAME squidygit.png)
     endforeach ()
 
-    install(CODE "
-        file(READ \"${CMAKE_CURRENT_SOURCE_DIR}/resources/squidygit.desktop\" desktop_entry)
-        string(REPLACE \"Exec=SquidyGit\"
-                       \"Exec=\${CMAKE_INSTALL_PREFIX}/bin/SquidyGit\"
-                       desktop_entry \"\${desktop_entry}\")
-        file(WRITE \"\${CMAKE_INSTALL_PREFIX}/share/applications/squidygit.desktop\"
-             \"\${desktop_entry}\")
-        message(STATUS \"Installed: \${CMAKE_INSTALL_PREFIX}/share/applications/squidygit.desktop\")
+    install(FILES resources/squidygit.desktop
+            DESTINATION ${CMAKE_INSTALL_DATADIR}/applications
+            PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ)
 
-        find_program(UPDATE_DESKTOP_DATABASE update-desktop-database)
-        if (UPDATE_DESKTOP_DATABASE)
-            execute_process(COMMAND \"\${UPDATE_DESKTOP_DATABASE}\"
-                            \"\${CMAKE_INSTALL_PREFIX}/share/applications\"
-                            ERROR_QUIET)
-        endif ()
-        find_program(UPDATE_ICON_CACHE gtk-update-icon-cache)
-        if (UPDATE_ICON_CACHE)
-            execute_process(COMMAND \"\${UPDATE_ICON_CACHE}\" -f -t -q
-                            \"\${CMAKE_INSTALL_PREFIX}/share/icons/hicolor\"
-                            ERROR_QUIET)
+    install(CODE "
+        set(staged_prefix \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}\")
+        set(desktop_file
+            \"\${staged_prefix}/${CMAKE_INSTALL_DATADIR}/applications/squidygit.desktop\")
+        file(READ \"\${desktop_file}\" desktop_entry)
+        string(REPLACE \"Exec=SquidyGit\"
+                       \"Exec=\${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_BINDIR}/SquidyGit\"
+                       desktop_entry \"\${desktop_entry}\")
+        file(WRITE \"\${desktop_file}\" \"\${desktop_entry}\")
+        message(STATUS \"Installed: \${desktop_file}\")
+
+        if (\"\$ENV{DESTDIR}\" STREQUAL \"\")
+            find_program(UPDATE_DESKTOP_DATABASE update-desktop-database)
+            if (UPDATE_DESKTOP_DATABASE)
+                execute_process(COMMAND \"\${UPDATE_DESKTOP_DATABASE}\"
+                                \"\${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_DATADIR}/applications\"
+                                ERROR_QUIET)
+            endif ()
+            find_program(UPDATE_ICON_CACHE gtk-update-icon-cache)
+            if (UPDATE_ICON_CACHE)
+                execute_process(COMMAND \"\${UPDATE_ICON_CACHE}\" -f -t -q
+                                \"\${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_DATADIR}/icons/hicolor\"
+                                ERROR_QUIET)
+            endif ()
         endif ()
     ")
+
+    install(FILES LICENSE
+            DESTINATION ${CMAKE_INSTALL_DATADIR}/doc/squidygit
+            RENAME copyright)
+    install(FILES README.md README.ru.md
+            DESTINATION ${CMAKE_INSTALL_DATADIR}/doc/squidygit)
+
+    set(SQUIDYGIT_DEBIAN_RELEASE 1)
+    configure_file(installer/linux/changelog.Debian.in
+            ${CMAKE_CURRENT_BINARY_DIR}/changelog.Debian @ONLY)
+    configure_file(installer/linux/SquidyGit.1.in
+            ${CMAKE_CURRENT_BINARY_DIR}/SquidyGit.1 @ONLY)
+
+    find_program(GZIP_EXECUTABLE gzip)
+    if (NOT GZIP_EXECUTABLE)
+        message(FATAL_ERROR "gzip is required to build the Linux package documentation")
+    endif ()
+    foreach (doc_file IN ITEMS changelog.Debian SquidyGit.1)
+        execute_process(
+                COMMAND ${GZIP_EXECUTABLE} -9n -c ${CMAKE_CURRENT_BINARY_DIR}/${doc_file}
+                OUTPUT_FILE ${CMAKE_CURRENT_BINARY_DIR}/${doc_file}.gz
+                RESULT_VARIABLE gzip_result)
+        if (NOT gzip_result EQUAL 0)
+            message(FATAL_ERROR "Failed to compress ${doc_file}")
+        endif ()
+    endforeach ()
+
+    install(FILES ${CMAKE_CURRENT_BINARY_DIR}/changelog.Debian.gz
+            DESTINATION ${CMAKE_INSTALL_DATADIR}/doc/squidygit)
+    install(FILES ${CMAKE_CURRENT_BINARY_DIR}/SquidyGit.1.gz
+            DESTINATION ${CMAKE_INSTALL_MANDIR}/man1)
+
+    set(CPACK_GENERATOR "DEB")
+    set(CPACK_PACKAGE_NAME "squidygit")
+    set(CPACK_PACKAGE_VENDOR "Sergey Yakunin")
+    set(CPACK_PACKAGE_CONTACT "Sergey Yakunin <sergey@squidy.ru>")
+    set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Native desktop Git client built with C++20 and Qt 6")
+    string(CONCAT CPACK_DEBIAN_PACKAGE_DESCRIPTION
+            "SquidyGit is a native graphical Git client for everyday repository work."
+            "\nIt combines commit history, staging, branch and remote management, and a"
+            "\nbuilt-in log of every Git command in one Qt 6 desktop application.")
+    set(CPACK_PACKAGE_VERSION "${PROJECT_VERSION}")
+    set(SQUIDYGIT_PACKAGE_DIRECTORY "${CMAKE_BINARY_DIR}/dist" CACHE PATH
+            "Directory for generated SquidyGit packages")
+    set(CPACK_PACKAGE_DIRECTORY "${SQUIDYGIT_PACKAGE_DIRECTORY}")
+    set(CPACK_PACKAGING_INSTALL_PREFIX "/usr")
+    set(CPACK_STRIP_FILES TRUE)
+
+    set(CPACK_DEBIAN_FILE_NAME DEB-DEFAULT)
+    set(CPACK_DEBIAN_PACKAGE_RELEASE ${SQUIDYGIT_DEBIAN_RELEASE})
+    set(CPACK_DEBIAN_PACKAGE_SECTION "vcs")
+    set(CPACK_DEBIAN_PACKAGE_PRIORITY "optional")
+    set(CPACK_DEBIAN_PACKAGE_SHLIBDEPS ON)
+    set(CPACK_DEBIAN_PACKAGE_DEPENDS "git")
+
+    include(CPack)
+
+    # A dedicated target for CLion. It always creates the package from a
+    # separate Release build, even when the active CLion profile is Debug.
+    set(SQUIDYGIT_DEB_BUILD_DIR "${CMAKE_BINARY_DIR}/deb-release")
+    set(SQUIDYGIT_DEB_CMAKE_ARGS
+            "-DCMAKE_BUILD_TYPE=Release"
+            "-DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}"
+            "-DSQUIDYGIT_PACKAGE_DIRECTORY=${CMAKE_BINARY_DIR}/dist")
+    if (CMAKE_MAKE_PROGRAM)
+        list(APPEND SQUIDYGIT_DEB_CMAKE_ARGS
+                "-DCMAKE_MAKE_PROGRAM=${CMAKE_MAKE_PROGRAM}")
+    endif ()
+    if (Qt6_DIR)
+        list(APPEND SQUIDYGIT_DEB_CMAKE_ARGS "-DQt6_DIR=${Qt6_DIR}")
+    endif ()
+
+    add_custom_target(deb_package
+            COMMAND "${CMAKE_COMMAND}"
+                    -S "${CMAKE_SOURCE_DIR}"
+                    -B "${SQUIDYGIT_DEB_BUILD_DIR}"
+                    -G "${CMAKE_GENERATOR}"
+                    ${SQUIDYGIT_DEB_CMAKE_ARGS}
+            COMMAND "${CMAKE_COMMAND}" --build "${SQUIDYGIT_DEB_BUILD_DIR}" --parallel
+            COMMAND "${CMAKE_COMMAND}" --build "${SQUIDYGIT_DEB_BUILD_DIR}" --target package
+            COMMENT "Building SquidyGit ${PROJECT_VERSION} DEB package (Release)"
+            USES_TERMINAL
+            VERBATIM)
 endif ()
