@@ -1,0 +1,17 @@
+# Copyright (c) 2026 Sergey Yakunin <sergey@squidy.ru>
+
+[Desktop Entry]
+Type=Application
+Version=1.0
+Name=SquidyGit
+GenericName=Git client
+GenericName[ru]=Git-клиент
+Comment=Desktop Git client with commit graph and hunk staging
+Comment[ru]=Настольный Git-клиент с графом коммитов и индексацией по ханкам
+Exec=SquidyGit %f
+Icon=squidygit
+Terminal=false
+StartupNotify=true
+StartupWMClass=SquidyGit
+Categories=Development;RevisionControl;
+Keywords=git;vcs;repository;commit;

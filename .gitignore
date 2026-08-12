@@ -1,0 +1,56 @@
+# Copyright (c) 2026 Sergey Yakunin <sergey@squidy.ru>
+
+# CMake build directories
+/build/
+/cmake-build-*/
+/out/
+
+# CMake and Ninja generated files (for in-source builds)
+CMakeCache.txt
+CMakeFiles/
+_deps/
+Testing/
+cmake_install.cmake
+install_manifest.txt
+compile_commands.json
+build.ninja
+Makefile
+CTestTestfile.cmake
+.ninja_deps
+.ninja_log
+.qt/
+*_autogen/
+
+# C/C++ build artifacts
+*.o
+*.obj
+*.a
+*.lib
+*.so
+*.so.*
+*.dll
+*.dylib
+*.exe
+*.app/
+
+# IDE and editor-local state
+/.idea/
+/.agents/
+/.claude/
+/.codex/
+*.iml
+*.user
+*.user.*
+*.autosave
+*~
+*.swp
+*.swo
+
+# Operating-system metadata
+.DS_Store
+Thumbs.db
+
+# Runtime diagnostics
+*.log
+core
+core.*

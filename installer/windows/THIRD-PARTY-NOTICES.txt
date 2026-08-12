@@ -1,0 +1,19 @@
+SquidyGit Third-Party Notices
+=============================
+
+Qt 6.11.1
+----------
+SquidyGit uses the Qt Core, Gui, Widgets and Concurrent modules. Qt is
+Copyright (C) The Qt Company Ltd. and other contributors.
+
+The dynamically linked Qt libraries distributed with SquidyGit are used under
+the terms of the GNU Lesser General Public License, version 3 (LGPLv3).
+
+License information and corresponding Qt source code are available at:
+https://www.qt.io/licensing/open-source-lgpl-obligations
+https://download.qt.io/archive/qt/6.11/6.11.1/single/
+
+The Qt libraries may be replaced with a compatible build by the user. SquidyGit
+does not modify Qt.
+
+Additional libraries copied by windeployqt retain their respective licenses.
