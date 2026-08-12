@@ -15,7 +15,7 @@
 </p>
 
 <p align="center">
-  <a href="README.md">English</a> · <a href="README.ru.md">Русский</a>
+  <a href="README.md">English</a> · <a href="README.ru.md">Русский</a> · <a href="README.zh-CN.md">简体中文</a>
 </p>
 
 ## Почему SquidyGit?

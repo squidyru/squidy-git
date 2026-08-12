@@ -145,7 +145,7 @@ if (UNIX AND NOT APPLE)
     install(FILES LICENSE
             DESTINATION ${CMAKE_INSTALL_DATADIR}/doc/squidygit
             RENAME copyright)
-    install(FILES README.md README.ru.md
+    install(FILES README.md README.ru.md README.zh-CN.md
             DESTINATION ${CMAKE_INSTALL_DATADIR}/doc/squidygit)
 
     set(SQUIDYGIT_DEBIAN_RELEASE 1)
