@@ -575,7 +575,7 @@ QWidget *RepositoryView::buildSidebar() {
     workspaceIcon->setPixmap(Icons::pixmap(Icons::Glyph::FileStatus, 20,
                                            workspaceIconColor));
     workspaceHeaderLayout->addWidget(workspaceIcon);
-    auto *workspaceTitle = new QLabel(QStringLiteral("WORKSPACE"));
+    auto *workspaceTitle = new QLabel(tr("WORKSPACE"));
     workspaceTitle->setObjectName(QStringLiteral("workspaceTitle"));
     workspaceHeaderLayout->addWidget(workspaceTitle);
     workspaceHeaderLayout->addStretch();

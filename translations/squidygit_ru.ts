@@ -858,6 +858,10 @@ Branch: %2</source>
 <context>
     <name>RepositoryView</name>
     <message>
+        <source>WORKSPACE</source>
+        <translation>РАБОЧАЯ ОБЛАСТЬ</translation>
+    </message>
+    <message>
         <location filename="../repositoryview.cpp" line="184" />
         <source>Modified</source>
         <translation>Изменён</translation>

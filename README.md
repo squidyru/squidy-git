@@ -7,7 +7,7 @@
 </p>
 
 <p align="center">
-  A fast, native desktop Git client built with C++20 and Qt 6.
+  A fast native desktop Git client for Linux and Windows, built with C++20 and Qt 6.
 </p>
 
 <p align="center">
@@ -31,20 +31,24 @@ in its command log.
 
 ## Screenshots
 
+The screenshots below show the current English interface using the light theme.
+
 ### Repository workspace
 
-Staged and unstaged files, branches, tags and a live diff are available in one view.
+Branches, tags, staged and unstaged files, a live diff and commit controls stay visible
+in one compact, resizable workspace.
 
 <p align="center">
-  <img src="resources/screenshots/file-status.png" alt="File status and staging workspace">
+  <img src="resources/screenshots/en/file-status.png" alt="English file status and staging workspace">
 </p>
 
 ### Commit history
 
-The history view combines the commit graph, references, changed files and diff preview.
+The history view combines a visual graph, branch and tag labels, filters, changed files,
+commit details and a diff preview.
 
 <p align="center">
-  <img src="resources/screenshots/history.png" alt="Commit history and visual graph">
+  <img src="resources/screenshots/en/history.png" alt="English commit history and visual graph">
 </p>
 
 ### Repository list
@@ -52,25 +56,34 @@ The history view combines the commit graph, references, changed files and diff p
 Open an existing repository, clone a remote project or initialize a new one.
 
 <p align="center">
-  <img src="resources/screenshots/main-window.png" alt="Local repository list">
+  <img src="resources/screenshots/en/main-window.png" alt="English local repository list">
 </p>
 
 ## Features
 
-- Repository tabs, bookmarks and session restoration
+- Compact native interface with resizable repository, file and diff panels
+- Repository tabs, bookmarks and automatic session restoration
 - Working-tree view with separate staged and unstaged file lists
 - Flat and directory-tree file views with filtering and status badges
-- Unified diff viewer with old/new line numbers and syntax-aware highlighting
-- Partial staging and discarding by hunk or individual line
+- Unified diff viewer with old/new line numbers and colour highlighting
+- Full side-by-side diff window available from the diff context menu
+- Partial staging, unstaging and discarding by hunk or individual line
 - Commit, amend and optional push-after-commit workflows
-- Visual commit graph with branches, tags and merge commits
+- Visual commit graph with branches, tags, merge commits and commit details
 - Branch creation, checkout, rename, deletion, merge and rebase
 - Fetch, pull and push with upstream, tags and `--force-with-lease` options
 - Stash, tags, remotes and submodule management
 - Commit search by message, author, file contents, path or SHA
 - Light and dark themes
-- English, Russian and Chinese interface, following the system language
-- Built-in log of all executed Git commands
+- English, Russian and Simplified Chinese interface with a manual language selector
+- Quick access to a terminal and the repository folder
+- Built-in log of every executed Git command
+
+## Interface languages
+
+SquidyGit follows the operating-system language by default. English, Russian and
+Simplified Chinese can also be selected manually from **View → Language**; the new
+language is applied after the application restarts.
 
 ## Technology
 

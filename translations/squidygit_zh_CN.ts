@@ -331,6 +331,46 @@ Cloning failed (code %1).</source>
         <translation>操作</translation>
     </message>
     <message>
+        <source>Commit</source>
+        <translation>提交</translation>
+    </message>
+    <message>
+        <source>Push</source>
+        <translation>推送</translation>
+    </message>
+    <message>
+        <source>Pull</source>
+        <translation>拉取</translation>
+    </message>
+    <message>
+        <source>Fetch</source>
+        <translation>获取</translation>
+    </message>
+    <message>
+        <source>Branch</source>
+        <translation>分支</translation>
+    </message>
+    <message>
+        <source>Merge</source>
+        <translation>合并</translation>
+    </message>
+    <message>
+        <source>Stash</source>
+        <translation>贮藏</translation>
+    </message>
+    <message>
+        <source>Discard</source>
+        <translation>放弃</translation>
+    </message>
+    <message>
+        <source>Tag</source>
+        <translation>标签</translation>
+    </message>
+    <message>
+        <source>Checkout</source>
+        <translation>检出</translation>
+    </message>
+    <message>
         <location filename="../mainwindow.cpp" line="230" />
         <source>Commit the staged changes</source>
         <translation>提交已暂存的更改</translation>
@@ -816,6 +856,10 @@ Branch: %2</source>
 </context>
 <context>
     <name>RepositoryView</name>
+    <message>
+        <source>WORKSPACE</source>
+        <translation>工作区</translation>
+    </message>
     <message>
         <location filename="../repositoryview.cpp" line="184" />
         <source>Modified</source>
