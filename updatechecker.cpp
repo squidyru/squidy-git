@@ -18,6 +18,7 @@
 #include <QNetworkRequest>
 #include <QPointer>
 #include <QProcess>
+#include <QProcessEnvironment>
 #include <QProgressDialog>
 #include <QRegularExpression>
 #include <QSaveFile>
@@ -204,6 +205,20 @@ QString wantedAssetSuffix() {
     return {};
 #endif
 }
+
+#if defined(Q_OS_LINUX)
+QString installedPackageVersion() {
+    QProcess query;
+    query.start(QStringLiteral("dpkg-query"),
+                {QStringLiteral("-W"), QStringLiteral("-f=${Version}"),
+                 QStringLiteral("squidygit")});
+    if (!query.waitForFinished(5000) || query.exitStatus() != QProcess::NormalExit
+        || query.exitCode() != 0) {
+        return {};
+    }
+    return QString::fromLocal8Bit(query.readAllStandardOutput()).trimmed();
+}
+#endif
 
 struct DownloadState {
     explicit DownloadState(const QString &path)
@@ -659,10 +674,16 @@ void UpdateChecker::installDebPackage(const QString &path) {
     progress->setMinimumDuration(0);
     progress->show();
 
+    const QString previousVersion = installedPackageVersion();
+
     auto *process = new QProcess(this);
     packageInstaller_ = process;
     busy_ = true;
     process->setProcessChannelMode(QProcess::MergedChannels);
+
+    QProcessEnvironment environment = QProcessEnvironment::systemEnvironment();
+    environment.insert(QStringLiteral("DEBIAN_FRONTEND"), QStringLiteral("noninteractive"));
+    process->setProcessEnvironment(environment);
 
     connect(process, &QProcess::errorOccurred, this,
             [this, process, progress, path](const QProcess::ProcessError error) {
@@ -681,8 +702,8 @@ void UpdateChecker::installDebPackage(const QString &path) {
                         .arg(path));
             });
     connect(process, &QProcess::finished, this,
-            [this, process, progress](const int exitCode,
-                                      const QProcess::ExitStatus exitStatus) {
+            [this, process, progress, path, previousVersion](
+                const int exitCode, const QProcess::ExitStatus exitStatus) {
                 if (packageInstaller_ != process) {
                     return;
                 }
@@ -694,13 +715,30 @@ void UpdateChecker::installDebPackage(const QString &path) {
                 process->deleteLater();
 
                 if (exitStatus != QProcess::NormalExit || exitCode != 0) {
-                    QString message = QStringLiteral(
-                        "Установка отменена или завершилась с ошибкой.");
+                    // pkexec reports a dismissed or rejected authorization
+                    // dialog with 126 and 127.
+                    QString message =
+                        exitCode == 126 || exitCode == 127
+                            ? QStringLiteral("Установка отменена: не получены права "
+                                             "администратора.")
+                            : QStringLiteral("Установка завершилась с ошибкой.");
                     if (!output.isEmpty()) {
                         message += QStringLiteral("\n\n%1").arg(output.right(1600));
                     }
                     QMessageBox::warning(dialogParent_,
                                          QStringLiteral("Обновление SquidyGit"), message);
+                    return;
+                }
+
+                // apt exits successfully when it decides that nothing has to be
+                // done, so the result is confirmed against the package database.
+                const QString currentVersion = installedPackageVersion();
+                if (!currentVersion.isEmpty() && currentVersion == previousVersion) {
+                    QMessageBox::warning(
+                        dialogParent_, QStringLiteral("Обновление SquidyGit"),
+                        QStringLiteral("Версия пакета не изменилась (%1). "
+                                       "Установите пакет вручную:\n%2")
+                            .arg(currentVersion, path));
                     return;
                 }
 
