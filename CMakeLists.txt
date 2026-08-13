@@ -175,7 +175,18 @@ if (UNIX AND NOT APPLE)
     install(FILES README.md README.ru.md README.zh-CN.md
             DESTINATION ${CMAKE_INSTALL_DATADIR}/doc/squidygit)
 
-    set(SQUIDYGIT_DEBIAN_RELEASE 1)
+    # beta.4 was published as revision 1, so revision 2 is the new stable
+    # packaging line. A prerelease sorts after revision 1 but before revision 2:
+    # 0.0.1-1 < 0.0.1-2~beta.5 < 0.0.1-2.
+    set(SQUIDYGIT_DEBIAN_RELEASE 2)
+    if (SQUIDYGIT_BUILD_VERSION MATCHES "^[0-9]+[.][0-9]+[.][0-9]+-(.+)$")
+        set(SQUIDYGIT_DEBIAN_PRERELEASE "${CMAKE_MATCH_1}")
+        string(REPLACE "-" "." SQUIDYGIT_DEBIAN_PRERELEASE
+                "${SQUIDYGIT_DEBIAN_PRERELEASE}")
+        set(SQUIDYGIT_DEBIAN_RELEASE "2~${SQUIDYGIT_DEBIAN_PRERELEASE}")
+    endif ()
+    set(SQUIDYGIT_DEBIAN_FULL_VERSION
+            "${PROJECT_VERSION}-${SQUIDYGIT_DEBIAN_RELEASE}")
     configure_file(installer/linux/changelog.Debian.in
             ${CMAKE_CURRENT_BINARY_DIR}/changelog.Debian @ONLY)
     configure_file(installer/linux/SquidyGit.1.in
@@ -217,6 +228,7 @@ if (UNIX AND NOT APPLE)
     set(CPACK_STRIP_FILES TRUE)
 
     set(CPACK_DEBIAN_FILE_NAME DEB-DEFAULT)
+    set(CPACK_DEBIAN_PACKAGE_VERSION "${PROJECT_VERSION}")
     set(CPACK_DEBIAN_PACKAGE_RELEASE ${SQUIDYGIT_DEBIAN_RELEASE})
     set(CPACK_DEBIAN_PACKAGE_SECTION "vcs")
     set(CPACK_DEBIAN_PACKAGE_PRIORITY "optional")
@@ -249,7 +261,7 @@ if (UNIX AND NOT APPLE)
                     ${SQUIDYGIT_DEB_CMAKE_ARGS}
             COMMAND "${CMAKE_COMMAND}" --build "${SQUIDYGIT_DEB_BUILD_DIR}" --parallel
             COMMAND "${CMAKE_COMMAND}" --build "${SQUIDYGIT_DEB_BUILD_DIR}" --target package
-            COMMENT "Building SquidyGit ${PROJECT_VERSION} DEB package (Release)"
+            COMMENT "Building SquidyGit ${SQUIDYGIT_BUILD_VERSION} DEB package (Release)"
             USES_TERMINAL
             VERBATIM)
 endif ()

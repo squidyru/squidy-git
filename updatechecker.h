@@ -5,6 +5,7 @@
 #include <QObject>
 
 class QNetworkAccessManager;
+class QProcess;
 class QWidget;
 
 class UpdateChecker final : public QObject {
@@ -20,10 +21,12 @@ private:
 
     void requestChecksums(const ReleaseAsset &asset, const QString &checksumsUrl);
     void downloadAsset(const ReleaseAsset &asset);
-    void openDownloadedPackage(const QString &path) const;
+    void openDownloadedPackage(const QString &path);
+    void installDebPackage(const QString &path);
     void finishWithError(const QString &message, bool showMessage);
 
     QWidget *dialogParent_ = nullptr;
     QNetworkAccessManager *network_ = nullptr;
+    QProcess *packageInstaller_ = nullptr;
     bool busy_ = false;
 };

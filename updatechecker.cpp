@@ -17,6 +17,7 @@
 #include <QNetworkReply>
 #include <QNetworkRequest>
 #include <QPointer>
+#include <QProcess>
 #include <QProgressDialog>
 #include <QRegularExpression>
 #include <QSaveFile>
@@ -522,9 +523,15 @@ void UpdateChecker::downloadAsset(const ReleaseAsset &asset) {
             });
 }
 
-void UpdateChecker::openDownloadedPackage(const QString &path) const {
+void UpdateChecker::openDownloadedPackage(const QString &path) {
     const QFileInfo fileInfo(path);
     const bool isAppImage = path.endsWith(QStringLiteral(".AppImage"), Qt::CaseInsensitive);
+#if defined(Q_OS_LINUX)
+    if (path.endsWith(QStringLiteral(".deb"), Qt::CaseInsensitive)) {
+        installDebPackage(path);
+        return;
+    }
+#endif
     if (isAppImage) {
         QFile::setPermissions(path, QFile::permissions(path) | QFileDevice::ExeOwner
                                         | QFileDevice::ExeGroup | QFileDevice::ExeOther);
@@ -546,6 +553,119 @@ void UpdateChecker::openDownloadedPackage(const QString &path) const {
                              QStringLiteral("Не удалось открыть пакет. Он сохранён в:\n%1")
                                  .arg(path));
     }
+}
+
+void UpdateChecker::installDebPackage(const QString &path) {
+    if (packageInstaller_ != nullptr) {
+        QMessageBox::information(dialogParent_, QStringLiteral("Обновление SquidyGit"),
+                                 QStringLiteral("Установка обновления уже выполняется."));
+        return;
+    }
+
+    const QString pkexec = QStandardPaths::findExecutable(QStringLiteral("pkexec"));
+    const QString aptGet = QStandardPaths::findExecutable(QStringLiteral("apt-get"));
+    if (pkexec.isEmpty() || aptGet.isEmpty()) {
+        QMessageBox::information(
+            dialogParent_, QStringLiteral("Обновление загружено"),
+            QStringLiteral("Пакет проверен и сохранён в:\n%1\n\n"
+                           "Не найден системный установщик apt. Пакет будет открыт вручную.")
+                .arg(path));
+        if (!QDesktopServices::openUrl(QUrl::fromLocalFile(path))) {
+            QMessageBox::warning(dialogParent_, QStringLiteral("Обновление SquidyGit"),
+                                 QStringLiteral("Не удалось открыть пакет. Он сохранён в:\n%1")
+                                     .arg(path));
+        }
+        return;
+    }
+
+    const QMessageBox::StandardButton answer = QMessageBox::question(
+        dialogParent_, QStringLiteral("Установить обновление"),
+        QStringLiteral("Пакет проверен и готов к установке:\n%1\n\n"
+                       "Ubuntu запросит пароль администратора. Установить обновление сейчас?")
+            .arg(path),
+        QMessageBox::Yes | QMessageBox::No, QMessageBox::Yes);
+    if (answer != QMessageBox::Yes) {
+        return;
+    }
+
+    auto *progress = new QProgressDialog(
+        QStringLiteral("Ubuntu устанавливает обновление…"), QString(), 0, 0, dialogParent_);
+    progress->setWindowTitle(QStringLiteral("Обновление SquidyGit"));
+    progress->setWindowModality(Qt::WindowModal);
+    progress->setCancelButton(nullptr);
+    progress->setMinimumDuration(0);
+    progress->show();
+
+    auto *process = new QProcess(this);
+    packageInstaller_ = process;
+    busy_ = true;
+    process->setProcessChannelMode(QProcess::MergedChannels);
+
+    connect(process, &QProcess::errorOccurred, this,
+            [this, process, progress, path](const QProcess::ProcessError error) {
+                if (error != QProcess::FailedToStart || packageInstaller_ != process) {
+                    return;
+                }
+                packageInstaller_ = nullptr;
+                busy_ = false;
+                progress->close();
+                progress->deleteLater();
+                process->deleteLater();
+                QMessageBox::warning(
+                    dialogParent_, QStringLiteral("Обновление SquidyGit"),
+                    QStringLiteral("Не удалось запустить системную установку.\n"
+                                   "Пакет сохранён в:\n%1")
+                        .arg(path));
+            });
+    connect(process, &QProcess::finished, this,
+            [this, process, progress](const int exitCode,
+                                      const QProcess::ExitStatus exitStatus) {
+                if (packageInstaller_ != process) {
+                    return;
+                }
+                const QString output = QString::fromLocal8Bit(process->readAll()).trimmed();
+                packageInstaller_ = nullptr;
+                busy_ = false;
+                progress->close();
+                progress->deleteLater();
+                process->deleteLater();
+
+                if (exitStatus != QProcess::NormalExit || exitCode != 0) {
+                    QString message = QStringLiteral(
+                        "Установка отменена или завершилась с ошибкой.");
+                    if (!output.isEmpty()) {
+                        message += QStringLiteral("\n\n%1").arg(output.right(1600));
+                    }
+                    QMessageBox::warning(dialogParent_,
+                                         QStringLiteral("Обновление SquidyGit"), message);
+                    return;
+                }
+
+                const QMessageBox::StandardButton restart = QMessageBox::question(
+                    dialogParent_, QStringLiteral("Обновление установлено"),
+                    QStringLiteral("SquidyGit успешно обновлён. Перезапустить приложение?"),
+                    QMessageBox::Yes | QMessageBox::No, QMessageBox::Yes);
+                if (restart != QMessageBox::Yes) {
+                    return;
+                }
+
+                QStringList arguments = QCoreApplication::arguments();
+                if (!arguments.isEmpty()) {
+                    arguments.removeFirst();
+                }
+                if (QProcess::startDetached(QCoreApplication::applicationFilePath(), arguments,
+                                            QDir::currentPath())) {
+                    QApplication::quit();
+                } else {
+                    QMessageBox::warning(
+                        dialogParent_, QStringLiteral("Обновление SquidyGit"),
+                        QStringLiteral("Не удалось перезапустить приложение. "
+                                       "Запустите SquidyGit вручную."));
+                }
+            });
+
+    process->start(pkexec,
+                   {aptGet, QStringLiteral("install"), QStringLiteral("--yes"), path});
 }
 
 void UpdateChecker::finishWithError(const QString &message, const bool showMessage) {

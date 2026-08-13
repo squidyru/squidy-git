@@ -1,4 +1,4 @@
-squidygit (@PROJECT_VERSION@-@SQUIDYGIT_DEBIAN_RELEASE@) unstable; urgency=medium
+squidygit (@SQUIDYGIT_DEBIAN_FULL_VERSION@) unstable; urgency=medium
 
   * Initial release.
 
