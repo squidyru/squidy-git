@@ -72,6 +72,17 @@ set_target_properties(SquidyGit PROPERTIES
 # On Windows, copy the Qt runtime and plugins next to the executable so it can
 # be launched directly from CLion. This block is ignored on Linux and macOS.
 if (WIN32)
+    enable_language(RC)
+
+    # Embed the application icon and the version information into SquidyGit.exe.
+    # Explorer, the task bar and the shortcuts created by the installer all read
+    # the icon from the executable itself.
+    set(SQUIDYGIT_ICON_FILE "${CMAKE_CURRENT_SOURCE_DIR}/resources/squidygit.ico")
+    string(REPLACE "." "," SQUIDYGIT_RC_VERSION "${PROJECT_VERSION},0")
+    configure_file(resources/squidygit.rc.in
+            ${CMAKE_CURRENT_BINARY_DIR}/squidygit.rc @ONLY)
+    target_sources(SquidyGit PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/squidygit.rc)
+
     find_program(WINDEPLOYQT_EXECUTABLE windeployqt
             HINTS "${Qt6_DIR}/../../../bin"
             REQUIRED)

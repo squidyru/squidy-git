@@ -1,0 +1,32 @@
+// Copyright (c) 2026 Sergey Yakunin <sergey@squidy.ru>
+//
+// Windows resources. The first icon in the file is the one Explorer, the task
+// bar and shortcuts use for SquidyGit.exe.
+
+1 ICON "@SQUIDYGIT_ICON_FILE@"
+
+1 VERSIONINFO
+FILEVERSION @SQUIDYGIT_RC_VERSION@
+PRODUCTVERSION @SQUIDYGIT_RC_VERSION@
+FILEOS 0x40004L
+FILETYPE 0x1L
+BEGIN
+    BLOCK "StringFileInfo"
+    BEGIN
+        BLOCK "040904b0"
+        BEGIN
+            VALUE "CompanyName", "Sergey Yakunin"
+            VALUE "FileDescription", "SquidyGit"
+            VALUE "FileVersion", "@SQUIDYGIT_BUILD_VERSION@"
+            VALUE "InternalName", "SquidyGit"
+            VALUE "LegalCopyright", "Copyright (c) 2026 Sergey Yakunin"
+            VALUE "OriginalFilename", "SquidyGit.exe"
+            VALUE "ProductName", "SquidyGit"
+            VALUE "ProductVersion", "@SQUIDYGIT_BUILD_VERSION@"
+        END
+    END
+    BLOCK "VarFileInfo"
+    BEGIN
+        VALUE "Translation", 0x409, 1200
+    END
+END
