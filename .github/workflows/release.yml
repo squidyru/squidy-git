@@ -1,0 +1,290 @@
+# Copyright (c) 2026 Sergey Yakunin <sergey@squidy.ru>
+
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  QT_VERSION: '6.8.*'
+
+jobs:
+  validate:
+    name: Validate version
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.value }}
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Match tag and project versions
+        id: version
+        shell: bash
+        run: |
+          if [[ ! "$GITHUB_REF_NAME" =~ ^v[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.-]+)?$ ]]; then
+            echo "Unsupported release tag: $GITHUB_REF_NAME" >&2
+            exit 1
+          fi
+
+          tag_version="${GITHUB_REF_NAME#v}"
+          package_version="${tag_version%%-*}"
+          project_version="$(sed -nE 's/^project\(SquidyGit VERSION ([0-9]+\.[0-9]+\.[0-9]+).*/\1/p' CMakeLists.txt)"
+
+          if [[ "$package_version" != "$project_version" ]]; then
+            echo "Tag version $package_version does not match project version $project_version" >&2
+            exit 1
+          fi
+
+          echo "value=$package_version" >> "$GITHUB_OUTPUT"
+
+  linux-package:
+    name: DEB package
+    needs: validate
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: ${{ env.QT_VERSION }}
+          cache: true
+
+      - name: Configure
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build DEB package
+        run: cmake --build build --target deb_package --parallel
+
+      - name: Upload DEB package
+        uses: actions/upload-artifact@v7
+        with:
+          name: release-linux
+          path: build/dist/*.deb
+          if-no-files-found: error
+          retention-days: 7
+
+  appimage-package:
+    name: AppImage
+    needs: validate
+    runs-on: ubuntu-22.04
+
+    env:
+      LINUXDEPLOY_VERSION: 1-alpha-20251107-1
+      LINUXDEPLOY_SHA256: c20cd71e3a4e3b80c3483cef793cda3f4e990aca14014d23c544ca3ce1270b4d
+      LINUXDEPLOY_QT_VERSION: 1-alpha-20250213-1
+      LINUXDEPLOY_QT_SHA256: 15106be885c1c48a021198e7e1e9a48ce9d02a86dd0a1848f00bdbf3c1c92724
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: ${{ env.QT_VERSION }}
+          cache: true
+
+      - name: Configure
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build
+        run: cmake --build build --parallel
+
+      - name: Download AppImage tools
+        shell: bash
+        run: |
+          curl -fL \
+            "https://github.com/linuxdeploy/linuxdeploy/releases/download/$LINUXDEPLOY_VERSION/linuxdeploy-x86_64.AppImage" \
+            -o linuxdeploy-x86_64.AppImage
+          curl -fL \
+            "https://github.com/linuxdeploy/linuxdeploy-plugin-qt/releases/download/$LINUXDEPLOY_QT_VERSION/linuxdeploy-plugin-qt-x86_64.AppImage" \
+            -o linuxdeploy-plugin-qt-x86_64.AppImage
+
+          echo "$LINUXDEPLOY_SHA256  linuxdeploy-x86_64.AppImage" | sha256sum --check
+          echo "$LINUXDEPLOY_QT_SHA256  linuxdeploy-plugin-qt-x86_64.AppImage" | sha256sum --check
+          chmod +x linuxdeploy-x86_64.AppImage linuxdeploy-plugin-qt-x86_64.AppImage
+
+      - name: Build AppImage
+        shell: bash
+        env:
+          APPIMAGE_EXTRACT_AND_RUN: '1'
+          ARCH: x86_64
+        run: |
+          export QMAKE="$QT_ROOT_DIR/bin/qmake"
+          mkdir -p build/appimage build/dist
+          install -m 0644 resources/squidygit-512.png build/appimage/squidygit.png
+          install -Dm 0644 LICENSE build/AppDir/usr/share/doc/squidygit/copyright
+
+          ./linuxdeploy-x86_64.AppImage \
+            --appdir build/AppDir \
+            --executable build/SquidyGit \
+            --desktop-file resources/squidygit.desktop \
+            --icon-file build/appimage/squidygit.png \
+            --plugin qt \
+            --output appimage
+
+          appimage="$(find . -maxdepth 1 -type f -name 'SquidyGit*.AppImage' -print -quit)"
+          test -n "$appimage"
+          mv "$appimage" \
+            "build/dist/SquidyGit-${{ needs.validate.outputs.version }}-linux-x86_64.AppImage"
+
+      - name: Upload AppImage
+        uses: actions/upload-artifact@v7
+        with:
+          name: release-appimage
+          path: build/dist/*.AppImage
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 0
+
+  windows-package:
+    name: Windows package
+    needs: validate
+    runs-on: windows-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Install Qt and Qt Installer Framework
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: ${{ env.QT_VERSION }}
+          arch: win64_mingw
+          tools: tools_mingw1310,qt.tools.win64_mingw1310 tools_ifw
+          cache: true
+
+      - name: Configure
+        run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER=g++
+
+      - name: Build Windows installer
+        run: cmake --build build --config Release --target windows_installer --parallel
+
+      - name: Build portable archive
+        run: cmake --build build --config Release --target windows_portable --parallel
+
+      - name: Upload Windows packages
+        uses: actions/upload-artifact@v7
+        with:
+          name: release-windows
+          path: |
+            build/dist/*.exe
+            build/dist/*.zip
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 0
+
+  macos-package:
+    name: macOS ${{ matrix.arch }}
+    needs: validate
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-15
+            arch: arm64
+          - os: macos-15-intel
+            arch: x86_64
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: ${{ env.QT_VERSION }}
+          cache: true
+
+      - name: Configure
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build
+        run: cmake --build build --parallel
+
+      - name: Build DMG
+        working-directory: build
+        env:
+          PACKAGE_VERSION: ${{ needs.validate.outputs.version }}
+          MAC_ARCH: ${{ matrix.arch }}
+        run: |
+          macdeployqt SquidyGit.app -dmg -always-overwrite
+          mkdir -p dist
+          mv SquidyGit.dmg "dist/SquidyGit-${PACKAGE_VERSION}-macos-${MAC_ARCH}.dmg"
+
+      - name: Upload DMG
+        uses: actions/upload-artifact@v7
+        with:
+          name: release-macos-${{ matrix.arch }}
+          path: build/dist/*.dmg
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 0
+
+  publish:
+    name: Publish GitHub Release
+    needs:
+      - validate
+      - linux-package
+      - appimage-package
+      - windows-package
+      - macos-package
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download release files
+        uses: actions/download-artifact@v8
+        with:
+          pattern: release-*
+          path: release-assets
+          merge-multiple: true
+
+      - name: Create checksums
+        working-directory: release-assets
+        run: sha256sum * > SHA256SUMS.txt
+
+      - name: Publish release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          options=(
+            --verify-tag
+            --generate-notes
+            --title "SquidyGit $RELEASE_TAG"
+          )
+
+          if [[ "$RELEASE_TAG" == *-* ]]; then
+            options+=(--prerelease --latest=false)
+          fi
+
+          gh release create "$RELEASE_TAG" release-assets/* "${options[@]}"

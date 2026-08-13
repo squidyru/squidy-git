@@ -71,6 +71,19 @@ if (WIN32)
             COMMENT "Deploying Qt runtime next to SquidyGit"
             VERBATIM)
 
+    set(PORTABLE_STAGING_DIR "${CMAKE_BINARY_DIR}/portable")
+    add_custom_target(windows_portable
+            COMMAND "${CMAKE_COMMAND}"
+                    "-DPROJECT_SOURCE_DIR=${CMAKE_SOURCE_DIR}"
+                    "-DBINARY_DIR=${CMAKE_BINARY_DIR}"
+                    "-DRUNTIME_DIR=$<TARGET_FILE_DIR:SquidyGit>"
+                    "-DSTAGING_DIR=${PORTABLE_STAGING_DIR}"
+                    "-DAPP_VERSION=${PROJECT_VERSION}"
+                    -P "${CMAKE_SOURCE_DIR}/installer/windows/build-portable.cmake"
+            DEPENDS SquidyGit
+            COMMENT "Building SquidyGit ${PROJECT_VERSION} Windows portable archive"
+            VERBATIM)
+
     find_program(BINARYCREATOR_EXECUTABLE binarycreator
             HINTS
                 "C:/Qt/Tools/QtInstallerFramework/4.11/bin"
@@ -85,6 +98,7 @@ if (WIN32)
                 COMMAND "${CMAKE_COMMAND}"
                         "-DPROJECT_SOURCE_DIR=${CMAKE_SOURCE_DIR}"
                         "-DBINARY_DIR=${CMAKE_BINARY_DIR}"
+                        "-DRUNTIME_DIR=$<TARGET_FILE_DIR:SquidyGit>"
                         "-DSTAGING_DIR=${INSTALLER_STAGING_DIR}"
                         "-DAPP_VERSION=${PROJECT_VERSION}"
                         "-DBINARYCREATOR=${BINARYCREATOR_EXECUTABLE}"
