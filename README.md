@@ -18,16 +18,32 @@
   <a href="README.md">English</a> · <a href="README.ru.md">Русский</a> · <a href="README.zh-CN.md">简体中文</a>
 </p>
 
-## Why SquidyGit?
+## Why SquidyGit exists
 
-I could not find a Linux Git client that felt comfortable for my everyday workflow. Some
-tools were too limited, others felt overly complicated, and many did not provide the
-combination of repository history, staging and branch management I wanted in one native
-desktop application. So I decided to build my own.
+I wanted the kind of desktop client that keeps history, staging and branches in one
+window, and on Linux I could not find one that fit. Some tools were too limited, some
+were too heavy for what they did, and the polished ones were either commercial or simply
+never released for Linux. SourceTree, whose layout I had been comfortable with elsewhere,
+is available only for macOS and Windows.
 
-SquidyGit is designed to keep common Git operations visible and approachable without
-hiding the underlying tool. It runs the system `git` executable and shows every command
-in its command log.
+So I started writing the client I wanted to use every day: a familiar layout, native
+code, no account to create, no telemetry, and an MIT licence.
+
+SquidyGit keeps the common Git operations visible instead of wrapping them in its own
+vocabulary. It drives the `git` executable already installed on your system and writes
+every command it runs into the built-in log, so nothing happens that you cannot inspect
+or repeat in a terminal yourself.
+
+## What makes it different
+
+- Every Git command the application runs is shown in the command log together with its
+  output
+- SquidyGit calls the system `git` binary and carries no embedded Git implementation, so
+  behaviour matches your own configuration, hooks and aliases
+- C++20 and Qt 6, without Electron, a bundled runtime or a background service
+- MIT licence, no sign-in, no telemetry, no feature gates and no licence reminders
+- English, Russian and Simplified Chinese cover the whole interface, not just a handful
+  of menus
 
 ## Screenshots
 
@@ -59,25 +75,81 @@ Open an existing repository, clone a remote project or initialize a new one.
   <img src="resources/screenshots/en/main-window.png" alt="English local repository list">
 </p>
 
-## Features
+## What works today
 
-- Compact native interface with resizable repository, file and diff panels
-- Repository tabs, bookmarks and automatic session restoration
-- Working-tree view with separate staged and unstaged file lists
-- Flat and directory-tree file views with filtering and status badges
-- Unified diff viewer with old/new line numbers and colour highlighting
-- Full side-by-side diff window available from the diff context menu
-- Partial staging, unstaging and discarding by hunk or individual line
-- Commit, amend and optional push-after-commit workflows
+### Working tree and commits
+
+- Separate lists of staged and unstaged files, with flat and directory-tree views,
+  filtering and status badges
+- Unified diff viewer with old and new line numbers and colour highlighting
+- A full side-by-side diff window, opened from the diff context menu
+- Staging, unstaging and discarding by hunk or by individual line
+- Commit, amend and an optional push right after the commit
+
+### History
+
 - Visual commit graph with branches, tags, merge commits and commit details
-- Branch creation, checkout, rename, deletion, merge and rebase
-- Fetch, pull and push with upstream, tags and `--force-with-lease` options
-- Stash, tags, remotes and submodule management
-- Commit search by message, author, file contents, path or SHA
+- Changed files and a diff preview for the selected commit
+- Search by message, author, file contents, path or SHA
+
+### Branches and remotes
+
+- Create, check out, rename, delete, merge and rebase branches
+- Fetch, pull and push with upstream tracking, tags and `--force-with-lease`
+- Cherry-pick, revert and reset, with confirmation for destructive operations
+- Stashes, tags, remotes and a submodule list
+
+### Application
+
+- Repository tabs, bookmarks and automatic session restoration
 - Light and dark themes
-- English, Russian and Simplified Chinese interface with a manual language selector
-- Quick access to a terminal and the repository folder
+- English, Russian and Simplified Chinese, with a manual language selector
+- Quick access to a terminal and to the repository folder
 - Built-in log of every executed Git command
+
+## What is planned
+
+The list below is roughly in the order I intend to work on it. It is a statement of
+intent, not a schedule.
+
+### Next
+
+- Credential handling: a built-in prompt for HTTPS passwords and SSH key passphrases,
+  so private repositories work without preparing a credential helper first
+- Automatic refresh when the repository changes outside the application
+- External diff and merge tools, including conflict resolution through Meld, KDiff3 and
+  similar utilities
+- Blame and per-file history
+
+### Planned
+
+- Git Flow: initialization and the feature, release and hotfix operations
+- Interactive rebase with reordering, squashing and message editing
+- Undo for the last operation, based on `git reflog`
+- Repository profiles: per-repository name, e-mail and key, with a warning before
+  committing as the wrong author
+- Exporting the command log as a runnable shell script, so a sequence performed in the
+  interface can be moved into a terminal or a CI job
+- Submodule operations, `git clean`, creating and applying patches
+- Faster history on large repositories through lazy loading
+- Custom actions: user-defined commands available from the menus
+
+### Under consideration
+
+- Git LFS support
+- Pull request integration with the common hosting services
+- macOS builds
+
+## Contributing
+
+I write SquidyGit in my own time, and I would be glad if someone joined in. Bug reports
+and ideas are useful on their own, and anything from the list above is free to pick up.
+Say so in an issue first and it will not be written twice. Patches are welcome regardless
+of size; so are translations into other languages and a second pair of eyes on the
+interface wording.
+
+If you would rather ask something before starting, write to &lt;sergey@squidy.ru&gt;
+or open an issue.
 
 ## Interface languages
 
@@ -150,11 +222,17 @@ an uninstaller. Administrator permission is requested during installation. A new
 installer upgrades the existing installation in place, which is what the built-in
 update check uses.
 
-## Safety
+## Safety and current limits
 
 Potentially destructive operations, including discarding changes, hard reset and branch
-deletion, require confirmation. Interactive credential prompts are disabled, so private
-repositories require an SSH key or a configured Git credential helper.
+deletion, require confirmation.
+
+Interactive credential prompts are disabled so that Git can never block the interface
+waiting for input. Until the built-in prompt described above is finished, private
+repositories therefore need an SSH key or a configured Git credential helper.
+
+Conflicts can currently be resolved by taking one side of the file as a whole; a
+three-way view and external merge tools are on the list.
 
 ## License
 
