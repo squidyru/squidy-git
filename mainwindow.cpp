@@ -935,8 +935,9 @@ QWidget *MainWindow::buildWelcomePage() {
     layout->addWidget(subtitle);
 
     auto *buttonRow = new QHBoxLayout;
-    auto *cloneButton = new QPushButton(Icons::icon(Icons::Glyph::Clone, Qt::white),
-                                        tr("Clone"));
+    auto *cloneButton = new QPushButton(
+        Icons::icon(Icons::Glyph::Clone, Theme::instance()->palette().accentText),
+        tr("Clone"));
     cloneButton->setProperty("accent", true);
     auto *openButton = new QPushButton(Icons::icon(Icons::Glyph::OpenFolder),
                                        tr("Add existing"));

@@ -95,7 +95,8 @@ CloneDialog::CloneDialog(QWidget *parent)
     cloneButton_ = buttons_->addButton(tr("Clone"),
                                        QDialogButtonBox::AcceptRole);
     cloneButton_->setProperty("accent", true);
-    cloneButton_->setIcon(Icons::icon(Icons::Glyph::Clone));
+    cloneButton_->setIcon(Icons::icon(Icons::Glyph::Clone,
+                                      Theme::instance()->palette().accentText));
     layout->addWidget(buttons_);
 
     destinationEdit_->setText(QDir::toNativeSeparators(

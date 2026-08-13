@@ -10,86 +10,91 @@ namespace {
 
 ThemePalette lightPalette() {
     ThemePalette palette;
-    palette.window = QColor(QStringLiteral("#F5F5F5"));
-    palette.chrome = QColor(QStringLiteral("#0D4FA3"));
-    palette.chromeText = QColor(QStringLiteral("#FFFFFF"));
-    palette.tabInactive = QColor(QStringLiteral("#E9E9E9"));
-    palette.sidebarSelection = QColor(QStringLiteral("#3399FF"));
-    palette.toolbar = QColor(QStringLiteral("#F5F5F5"));
-    palette.sidebar = QColor(QStringLiteral("#F5F5F5"));
+    palette.window = QColor(QStringLiteral("#F4F6F9"));
+    palette.chrome = QColor(QStringLiteral("#10162E"));
+    palette.chromeText = QColor(QStringLiteral("#E8ECF6"));
+    palette.tabInactive = QColor(QStringLiteral("#E4E8F0"));
+    palette.sidebarSelection = QColor(QStringLiteral("#3A4C82"));
+    palette.toolbar = QColor(QStringLiteral("#F4F6F9"));
+    palette.sidebar = QColor(QStringLiteral("#F4F6F9"));
     palette.surface = QColor(QStringLiteral("#FFFFFF"));
-    palette.surfaceAlternate = QColor(QStringLiteral("#FAFBFC"));
-    palette.border = QColor(QStringLiteral("#CCCCCC"));
-    palette.text = QColor(QStringLiteral("#232323"));
-    palette.mutedText = QColor(QStringLiteral("#737373"));
-    palette.sectionText = QColor(QStringLiteral("#737373"));
-    palette.accent = QColor(QStringLiteral("#0052CC"));
-    palette.accentHover = QColor(QStringLiteral("#0065FF"));
-    palette.selection = QColor(QStringLiteral("#3399FF"));
+    palette.surfaceAlternate = QColor(QStringLiteral("#FAFBFD"));
+    palette.border = QColor(QStringLiteral("#CDD4E0"));
+    palette.text = QColor(QStringLiteral("#1E2333"));
+    palette.mutedText = QColor(QStringLiteral("#6E7488"));
+    palette.sectionText = QColor(QStringLiteral("#6E7488"));
+    palette.accent = QColor(QStringLiteral("#D02B44"));
+    palette.accentHover = QColor(QStringLiteral("#E8455C"));
+    palette.accentText = QColor(QStringLiteral("#FFFFFF"));
+    palette.selection = QColor(QStringLiteral("#2C3A66"));
     palette.selectionText = QColor(QStringLiteral("#FFFFFF"));
-    palette.hover = QColor(QStringLiteral("#EBECF0"));
-    palette.success = QColor(QStringLiteral("#00875A"));
-    palette.warning = QColor(QStringLiteral("#FF8B00"));
-    palette.danger = QColor(QStringLiteral("#DE350B"));
-    palette.staged = QColor(QStringLiteral("#00875A"));
-    palette.addedBackground = QColor(QStringLiteral("#E3FCEF"));
-    palette.addedText = QColor(QStringLiteral("#006644"));
-    palette.removedBackground = QColor(QStringLiteral("#FFEBE6"));
-    palette.removedText = QColor(QStringLiteral("#BF2600"));
-    palette.hunkBackground = QColor(QStringLiteral("#DEEBFF"));
-    palette.hunkText = QColor(QStringLiteral("#0747A6"));
+    palette.hover = QColor(QStringLiteral("#E9EDF4"));
+    palette.success = QColor(QStringLiteral("#1A7F4B"));
+    palette.warning = QColor(QStringLiteral("#B0730B"));
+    palette.danger = QColor(QStringLiteral("#9B1B2E"));
+    palette.staged = QColor(QStringLiteral("#1A7F4B"));
+    palette.untracked = QColor(QStringLiteral("#6D5BB5"));
+    palette.addedBackground = QColor(QStringLiteral("#E8F6EC"));
+    palette.addedText = QColor(QStringLiteral("#14663C"));
+    palette.removedBackground = QColor(QStringLiteral("#FBE9EA"));
+    palette.removedText = QColor(QStringLiteral("#9B1B2E"));
+    palette.hunkBackground = QColor(QStringLiteral("#E7ECF7"));
+    palette.hunkText = QColor(QStringLiteral("#22305C"));
     palette.graphNodeBorder = QColor(QStringLiteral("#FFFFFF"));
     palette.laneColors = {
-        QColor(QStringLiteral("#337AB7")),
-        QColor(QStringLiteral("#00875A")),
-        QColor(QStringLiteral("#FF8B00")),
-        QColor(QStringLiteral("#6554C0")),
-        QColor(QStringLiteral("#DE350B")),
-        QColor(QStringLiteral("#00A3BF")),
-        QColor(QStringLiteral("#C1539C"))
+        QColor(QStringLiteral("#3A4C82")),
+        QColor(QStringLiteral("#D02B44")),
+        QColor(QStringLiteral("#1A7F4B")),
+        QColor(QStringLiteral("#B0730B")),
+        QColor(QStringLiteral("#6D5BB5")),
+        QColor(QStringLiteral("#0E7490")),
+        QColor(QStringLiteral("#B5468B"))
     };
     return palette;
 }
 
 ThemePalette darkPalette() {
     ThemePalette palette;
-    palette.window = QColor(QStringLiteral("#0D1422"));
-    palette.chrome = QColor(QStringLiteral("#10243D"));
-    palette.chromeText = QColor(QStringLiteral("#DCE6F4"));
-    palette.tabInactive = QColor(QStringLiteral("#16243A"));
-    palette.sidebarSelection = QColor(QStringLiteral("#23324A"));
-    palette.toolbar = QColor(QStringLiteral("#111A2B"));
-    palette.sidebar = QColor(QStringLiteral("#101929"));
-    palette.surface = QColor(QStringLiteral("#0B1220"));
-    palette.surfaceAlternate = QColor(QStringLiteral("#0F192A"));
-    palette.border = QColor(QStringLiteral("#26344A"));
-    palette.text = QColor(QStringLiteral("#DCE6F4"));
-    palette.mutedText = QColor(QStringLiteral("#8191A9"));
-    palette.sectionText = QColor(QStringLiteral("#71829B"));
-    palette.accent = QColor(QStringLiteral("#2F81F7"));
-    palette.accentHover = QColor(QStringLiteral("#4C9AFF"));
-    palette.selection = QColor(QStringLiteral("#1D4F8F"));
+    palette.window = QColor(QStringLiteral("#0F1527"));
+    palette.chrome = QColor(QStringLiteral("#080D1C"));
+    palette.chromeText = QColor(QStringLiteral("#DDE4F2"));
+    palette.tabInactive = QColor(QStringLiteral("#151D31"));
+    palette.sidebarSelection = QColor(QStringLiteral("#33427A"));
+    palette.toolbar = QColor(QStringLiteral("#0F1527"));
+    palette.sidebar = QColor(QStringLiteral("#0D1322"));
+    palette.surface = QColor(QStringLiteral("#0A0F1E"));
+    palette.surfaceAlternate = QColor(QStringLiteral("#101728"));
+    palette.border = QColor(QStringLiteral("#232C45"));
+    palette.text = QColor(QStringLiteral("#DDE4F2"));
+    palette.mutedText = QColor(QStringLiteral("#8794AC"));
+    palette.sectionText = QColor(QStringLiteral("#74829C"));
+    palette.accent = QColor(QStringLiteral("#FF6E7C"));
+    palette.accentHover = QColor(QStringLiteral("#FF8A95"));
+    // Coral is light enough that white on it stops being readable.
+    palette.accentText = QColor(QStringLiteral("#1A1020"));
+    palette.selection = QColor(QStringLiteral("#2A3A6B"));
     palette.selectionText = QColor(QStringLiteral("#FFFFFF"));
-    palette.hover = QColor(QStringLiteral("#18263B"));
-    palette.success = QColor(QStringLiteral("#3FB950"));
-    palette.warning = QColor(QStringLiteral("#E3B341"));
-    palette.danger = QColor(QStringLiteral("#F85149"));
-    palette.staged = QColor(QStringLiteral("#7EE787"));
-    palette.addedBackground = QColor(QStringLiteral("#102B20"));
-    palette.addedText = QColor(QStringLiteral("#7EE787"));
-    palette.removedBackground = QColor(QStringLiteral("#331C24"));
-    palette.removedText = QColor(QStringLiteral("#FFA198"));
-    palette.hunkBackground = QColor(QStringLiteral("#13233A"));
-    palette.hunkText = QColor(QStringLiteral("#79C0FF"));
-    palette.graphNodeBorder = QColor(QStringLiteral("#0B1220"));
+    palette.hover = QColor(QStringLiteral("#172034"));
+    palette.success = QColor(QStringLiteral("#46C88A"));
+    palette.warning = QColor(QStringLiteral("#E0A33A"));
+    palette.danger = QColor(QStringLiteral("#F04438"));
+    palette.staged = QColor(QStringLiteral("#46C88A"));
+    palette.untracked = QColor(QStringLiteral("#B08CFF"));
+    palette.addedBackground = QColor(QStringLiteral("#0E2A22"));
+    palette.addedText = QColor(QStringLiteral("#6FDCA4"));
+    palette.removedBackground = QColor(QStringLiteral("#2C1420"));
+    palette.removedText = QColor(QStringLiteral("#FF9AA2"));
+    palette.hunkBackground = QColor(QStringLiteral("#121B33"));
+    palette.hunkText = QColor(QStringLiteral("#8FA6E8"));
+    palette.graphNodeBorder = QColor(QStringLiteral("#0A0F1E"));
     palette.laneColors = {
-        QColor(QStringLiteral("#58A6FF")),
-        QColor(QStringLiteral("#3FB950")),
-        QColor(QStringLiteral("#E3B341")),
-        QColor(QStringLiteral("#BC8CFF")),
-        QColor(QStringLiteral("#F85149")),
-        QColor(QStringLiteral("#39C5CF")),
-        QColor(QStringLiteral("#F778BA"))
+        QColor(QStringLiteral("#7B92E8")),
+        QColor(QStringLiteral("#FF6E7C")),
+        QColor(QStringLiteral("#46C88A")),
+        QColor(QStringLiteral("#E0A33A")),
+        QColor(QStringLiteral("#B08CFF")),
+        QColor(QStringLiteral("#4CC5D6")),
+        QColor(QStringLiteral("#F07FC0"))
     };
     return palette;
 }
@@ -158,19 +163,19 @@ void Theme::applyToApplication() const {
 QString Theme::styleSheet() const {
     const ThemePalette &p = palette_;
     const QColor sidebarText = mode_ == Mode::Light
-                                   ? QColor(QStringLiteral("#454545"))
+                                   ? QColor(QStringLiteral("#3A4257"))
                                    : p.text;
     const QColor historyControl = mode_ == Mode::Light
-                                      ? QColor(QStringLiteral("#E5E5E5"))
+                                      ? QColor(QStringLiteral("#E8EBF1"))
                                       : p.surfaceAlternate;
     const QColor historyControlBorder = mode_ == Mode::Light
-                                            ? QColor(QStringLiteral("#A8A8A8"))
+                                            ? QColor(QStringLiteral("#A9B2C4"))
                                             : p.border;
     const QColor historyScrollTrack = mode_ == Mode::Light
-                                          ? QColor(QStringLiteral("#F0F0F0"))
+                                          ? QColor(QStringLiteral("#EDF0F5"))
                                           : p.window;
     const QColor historyHeaderText = mode_ == Mode::Light
-                                         ? QColor(QStringLiteral("#000000"))
+                                         ? QColor(QStringLiteral("#12182A"))
                                          : p.text;
     const QColor windowFrameBorder(
         (p.border.red() + p.chrome.red()) / 2,
@@ -194,7 +199,7 @@ QString Theme::styleSheet() const {
             background: transparent;
             border: 1px solid transparent;
             border-radius: 2px;
-            color: #232323;
+            color: %(text);
             font-family: "Arial";
             font-size: 12px;
             font-weight: 400;
@@ -209,7 +214,7 @@ QString Theme::styleSheet() const {
         QToolBar#mainToolbar QToolButton:disabled { color: %(mutedText); }
         QLabel#commitBadge {
             background: %(accent);
-            color: white;
+            color: %(accentText);
             border-radius: 6px;
             font-size: 9px;
             font-weight: 700;
@@ -272,7 +277,7 @@ QString Theme::styleSheet() const {
             color: %(text);
             border: none;
             border-left: 1px solid %(chrome);
-            border-bottom: 1px solid #B8B8B8;
+            border-bottom: 1px solid %(border);
             border-top-left-radius: 1px;
             border-top-right-radius: 1px;
             min-height: 24px;
@@ -296,7 +301,7 @@ QString Theme::styleSheet() const {
         QTabBar#repositoryTabBar::close-button { subcontrol-position: right; }
         QLabel#repositoryTabTitle {
             background: transparent;
-            color: #232323;
+            color: %(text);
             font-family: "Arial";
             font-size: 12px;
             font-weight: 400;
@@ -326,7 +331,7 @@ QString Theme::styleSheet() const {
         QPushButton#viewSwitchButton:hover { background: %(hover); }
         QPushButton#viewSwitchButton:checked {
             background: %(sidebarSelection);
-            color: #FFFFFF;
+            color: %(selectionText);
             font-weight: 400;
         }
 
@@ -372,7 +377,7 @@ QString Theme::styleSheet() const {
         QTreeWidget#navigationTree::item:hover { background: %(hover); }
         QTreeWidget#navigationTree::item:selected {
             background: %(sidebarSelection);
-            color: #FFFFFF;
+            color: %(selectionText);
         }
         QLineEdit#navigationFilter {
             min-height: 21px;
@@ -592,7 +597,7 @@ QString Theme::styleSheet() const {
         QPushButton:disabled { color: %(mutedText); background: %(window); }
         QPushButton[accent="true"] {
             background: %(accent);
-            color: #FFFFFF;
+            color: %(accentText);
             border-color: %(accent);
             font-weight: 600;
         }
@@ -661,9 +666,9 @@ QString Theme::styleSheet() const {
         QMenu::item { padding: 5px 22px 5px 22px; border-radius: 4px; }
         QMenu::item:selected { background: %(selection); color: %(selectionText); }
         QMenu#tabContextMenu {
-            background: #F2F2F2;
-            color: #202020;
-            border: 1px solid #8F8F8F;
+            background: %(surfaceAlternate);
+            color: %(text);
+            border: 1px solid %(border);
             padding: 2px;
         }
         QMenu#tabContextMenu::item {
@@ -672,10 +677,10 @@ QString Theme::styleSheet() const {
             border-radius: 0;
         }
         QMenu#tabContextMenu::item:selected {
-            background: #D7D7D7;
-            color: #202020;
+            background: %(hover);
+            color: %(text);
         }
-        QMenu#tabContextMenu::item:disabled { color: #8A8A8A; }
+        QMenu#tabContextMenu::item:disabled { color: %(mutedText); }
         QMenu::separator { height: 1px; background: %(border); margin: 4px 8px; }
         QCheckBox, QRadioButton { spacing: 6px; }
         QDockWidget { titlebar-close-icon: none; color: %(mutedText); }
@@ -747,6 +752,7 @@ QString Theme::styleSheet() const {
         .replace(QStringLiteral("%(mutedText)"), name(p.mutedText))
         .replace(QStringLiteral("%(sectionText)"), name(p.sectionText))
         .replace(QStringLiteral("%(accentHover)"), name(p.accentHover))
+        .replace(QStringLiteral("%(accentText)"), name(p.accentText))
         .replace(QStringLiteral("%(accent)"), name(p.accent))
         .replace(QStringLiteral("%(selectionText)"), name(p.selectionText))
         .replace(QStringLiteral("%(selection)"), name(p.selection))

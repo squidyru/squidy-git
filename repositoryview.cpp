@@ -255,7 +255,7 @@ QColor statusColor(const QChar status) {
         case 'R': return palette.accent;
         case 'C': return palette.accent;
         case 'U': return palette.danger;
-        case '?': return QColor(QStringLiteral("#6554C0"));
+        case '?': return palette.untracked;
         case 'T': return palette.warning;
         default: return palette.mutedText;
     }
@@ -770,7 +770,8 @@ QWidget *RepositoryView::buildFileStatusPage() {
     pushAfterCommitCheck_ = new QCheckBox(tr("Push right after the commit"));
     commitButton_ = new QPushButton(tr("Commit"));
     commitButton_->setProperty("accent", true);
-    commitButton_->setIcon(Icons::icon(Icons::Glyph::Commit, Qt::white));
+    commitButton_->setIcon(Icons::icon(Icons::Glyph::Commit,
+                                       Theme::instance()->palette().accentText));
     commitFooter->addWidget(pushAfterCommitCheck_);
     commitFooter->addStretch();
     commitFooter->addWidget(commitButton_);
@@ -1088,7 +1089,8 @@ QWidget *RepositoryView::buildSearchPage() {
     searchEdit_->setClearButtonEnabled(true);
     auto *searchButton = new QPushButton(tr("Search", "button"));
     searchButton->setProperty("accent", true);
-    searchButton->setIcon(Icons::icon(Icons::Glyph::Search, Qt::white));
+    searchButton->setIcon(Icons::icon(Icons::Glyph::Search,
+                                      Theme::instance()->palette().accentText));
     toolRow->addWidget(searchMode_);
     toolRow->addWidget(searchEdit_, 1);
     toolRow->addWidget(searchButton);

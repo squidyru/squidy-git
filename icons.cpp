@@ -22,22 +22,25 @@ qreal devicePixelRatio() {
     return screen != nullptr ? screen->devicePixelRatio() : 1.0;
 }
 
+/// Toolbar icons are built once and are not repainted when the theme changes,
+/// so these tones are picked to stay legible on both the light and the dark
+/// background rather than to match one palette exactly.
 QColor defaultColor(const Icons::Glyph glyph) {
     switch (glyph) {
         case Icons::Glyph::Trash:
         case Icons::Glyph::Remove:
         case Icons::Glyph::Reset:
         case Icons::Glyph::Warning:
-            return QColor(QStringLiteral("#DE350B"));
+            return QColor(QStringLiteral("#D9455A"));
         case Icons::Glyph::Create:
         case Icons::Glyph::Add:
-            return QColor(QStringLiteral("#00875A"));
+            return QColor(QStringLiteral("#238A5B"));
         case Icons::Glyph::Terminal:
         case Icons::Glyph::Explorer:
         case Icons::Glyph::Settings:
         case Icons::Glyph::Search:
         case Icons::Glyph::Discard:
-            return QColor(QStringLiteral("#777777"));
+            return QColor(QStringLiteral("#7F899E"));
         case Icons::Glyph::WindowMinimize:
         case Icons::Glyph::WindowMaximize:
         case Icons::Glyph::WindowRestore:
@@ -45,7 +48,7 @@ QColor defaultColor(const Icons::Glyph glyph) {
         case Icons::Glyph::TabClose:
             return QColor(QStringLiteral("#FFFFFF"));
         default:
-            return QColor(QStringLiteral("#3D75B1"));
+            return QColor(QStringLiteral("#5A6FBE"));
     }
 }
 

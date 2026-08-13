@@ -23,6 +23,7 @@ struct ThemePalette {
     QColor sectionText;
     QColor accent;
     QColor accentHover;
+    QColor accentText;
     QColor selection;
     QColor selectionText;
     QColor hover;
@@ -30,6 +31,7 @@ struct ThemePalette {
     QColor warning;
     QColor danger;
     QColor staged;
+    QColor untracked;
     QColor addedBackground;
     QColor addedText;
     QColor removedBackground;
