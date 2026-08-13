@@ -11,10 +11,10 @@ namespace {
 ThemePalette lightPalette() {
     ThemePalette palette;
     palette.window = QColor(QStringLiteral("#F4F5F7"));
-    palette.chrome = QColor(QStringLiteral("#255180"));
+    palette.chrome = QColor(QStringLiteral("#0D4FA3"));
     palette.chromeText = QColor(QStringLiteral("#FFFFFF"));
-    palette.tabInactive = QColor(QStringLiteral("#F5F5F5"));
-    palette.sidebarSelection = QColor(QStringLiteral("#DADADA"));
+    palette.tabInactive = QColor(QStringLiteral("#E9E9E9"));
+    palette.sidebarSelection = QColor(QStringLiteral("#3399F3"));
     palette.toolbar = QColor(QStringLiteral("#F5F5F5"));
     palette.sidebar = QColor(QStringLiteral("#F5F5F5"));
     palette.surface = QColor(QStringLiteral("#FFFFFF"));
@@ -171,8 +171,8 @@ QString Theme::styleSheet() const {
             background: %(toolbar);
             border: none;
             border-bottom: 1px solid %(border);
-            spacing: 1px;
-            padding: 7px 8px 8px 8px;
+            spacing: 0px;
+            padding: 3px 8px 4px 8px;
         }
         QToolBar#mainToolbar QToolButton {
             background: transparent;
@@ -180,10 +180,10 @@ QString Theme::styleSheet() const {
             border-radius: 2px;
             color: #232323;
             font-family: "Arial";
-            font-size: 15px;
+            font-size: 12px;
             font-weight: 400;
-            min-width: 58px;
-            padding: 4px 7px;
+            min-width: 52px;
+            padding: 2px 5px;
         }
         QToolBar#mainToolbar QToolButton:hover {
             background: %(hover);
@@ -191,10 +191,18 @@ QString Theme::styleSheet() const {
         }
         QToolBar#mainToolbar QToolButton:pressed { background: %(selection); color: %(selectionText); }
         QToolBar#mainToolbar QToolButton:disabled { color: %(mutedText); }
+        QLabel#commitBadge {
+            background: %(accent);
+            color: white;
+            border-radius: 6px;
+            font-size: 9px;
+            font-weight: 700;
+            padding: 0 2px;
+        }
         QToolBar#mainToolbar::separator {
             background: transparent;
             width: 1px;
-            margin: 6px 15px;
+            margin: 4px 10px;
         }
 
         /* Paint the title bar, menu and tab strip as one dark blue
@@ -209,7 +217,7 @@ QString Theme::styleSheet() const {
         QToolButton#windowButton, QToolButton#windowCloseButton {
             background: transparent;
             border: none;
-            padding: 0 15px;
+            padding: 0 10px;
             min-height: 32px;
         }
         QToolButton#windowButton:hover { background: rgba(255, 255, 255, 45); }
@@ -222,19 +230,19 @@ QString Theme::styleSheet() const {
             padding: 0;
         }
         QToolButton#tabCloseButton:hover {
-            background: #D5D5D5;
-            border-color: #B8B8B8;
+            background: #F20D0D;
+            border-color: #F20D0D;
         }
 
         QMenuBar {
             background: transparent;
             color: %(chromeText);
             border: none;
-            padding: 2px 4px;
-            font-size: 15px;
+            padding: 0 2px;
+            font-size: 12px;
             font-weight: 400;
         }
-        QMenuBar::item { padding: 5px 11px; background: transparent; color: %(chromeText); }
+        QMenuBar::item { padding: 4px 8px; background: transparent; color: %(chromeText); }
         QMenuBar::item:selected { background: rgba(255, 255, 255, 40); border-radius: 3px; }
         QMenuBar::item:pressed { background: rgba(255, 255, 255, 70); border-radius: 3px; }
 
@@ -246,26 +254,33 @@ QString Theme::styleSheet() const {
             background: %(tabInactive);
             color: %(text);
             border: none;
-            border-bottom: 1px solid #111111;
+            border-left: 1px solid %(chrome);
+            border-bottom: 1px solid #B8B8B8;
             border-top-left-radius: 1px;
             border-top-right-radius: 1px;
-            padding: 4px 12px;
-            margin: 1px 3px 0 0;
-            min-width: 260px;
-            max-width: 340px;
+            min-height: 24px;
+            max-height: 24px;
+            padding: 1px 8px 0 8px;
+            margin: 0;
+            min-width: 120px;
+            max-width: 280px;
         }
+        QTabBar#repositoryTabBar::tab:first { border-left: none; }
         QTabBar#repositoryTabBar::tab:selected {
             background: %(toolbar);
-            border: 1px solid #111111;
+            border-left: 1px solid %(chrome);
+            border-top: none;
+            border-right: none;
             border-bottom: none;
         }
+        QTabBar#repositoryTabBar::tab:first:selected { border-left: none; }
         QTabBar#repositoryTabBar::tab:hover { background: %(toolbar); }
         QTabBar#repositoryTabBar::close-button { subcontrol-position: right; }
         QLabel#repositoryTabTitle {
             background: transparent;
             color: #232323;
             font-family: "Arial";
-            font-size: 16px;
+            font-size: 14px;
             font-weight: 400;
             padding: 0 2px 0 11px;
         }
@@ -273,25 +288,28 @@ QString Theme::styleSheet() const {
             background: transparent;
             border: none;
             color: %(chromeText);
-            min-width: 38px;
-            padding: 0 5px;
-            margin-top: 1px;
+            min-width: 28px;
+            max-width: 28px;
+            padding: 0;
+            margin: 0;
         }
-        QToolButton#addTabButton:hover { background: rgba(255, 255, 255, 40); border-radius: 3px; }
+        QToolButton#addTabButton:hover { background: rgba(0, 0, 0, 32); border-radius: 0; }
+        QToolButton#addTabButton:pressed { background: rgba(0, 0, 0, 55); }
 
         QPushButton#viewSwitchButton {
-            background: %(window);
-            border: 1px solid %(border);
-            border-radius: 1px;
-            padding: 6px 16px;
+            background: transparent;
+            border: none;
+            border-radius: 0;
+            min-height: 25px;
+            padding: 0 4px 0 42px;
+            text-align: left;
             color: %(text);
         }
         QPushButton#viewSwitchButton:hover { background: %(hover); }
         QPushButton#viewSwitchButton:checked {
-            background: %(surface);
-            border-color: %(accent);
-            color: %(accent);
-            font-weight: 700;
+            background: %(sidebarSelection);
+            color: #FFFFFF;
+            font-weight: 400;
         }
 
         /* Checkboxes are intentionally left unstyled: touching them in a
@@ -302,7 +320,10 @@ QString Theme::styleSheet() const {
             border-bottom: 1px solid %(border);
         }
         QLabel#stateBadge { color: %(removedText); font-weight: 600; }
-        QWidget#viewSwitcher { background: %(window); border-top: 1px solid %(border); }
+        QWidget#viewSwitcher { background: %(window); border: none; }
+        QWidget#workspaceHeader { min-height: 30px; background: transparent; }
+        QLabel#workspaceTitle { min-height: 30px; color: %(sectionText); font-size: 12px; font-weight: 600; }
+        QFrame#sidebarSeparator { color: %(border); margin: 3px 0 0 0; }
         QLabel#mutedText { color: %(mutedText); }
         QLabel#pageTitle { font-size: 17px; font-weight: 700; }
         QLabel#sectionCaption {
@@ -318,7 +339,8 @@ QString Theme::styleSheet() const {
             outline: none;
             color: %(sidebarText);
             font-family: "Arial";
-            font-size: 17px;
+            font-size: 12px;
+            font-weight: 400;
         }
         QTreeWidget#navigationTree::item {
             border-radius: 0;
@@ -327,7 +349,14 @@ QString Theme::styleSheet() const {
         QTreeWidget#navigationTree::item:hover { background: %(hover); }
         QTreeWidget#navigationTree::item:selected {
             background: %(sidebarSelection);
-            color: %(sidebarText);
+            color: #FFFFFF;
+        }
+        QLineEdit#navigationFilter {
+            min-height: 22px;
+            max-height: 22px;
+            margin: 4px 0;
+            padding: 0 5px;
+            font-size: 12px;
         }
 
         QLineEdit, QComboBox, QPlainTextEdit, QTextEdit, QSpinBox {
@@ -360,7 +389,7 @@ QString Theme::styleSheet() const {
             selection-background-color: %(selection);
             selection-color: %(selectionText);
         }
-        QTreeWidget::item, QListWidget::item { min-height: 22px; padding: 1px 3px; }
+        QTreeWidget::item, QListWidget::item { min-height: 18px; padding: 0 3px; }
         QTreeWidget::item:hover, QListWidget::item:hover { background: %(hover); }
         QTreeWidget::item:selected, QListWidget::item:selected {
             background: %(selection);
@@ -372,8 +401,8 @@ QString Theme::styleSheet() const {
             border: none;
             border-right: 1px solid %(border);
             border-bottom: 1px solid %(border);
-            padding: 5px 6px;
-            font-weight: 600;
+            padding: 2px 6px;
+            font-weight: 400;
         }
 
         QPushButton {
@@ -451,6 +480,22 @@ QString Theme::styleSheet() const {
         QMenu { background: %(surface); border: 1px solid %(border); padding: 4px; }
         QMenu::item { padding: 5px 22px 5px 22px; border-radius: 4px; }
         QMenu::item:selected { background: %(selection); color: %(selectionText); }
+        QMenu#tabContextMenu {
+            background: #F2F2F2;
+            color: #202020;
+            border: 1px solid #8F8F8F;
+            padding: 2px;
+        }
+        QMenu#tabContextMenu::item {
+            min-width: 220px;
+            padding: 4px 32px;
+            border-radius: 0;
+        }
+        QMenu#tabContextMenu::item:selected {
+            background: #D7D7D7;
+            color: #202020;
+        }
+        QMenu#tabContextMenu::item:disabled { color: #8A8A8A; }
         QMenu::separator { height: 1px; background: %(border); margin: 4px 8px; }
         QCheckBox, QRadioButton { spacing: 6px; }
         QDockWidget { titlebar-close-icon: none; color: %(mutedText); }

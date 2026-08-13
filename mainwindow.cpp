@@ -35,6 +35,7 @@
 #include <QPushButton>
 #include <QResizeEvent>
 #include <QSettings>
+#include <QShowEvent>
 #include <QSignalBlocker>
 #include <QStackedWidget>
 #include <QStatusBar>
@@ -49,13 +50,34 @@ namespace {
 constexpr int MaximumBookmarks = 40;
 constexpr int MaximumLogLines = 500;
 /// Height of the combined menu/title row.
-constexpr int TitleBarHeight = 44;
+constexpr int TitleBarHeight = 30;
 /// Transparent space reserved around the custom frame for its compositor-like
 /// drop shadow. It is also a convenient resize target.
 constexpr int WindowShadowMargin = 14;
 /// Width of the invisible band along the window edges used for resizing,
 /// which a frameless window has to provide itself.
 constexpr int ResizeMargin = WindowShadowMargin;
+
+class RepositoryTabBar final : public QTabBar {
+public:
+    using QTabBar::QTabBar;
+
+    void setCalculatedWidths(const QList<int> &widths) {
+        widths_ = widths;
+        updateGeometry();
+    }
+
+    QSize tabSizeHint(const int index) const override {
+        QSize size = QTabBar::tabSizeHint(index);
+        if (index >= 0 && index < widths_.size()) {
+            size.setWidth(widths_.at(index));
+        }
+        return size;
+    }
+
+private:
+    QList<int> widths_;
+};
 }
 
 MainWindow::MainWindow(QWidget *parent)
@@ -91,6 +113,7 @@ MainWindow::MainWindow(QWidget *parent)
     // from the resize margin onto a child widget.
     qApp->installEventFilter(this);
     restoreSession();
+    QTimer::singleShot(0, this, [this] { updateTabMetrics(); });
     updateWindowButtons();
     updateWindowFrame();
     updateActions();
@@ -116,12 +139,14 @@ void MainWindow::buildInterface() {
 
     auto *tabStrip = new QWidget;
     tabStrip->setObjectName(QStringLiteral("repositoryTabStrip"));
+    tabStrip->setFixedHeight(26);
     auto *tabStripLayout = new QHBoxLayout(tabStrip);
     tabStripLayout->setContentsMargins(8, 0, 4, 0);
     tabStripLayout->setSpacing(0);
 
-    tabs_ = new QTabBar;
+    tabs_ = new RepositoryTabBar;
     tabs_->setObjectName(QStringLiteral("repositoryTabBar"));
+    tabs_->setFixedHeight(26);
     tabs_->setDocumentMode(true);
     tabs_->setMovable(true);
     tabs_->setTabsClosable(true);
@@ -132,6 +157,8 @@ void MainWindow::buildInterface() {
     // scroll arrows would otherwise separate the + button from the last tab.
     tabs_->setUsesScrollButtons(false);
     tabs_->setContextMenuPolicy(Qt::CustomContextMenu);
+    tabs_->setMouseTracking(true);
+    tabs_->installEventFilter(this);
     tabs_->addTab(QString());
     auto *homeTabTitle = new QLabel(tr("Repositories"));
     homeTabTitle->setObjectName(QStringLiteral("repositoryTabTitle"));
@@ -146,8 +173,10 @@ void MainWindow::buildInterface() {
 
     addTabButton_ = new QToolButton;
     addTabButton_->setObjectName(QStringLiteral("addTabButton"));
+    addTabButton_->setFixedHeight(26);
     addTabButton_->setIcon(Icons::icon(Icons::Glyph::Add, Qt::white));
-    addTabButton_->setIconSize(QSize(24, 24));
+    addTabButton_->setIconSize(QSize(18, 18));
+    addTabButton_->setFixedWidth(28);
     addTabButton_->setToolTip(tr("Open a repository in a new tab"));
     connect(addTabButton_, &QToolButton::clicked, this, [this] { openRepositoryDialog(); });
     // Keep the add button attached to the last visible tab instead of pinning
@@ -175,6 +204,7 @@ void MainWindow::buildInterface() {
                 button->setVisible(tab == index);
             }
         }
+        updateTabMetrics();
         updateActions();
     });
     connect(tabs_, &QTabBar::tabMoved, this, [this](const int from, const int to) {
@@ -215,8 +245,8 @@ void MainWindow::buildToolbar() {
     mainToolbar_->setMovable(false);
     mainToolbar_->setFloatable(false);
     mainToolbar_->setToolButtonStyle(Qt::ToolButtonTextUnderIcon);
-    mainToolbar_->setIconSize(QSize(34, 34));
-    mainToolbar_->setFixedHeight(84);
+    mainToolbar_->setIconSize(QSize(24, 24));
+    mainToolbar_->setFixedHeight(60);
 
     const auto addAction = [this](const Icons::Glyph glyph, const QString &text,
                                   const QString &tip) {
@@ -226,32 +256,41 @@ void MainWindow::buildToolbar() {
     };
 
     // Keep the frequent commands in this exact order.
-    commitAction_ = addAction(Icons::Glyph::Commit, QStringLiteral("Commit"),
+    commitAction_ = addAction(Icons::Glyph::Commit, tr("Commit"),
                               tr("Commit the staged changes"));
+    if (auto *commitButton = qobject_cast<QToolButton *>(
+            mainToolbar_->widgetForAction(commitAction_))) {
+        commitBadge_ = new QLabel(commitButton);
+        commitBadge_->setObjectName(QStringLiteral("commitBadge"));
+        commitBadge_->setAlignment(Qt::AlignCenter);
+        commitBadge_->setGeometry(34, 1, 18, 13);
+        commitBadge_->raise();
+        commitBadge_->hide();
+    }
     mainToolbar_->addSeparator();
-    pushAction_ = addAction(Icons::Glyph::Push, QStringLiteral("Push"),
+    pushAction_ = addAction(Icons::Glyph::Push, tr("Push"),
                             tr("Push the changes"));
-    pullAction_ = addAction(Icons::Glyph::Pull, QStringLiteral("Pull"),
+    pullAction_ = addAction(Icons::Glyph::Pull, tr("Pull"),
                             tr("Pull and merge the changes"));
-    fetchAction_ = addAction(Icons::Glyph::Fetch, QStringLiteral("Fetch"),
+    fetchAction_ = addAction(Icons::Glyph::Fetch, tr("Fetch"),
                              tr("Fetch from all remote repositories"));
     mainToolbar_->addSeparator();
-    branchAction_ = addAction(Icons::Glyph::Branch, QStringLiteral("Branch"),
+    branchAction_ = addAction(Icons::Glyph::Branch, tr("Branch"),
                               tr("Create a branch"));
-    mergeAction_ = addAction(Icons::Glyph::Merge, QStringLiteral("Merge"),
+    mergeAction_ = addAction(Icons::Glyph::Merge, tr("Merge"),
                              tr("Merge a branch into the current one"));
     mainToolbar_->addSeparator();
-    stashAction_ = addAction(Icons::Glyph::Stash, QStringLiteral("Stash"),
+    stashAction_ = addAction(Icons::Glyph::Stash, tr("Stash"),
                              tr("Stash the current changes"));
     mainToolbar_->addSeparator();
-    discardAction_ = addAction(Icons::Glyph::Discard, QStringLiteral("Discard"),
+    discardAction_ = addAction(Icons::Glyph::Discard, tr("Discard"),
                                tr("Discard the selected files"));
-    tagAction_ = addAction(Icons::Glyph::Tag, QStringLiteral("Tag"),
+    tagAction_ = addAction(Icons::Glyph::Tag, tr("Tag"),
                            tr("Create a tag"));
 
     // Less frequent operations stay available in Repository/Actions menus.
     checkoutAction_ = new QAction(Icons::icon(Icons::Glyph::Checkout),
-                                  QStringLiteral("Checkout"), this);
+                                  tr("Checkout"), this);
     checkoutAction_->setToolTip(tr("Switch to a branch or tag"));
     stashPopAction_ = new QAction(Icons::icon(Icons::Glyph::StashPop),
                                   tr("Apply the latest stash"), this);
@@ -315,8 +354,8 @@ QWidget *MainWindow::buildTitleBar() {
     layout->setSpacing(0);
 
     auto *logo = new QLabel;
-    logo->setPixmap(Icons::pixmap(Icons::Glyph::Ghost, 33, Qt::white));
-    logo->setFixedWidth(45);
+    logo->setPixmap(Icons::pixmap(Icons::Glyph::Ghost, 20, Qt::white));
+    logo->setFixedWidth(34);
     layout->addWidget(logo);
 
     // Keep the menu at its natural height and centre it in the taller title
@@ -330,8 +369,8 @@ QWidget *MainWindow::buildTitleBar() {
         button->setObjectName(danger ? QStringLiteral("windowCloseButton")
                                      : QStringLiteral("windowButton"));
         button->setIcon(Icons::icon(glyph, QColor()));
-        button->setIconSize(QSize(24, 24));
-        button->setFixedSize(QSize(64, TitleBarHeight));
+        button->setIconSize(QSize(16, 16));
+        button->setFixedSize(QSize(46, TitleBarHeight));
         button->setToolTip(tip);
         layout->addWidget(button);
         return button;
@@ -462,7 +501,49 @@ bool MainWindow::eventFilter(QObject *watched, QEvent *event) {
             return true;
         }
     }
+
+    if (watched == tabs_) {
+        if (event->type() == QEvent::MouseMove) {
+            const auto *mouseEvent = static_cast<QMouseEvent *>(event);
+            updateTabCloseButtons(tabs_->tabAt(mouseEvent->position().toPoint()));
+        } else if (event->type() == QEvent::Leave) {
+            updateTabCloseButtons();
+        }
+    } else if (auto *closeButton = qobject_cast<QToolButton *>(watched);
+               closeButton != nullptr
+               && closeButton->objectName() == QStringLiteral("tabCloseButton")) {
+        if (event->type() == QEvent::Enter) {
+            closeButton->setIcon(Icons::icon(Icons::Glyph::TabClose, Qt::white));
+        } else if (event->type() == QEvent::Leave) {
+            closeButton->setIcon(Icons::icon(Icons::Glyph::TabClose,
+                                             Theme::instance()->palette().text));
+        }
+    }
     return QMainWindow::eventFilter(watched, event);
+}
+
+void MainWindow::showEvent(QShowEvent *event) {
+    QMainWindow::showEvent(event);
+    updateTabMetrics();
+    // On Windows the final client geometry is committed after the show event,
+    // especially when restoreGeometry also restores a maximized window.
+    QTimer::singleShot(0, this, [this] { updateTabMetrics(); });
+}
+
+void MainWindow::updateTabCloseButtons(const int hoveredTab) {
+    if (tabs_ == nullptr) {
+        return;
+    }
+    for (int index = 1; index < tabs_->count(); ++index) {
+        if (QWidget *area = tabs_->tabButton(index, QTabBar::RightSide)) {
+            auto *button = area->findChild<QToolButton *>(QStringLiteral("tabCloseButton"));
+            if (button != nullptr) {
+                button->setVisible(index == hoveredTab);
+            }
+            area->setFixedWidth(24);
+            area->setVisible(index == hoveredTab);
+        }
+    }
 }
 
 void MainWindow::buildMenus() {
@@ -783,18 +864,20 @@ bool MainWindow::openRepository(const QString &path, const bool activate) {
     // square hover target itself.
     auto *closeArea = new QWidget;
     closeArea->setObjectName(QStringLiteral("tabCloseArea"));
-    closeArea->setFixedSize(QSize(32, 24));
+    closeArea->setFixedSize(QSize(24, 20));
     auto *closeLayout = new QHBoxLayout(closeArea);
-    closeLayout->setContentsMargins(0, 0, 8, 0);
+    closeLayout->setContentsMargins(0, 0, 5, 0);
     closeLayout->setSpacing(0);
+    closeLayout->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
 
     auto *closeButton = new QToolButton;
     closeButton->setObjectName(QStringLiteral("tabCloseButton"));
     closeButton->setIcon(Icons::icon(Icons::Glyph::TabClose,
                                      Theme::instance()->palette().text));
-    closeButton->setIconSize(QSize(22, 22));
-    closeButton->setFixedSize(QSize(24, 24));
+    closeButton->setIconSize(QSize(14, 14));
+    closeButton->setFixedSize(QSize(18, 18));
     closeButton->setToolTip(tr("Close Tab"));
+    closeButton->installEventFilter(this);
     closeLayout->addWidget(closeButton);
     connect(closeButton, &QToolButton::clicked, this,
             [this, view] { closeTab(tabPages_->indexOf(view)); });
@@ -881,26 +964,27 @@ void MainWindow::showTabContextMenu(const QPoint &position) {
     }
 
     QMenu menu(this);
+    menu.setObjectName(QStringLiteral("tabContextMenu"));
+    QAction *closeCurrent = menu.addAction(tr("Close tab"));
     QAction *closeAll = menu.addAction(tr("Close all tabs"));
-    QAction *closeLeft = menu.addAction(tr("Close tabs to the left"));
-    QAction *closeRight = menu.addAction(tr("Close tabs to the right"));
+    QAction *closeOthers = menu.addAction(tr("Close all tabs except this one"));
 
+    closeCurrent->setEnabled(target > 0);
     closeAll->setEnabled(tabs_->count() > 1);
-    closeLeft->setEnabled(target > 1);
-    closeRight->setEnabled(target < tabs_->count() - 1);
+    closeOthers->setEnabled(target > 0 && tabs_->count() > 2);
 
     QAction *selected = menu.exec(tabs_->mapToGlobal(position));
-    if (selected == closeAll) {
+    if (selected == closeCurrent) {
+        closeTab(target);
+    } else if (selected == closeAll) {
         for (int index = tabs_->count() - 1; index >= 1; --index) {
             closeTab(index);
         }
-    } else if (selected == closeLeft) {
-        for (int index = target - 1; index >= 1; --index) {
-            closeTab(index);
-        }
-    } else if (selected == closeRight) {
-        for (int index = tabs_->count() - 1; index > target; --index) {
-            closeTab(index);
+    } else if (selected == closeOthers) {
+        for (int index = tabs_->count() - 1; index >= 1; --index) {
+            if (index != target) {
+                closeTab(index);
+            }
         }
     }
 }
@@ -929,10 +1013,17 @@ void MainWindow::updateTabTitle(RepositoryView *view) {
         return;
     }
 
-    QString title = view->repositoryName();
+    QString indicators;
     if (view->changeCount() > 0) {
-        title += QStringLiteral(" •");
+        indicators += QStringLiteral("↑");
     }
+    if (view->behindCount() > 0) {
+        indicators += QStringLiteral("↓");
+    }
+    const QString title = indicators.isEmpty()
+                              ? view->repositoryName()
+                              : QStringLiteral("%1 %2").arg(indicators,
+                                                             view->repositoryName());
     if (auto *label = qobject_cast<QLabel *>(
             tabs_->tabButton(index, QTabBar::LeftSide))) {
         label->setProperty("fullTitle", title);
@@ -960,14 +1051,45 @@ void MainWindow::updateTabMetrics() {
                                    : 48;
     const int available = qMax(1, stripWidth - margins.left() - margins.right()
                                       - addButtonWidth);
-    const int outerWidth = qBound(40, available / tabs_->count(), 282);
-    const int horizontalPadding = qBound(1, (outerWidth - 37) / 2, 12);
-    const int contentWidth = qMax(32, outerWidth - horizontalPadding * 2 - 5);
-    tabs_->setStyleSheet(
-        QStringLiteral("QTabBar#repositoryTabBar::tab { min-width: %1px; max-width: %1px; "
-                       "padding-left: %2px; padding-right: %2px; }")
-            .arg(contentWidth)
-            .arg(horizontalPadding));
+    QList<int> tabWidths;
+    tabWidths.reserve(tabs_->count());
+    int desiredTotal = 0;
+    for (int index = 0; index < tabs_->count(); ++index) {
+        const auto *label = qobject_cast<QLabel *>(tabs_->tabButton(index, QTabBar::LeftSide));
+        const QString title = label != nullptr ? label->property("fullTitle").toString()
+                                               : QString();
+        // Leave a small reserve beyond the measured text. QTabBar applies its
+        // own subcontrol margins and rounds widths at fractional DPI scales.
+        const int controls = index == 0 ? 52 : 62;
+        const int desired = qBound(index == 0 ? 128 : 112,
+                                   (label != nullptr
+                                        ? label->fontMetrics().horizontalAdvance(title)
+                                        : 70) + controls,
+                                   260);
+        tabWidths.append(desired);
+        desiredTotal += desired;
+    }
+    const int homeWidth = tabWidths.constFirst();
+    const int repositoryCount = tabs_->count() - 1;
+    int repositoryWidthLimit = 260;
+    if (repositoryCount > 0 && desiredTotal > available) {
+        // The overview is pinned and remains readable. Repository tabs share
+        // everything that remains and may collapse to their close-button slot.
+        repositoryWidthLimit = qBound(40,
+                                      (available - homeWidth) / repositoryCount,
+                                      260);
+    }
+    QList<int> calculatedWidths;
+    calculatedWidths.reserve(tabWidths.size());
+    calculatedWidths.append(homeWidth);
+    int effectiveTotal = homeWidth;
+    for (int index = 1; index < tabWidths.size(); ++index) {
+        const int calculated = qMin(tabWidths.at(index), repositoryWidthLimit);
+        calculatedWidths.append(calculated);
+        effectiveTotal += calculated;
+    }
+    static_cast<RepositoryTabBar *>(tabs_)->setCalculatedWidths(calculatedWidths);
+    tabs_->setFixedWidth(qMin(available, effectiveTotal));
 
     for (int index = 0; index < tabs_->count(); ++index) {
         auto *label = qobject_cast<QLabel *>(tabs_->tabButton(index, QTabBar::LeftSide));
@@ -975,16 +1097,21 @@ void MainWindow::updateTabMetrics() {
             continue;
         }
 
-        const int reservedForClose = index == 0 ? 0 : 32;
-        const int labelWidth = qMax(0, contentWidth - reservedForClose);
-        label->setFixedWidth(labelWidth);
         const QString fullTitle = label->property("fullTitle").toString();
-        const int textWidth = qMax(0, labelWidth - 17); // label stylesheet padding
-        label->setText(textWidth == 0
-                           ? QString()
-                           : label->fontMetrics().elidedText(fullTitle, Qt::ElideRight,
-                                                             textWidth));
+        const int tabWidth = index == 0
+                                 ? homeWidth
+                                 : qMin(tabWidths.at(index), repositoryWidthLimit);
+        const int labelWidth = qMax(0, tabWidth - (index == 0 ? 22 : 38));
+        label->setFixedWidth(labelWidth);
+        const int textWidth = qMax(0, labelWidth - 2);
+        const QString visibleTitle = textWidth == 0
+                                         ? QString()
+                                         : label->fontMetrics().elidedText(
+                                               fullTitle, Qt::ElideRight, textWidth);
+        label->setText(visibleTitle);
+
     }
+    updateTabCloseButtons();
     tabs_->updateGeometry();
 }
 
@@ -1011,13 +1138,19 @@ void MainWindow::updateActions() {
     discardAction_->setEnabled(enabled && hasChanges);
 
     const ThemePalette &palette = Theme::instance()->palette();
+    commitAction_->setIcon(Icons::icon(Icons::Glyph::Commit));
+    if (commitBadge_ != nullptr) {
+        const int count = hasRepository ? view->changeCount() : 0;
+        commitBadge_->setText(count > 99 ? QStringLiteral("99+") : QString::number(count));
+        commitBadge_->setVisible(count > 0);
+    }
     for (int index = 1; index < tabs_->count(); ++index) {
         QWidget *area = tabs_->tabButton(index, QTabBar::RightSide);
         if (auto *button = area != nullptr ? area->findChild<QToolButton *>() : nullptr) {
             button->setIcon(Icons::icon(Icons::Glyph::TabClose, palette.text));
-            area->setVisible(index == tabs_->currentIndex());
         }
     }
+    updateTabCloseButtons();
     pullAction_->setIcon(Icons::badgedIcon(Icons::Glyph::Pull, QColor(),
                                            hasRepository ? view->behindCount() : 0,
                                            palette.danger));
@@ -1101,6 +1234,7 @@ void MainWindow::restoreSession() {
     if (activeTab > 0 && activeTab < tabs_->count()) {
         tabs_->setCurrentIndex(activeTab);
     }
+    updateTabMetrics();
 }
 
 void MainWindow::saveSession() {

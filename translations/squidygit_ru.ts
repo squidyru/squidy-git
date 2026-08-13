@@ -276,6 +276,47 @@ Cloning failed (code %1).</source>
     </message>
     <message>
         <location filename="../mainwindow.cpp" line="230" />
+        <source>Commit</source>
+        <translation>Закоммитить</translation>
+    </message>
+    <message>
+        <source>Push</source>
+        <translation>Отправить</translation>
+    </message>
+    <message>
+        <source>Pull</source>
+        <translation>Получить</translation>
+    </message>
+    <message>
+        <source>Fetch</source>
+        <translation>Извлечь</translation>
+    </message>
+    <message>
+        <source>Branch</source>
+        <translation>Ветка</translation>
+    </message>
+    <message>
+        <source>Merge</source>
+        <translation>Слияние</translation>
+    </message>
+    <message>
+        <source>Stash</source>
+        <translation>Спрятать</translation>
+    </message>
+    <message>
+        <source>Discard</source>
+        <translation>Отменить</translation>
+    </message>
+    <message>
+        <source>Tag</source>
+        <translation>Метка</translation>
+    </message>
+    <message>
+        <source>Checkout</source>
+        <translation>Переключиться</translation>
+    </message>
+    <message>
+        <location filename="../mainwindow.cpp" line="230" />
         <source>Commit the staged changes</source>
         <translation>Зафиксировать проиндексированные изменения</translation>
     </message>
@@ -595,6 +636,14 @@ Cloning failed (code %1).</source>
         <translation>Закрыть все вкладки</translation>
     </message>
     <message>
+        <source>Close tab</source>
+        <translation>Закрыть вкладку</translation>
+    </message>
+    <message>
+        <source>Close all tabs except this one</source>
+        <translation>Закрыть все вкладки кроме этой</translation>
+    </message>
+    <message>
         <location filename="../mainwindow.cpp" line="885" />
         <source>Close tabs to the left</source>
         <translation>Закрыть вкладки слева</translation>
@@ -820,8 +869,8 @@ Branch: %2</source>
     </message>
     <message>
         <location filename="../repositoryview.cpp" line="433" />
-        <source>Log / History</source>
-        <translation>Лог / История</translation>
+        <source>History</source>
+        <translation>История</translation>
     </message>
     <message>
         <location filename="../repositoryview.cpp" line="434" />

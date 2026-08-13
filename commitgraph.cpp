@@ -157,7 +157,7 @@ int CommitGraphDelegate::graphWidthForLanes(const int lanes) {
 QSize CommitGraphDelegate::sizeHint(const QStyleOptionViewItem &option,
                                     const QModelIndex &index) const {
     QSize size = QStyledItemDelegate::sizeHint(option, index);
-    size.setHeight(qMax(size.height(), 24));
+    size.setHeight(qMax(size.height(), 19));
     return size;
 }
 

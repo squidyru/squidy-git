@@ -595,6 +595,14 @@ Cloning failed (code %1).</source>
         <translation>关闭所有标签页</translation>
     </message>
     <message>
+        <source>Close tab</source>
+        <translation>关闭标签页</translation>
+    </message>
+    <message>
+        <source>Close all tabs except this one</source>
+        <translation>关闭除此之外的所有标签页</translation>
+    </message>
+    <message>
         <location filename="../mainwindow.cpp" line="885" />
         <source>Close tabs to the left</source>
         <translation>关闭左侧标签页</translation>
@@ -820,8 +828,8 @@ Branch: %2</source>
     </message>
     <message>
         <location filename="../repositoryview.cpp" line="433" />
-        <source>Log / History</source>
-        <translation>日志 / 历史</translation>
+        <source>History</source>
+        <translation>历史</translation>
     </message>
     <message>
         <location filename="../repositoryview.cpp" line="434" />

@@ -412,9 +412,9 @@ void paintGlyph(QPainter &painter, const Icons::Glyph glyph, const QColor &color
             painter.drawLine(QPointF(19, 5), QPointF(5, 19));
             break;
         case Icons::Glyph::TabClose:
-            painter.setPen(QPen(color, 2.6, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
-            painter.drawLine(QPointF(4.5, 4.5), QPointF(19.5, 19.5));
-            painter.drawLine(QPointF(19.5, 4.5), QPointF(4.5, 19.5));
+            painter.setPen(QPen(color, 1.8, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
+            painter.drawLine(QPointF(7.0, 7.0), QPointF(17.0, 17.0));
+            painter.drawLine(QPointF(17.0, 7.0), QPointF(7.0, 17.0));
             break;
         case Icons::Glyph::Warning:
             path.moveTo(12, 3.5);

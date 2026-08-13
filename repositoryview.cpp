@@ -9,6 +9,7 @@
 #include "theme.h"
 
 #include <QAbstractItemView>
+#include <QAction>
 #include <QApplication>
 #include <QCheckBox>
 #include <QClipboard>
@@ -32,6 +33,7 @@
 #include <QPlainTextEdit>
 #include <QProcess>
 #include <QPushButton>
+#include <QFrame>
 #include <QSettings>
 #include <QSignalBlocker>
 #include <QLocale>
@@ -223,11 +225,11 @@ QTreeWidgetItem *addSection(QTreeWidget *tree, const QString &title, const QIcon
     }
     section->setFlags(section->flags() & ~Qt::ItemIsSelectable);
     QFont font = section->font(0);
-    font.setPixelSize(16);
-    font.setWeight(QFont::Medium);
+    font.setPixelSize(12);
+    font.setWeight(QFont::DemiBold);
     font.setLetterSpacing(QFont::AbsoluteSpacing, 0.2);
     section->setFont(0, font);
-    section->setSizeHint(0, QSize(0, 44));
+    section->setSizeHint(0, QSize(0, 30));
     section->setForeground(0, Theme::instance()->palette().sectionText);
     section->setExpanded(true);
     return section;
@@ -244,7 +246,11 @@ QTreeWidgetItem *addNavigationItem(QTreeWidgetItem *parent, const QString &text,
     if (!icon.isNull()) {
         item->setIcon(0, icon);
     }
-    item->setSizeHint(0, QSize(0, 36));
+    QFont font = item->font(0);
+    font.setPixelSize(12);
+    font.setWeight(QFont::Normal);
+    item->setFont(0, font);
+    item->setSizeHint(0, QSize(0, 25));
     return item;
 }
 
@@ -307,19 +313,17 @@ RepositoryView::RepositoryView(const QString &path, QWidget *parent)
     pages_->addWidget(buildHistoryPage());
     pages_->addWidget(buildSearchPage());
 
-    // The view switcher sits under the content column.
     auto *content = new QWidget;
     auto *contentLayout = new QVBoxLayout(content);
     contentLayout->setContentsMargins(0, 0, 0, 0);
     contentLayout->setSpacing(0);
     contentLayout->addWidget(pages_, 1);
-    contentLayout->addWidget(buildViewSwitcher());
 
     workspaceSplitter_->addWidget(content);
     workspaceSplitter_->setCollapsible(0, false);
     workspaceSplitter_->setStretchFactor(0, 0);
     workspaceSplitter_->setStretchFactor(1, 1);
-    workspaceSplitter_->setSizes({296, 1064});
+    workspaceSplitter_->setSizes({210, 1150});
     layout->addWidget(workspaceSplitter_, 1);
 
     connect(operationWatcher_, &QFutureWatcher<GitCommandResult>::finished, this,
@@ -415,9 +419,9 @@ QWidget *RepositoryView::buildStateBanner() {
 QWidget *RepositoryView::buildViewSwitcher() {
     auto *switcher = new QWidget;
     switcher->setObjectName(QStringLiteral("viewSwitcher"));
-    auto *layout = new QHBoxLayout(switcher);
-    layout->setContentsMargins(0, 5, 0, 0);
-    layout->setSpacing(6);
+    auto *layout = new QVBoxLayout(switcher);
+    layout->setContentsMargins(0, 0, 0, 0);
+    layout->setSpacing(0);
 
     const auto addButton = [this, layout](const QString &text, const Page page) {
         auto *button = new QPushButton(text);
@@ -425,12 +429,12 @@ QWidget *RepositoryView::buildViewSwitcher() {
         button->setCheckable(true);
         button->setAutoExclusive(true);
         connect(button, &QPushButton::clicked, this, [this, page] { showPage(page); });
-        layout->addWidget(button, 1);
+        layout->addWidget(button);
         return button;
     };
 
     fileStatusButton_ = addButton(tr("File Status"), Page::FileStatus);
-    historyButton_ = addButton(tr("Log / History"), Page::History);
+    historyButton_ = addButton(tr("History"), Page::History);
     searchButton_ = addButton(tr("Search"), Page::Search);
     fileStatusButton_->setChecked(true);
 
@@ -448,23 +452,71 @@ QWidget *RepositoryView::buildViewSwitcher() {
 QWidget *RepositoryView::buildSidebar() {
     auto *sidebar = new QWidget;
     sidebar->setObjectName(QStringLiteral("sidebar"));
-    sidebar->setMinimumWidth(240);
-    sidebar->setMaximumWidth(420);
+    sidebar->setMinimumWidth(180);
+    sidebar->setMaximumWidth(280);
 
     auto *layout = new QVBoxLayout(sidebar);
-    layout->setContentsMargins(10, 28, 10, 8);
+    layout->setContentsMargins(8, 5, 8, 5);
     layout->setSpacing(0);
+
+    auto *workspaceHeader = new QWidget;
+    workspaceHeader->setObjectName(QStringLiteral("workspaceHeader"));
+    auto *workspaceHeaderLayout = new QHBoxLayout(workspaceHeader);
+    workspaceHeaderLayout->setContentsMargins(20, 0, 0, 0);
+    workspaceHeaderLayout->setSpacing(5);
+    auto *workspaceIcon = new QLabel;
+    workspaceIcon->setPixmap(Icons::pixmap(Icons::Glyph::FileStatus, 16,
+                                           Theme::instance()->palette().sectionText));
+    workspaceHeaderLayout->addWidget(workspaceIcon);
+    auto *workspaceTitle = new QLabel(QStringLiteral("WORKSPACE"));
+    workspaceTitle->setObjectName(QStringLiteral("workspaceTitle"));
+    workspaceHeaderLayout->addWidget(workspaceTitle);
+    workspaceHeaderLayout->addStretch();
+    layout->addWidget(workspaceHeader);
+    layout->addWidget(buildViewSwitcher());
+
+    auto *navigationFilter = new QLineEdit;
+    navigationFilter->setObjectName(QStringLiteral("navigationFilter"));
+    navigationFilter->setPlaceholderText(tr("Search"));
+    navigationFilter->setClearButtonEnabled(true);
+    navigationFilter->addAction(
+        Icons::icon(Icons::Glyph::Search, Theme::instance()->palette().mutedText),
+        QLineEdit::TrailingPosition);
+    layout->addWidget(navigationFilter);
+
+    auto *separator = new QFrame;
+    separator->setObjectName(QStringLiteral("sidebarSeparator"));
+    separator->setFrameShape(QFrame::HLine);
+    layout->addWidget(separator);
 
     navigationTree_ = new NavigationTree;
     navigationTree_->setObjectName(QStringLiteral("navigationTree"));
     navigationTree_->setHeaderHidden(true);
     navigationTree_->setRootIsDecorated(true);
-    navigationTree_->setIndentation(25);
+    navigationTree_->setIndentation(17);
     navigationTree_->setUniformRowHeights(false);
-    navigationTree_->setIconSize(QSize(24, 24));
+    navigationTree_->setIconSize(QSize(16, 16));
     navigationTree_->setItemDelegate(new NavigationDelegate(navigationTree_));
     navigationTree_->setContextMenuPolicy(Qt::CustomContextMenu);
     layout->addWidget(navigationTree_, 1);
+
+    connect(navigationFilter, &QLineEdit::textChanged, navigationTree_,
+            [this](const QString &text) {
+                const QString needle = text.trimmed();
+                for (int row = 0; row < navigationTree_->topLevelItemCount(); ++row) {
+                    QTreeWidgetItem *section = navigationTree_->topLevelItem(row);
+                    bool anyVisible = needle.isEmpty();
+                    for (int child = 0; child < section->childCount(); ++child) {
+                        QTreeWidgetItem *item = section->child(child);
+                        const bool visible = needle.isEmpty()
+                                             || item->text(0).contains(needle,
+                                                                      Qt::CaseInsensitive);
+                        item->setHidden(!visible);
+                        anyVisible = anyVisible || visible;
+                    }
+                    section->setHidden(!anyVisible);
+                }
+            });
 
     connect(navigationTree_, &QTreeWidget::currentItemChanged, this,
             [this](QTreeWidgetItem *current) { activateNavigationItem(current); });
@@ -491,9 +543,9 @@ QWidget *RepositoryView::buildFileStatusPage() {
     treeModeButton_->setText(tr("Tree"));
     treeModeButton_->setCheckable(true);
     treeModeButton_->setToolTip(tr("Show the files as a directory tree"));
-    toolRow->addWidget(fileFilter_);
     toolRow->addWidget(treeModeButton_);
     toolRow->addStretch();
+    toolRow->addWidget(fileFilter_);
     layout->addLayout(toolRow);
 
     auto *verticalSplitter = new QSplitter(Qt::Vertical);
@@ -556,8 +608,8 @@ QWidget *RepositoryView::buildFileStatusPage() {
                                        tr("Unstage all"),
                                        tr("Unstage"),
                                        &unstageAllButton, &unstageSelectedButton);
-    fileSplitter->addWidget(unstagedPanel);
     fileSplitter->addWidget(stagedPanel);
+    fileSplitter->addWidget(unstagedPanel);
     fileSplitter->setStretchFactor(0, 1);
     fileSplitter->setStretchFactor(1, 1);
     filesLayout->addWidget(fileSplitter, 1);
@@ -772,7 +824,7 @@ QWidget *RepositoryView::buildHistoryPage() {
     verticalSplitter->addWidget(detailsSplitter);
     verticalSplitter->setStretchFactor(0, 3);
     verticalSplitter->setStretchFactor(1, 2);
-    verticalSplitter->setSizes({430, 350});
+    verticalSplitter->setSizes({255, 325});
     layout->addWidget(verticalSplitter, 1);
 
     connect(historyScope_, &QComboBox::currentIndexChanged, this, [this] {
@@ -972,18 +1024,6 @@ void RepositoryView::refreshNavigation() {
 
     const ThemePalette &palette = Theme::instance()->palette();
     const QColor sectionColor = palette.sectionText;
-    auto *workspace = addSection(navigationTree_, tr("File Status"),
-                                 navigationSectionIcon(Icons::Glyph::FileStatus, sectionColor));
-    auto *statusItem = addNavigationItem(workspace, tr("Working tree"),
-                                         NavigationFileStatus);
-    if (!files_.isEmpty()) {
-        statusItem->setText(0, tr("Working tree  (%1)").arg(files_.size()));
-    }
-    if (previousKind == NavigationFileStatus || previousKind == NavigationHistory
-        || previousKind == NavigationSearch) {
-        itemToSelect = statusItem;
-    }
-
     auto *branchesSection = addSection(navigationTree_, tr("Branches"),
                                        navigationSectionIcon(Icons::Glyph::Branch, sectionColor));
     const QList<GitBranchInfo> branches = git_.branches();
@@ -1091,9 +1131,6 @@ void RepositoryView::refreshNavigation() {
         }
     }
 
-    if (itemToSelect == nullptr) {
-        itemToSelect = statusItem;
-    }
     navigationTree_->setCurrentItem(itemToSelect);
 }
 
@@ -1498,6 +1535,23 @@ void RepositoryView::showPage(const Page page) {
                               : (page == Page::Search ? searchButton_ : fileStatusButton_);
     if (button != nullptr && !button->isChecked()) {
         button->setChecked(true);
+    }
+
+    if (navigationTree_ != nullptr) {
+        const int wantedKind = page == Page::History
+                                   ? NavigationHistory
+                                   : (page == Page::Search ? NavigationSearch
+                                                           : NavigationFileStatus);
+        const QSignalBlocker blocker(navigationTree_);
+        const QList<QTreeWidgetItem *> items =
+            navigationTree_->findItems(QStringLiteral("*"),
+                                       Qt::MatchWildcard | Qt::MatchRecursive);
+        for (QTreeWidgetItem *item : items) {
+            if (item->data(0, NavigationKindRole).toInt() == wantedKind) {
+                navigationTree_->setCurrentItem(item);
+                break;
+            }
+        }
     }
 
     if (valid_) {

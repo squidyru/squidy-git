@@ -17,6 +17,7 @@ class QMenuBar;
 class QPlainTextEdit;
 class QProgressBar;
 class QResizeEvent;
+class QShowEvent;
 class QStackedWidget;
 class QTabBar;
 class QToolBar;
@@ -35,6 +36,7 @@ protected:
     void mouseMoveEvent(QMouseEvent *event) override;
     void mousePressEvent(QMouseEvent *event) override;
     void resizeEvent(QResizeEvent *event) override;
+    void showEvent(QShowEvent *event) override;
 
 private:
     void buildInterface();
@@ -65,6 +67,7 @@ private:
     void updateActions();
     void updateTabTitle(RepositoryView *view);
     void updateTabMetrics();
+    void updateTabCloseButtons(int hoveredTab = -1);
 
     void addBookmark(const QString &path);
     void removeSelectedBookmark();
@@ -86,6 +89,7 @@ private:
     QListWidget *bookmarksList_ = nullptr;
     QProgressBar *busyIndicator_ = nullptr;
     QLabel *statusLabel_ = nullptr;
+    QLabel *commitBadge_ = nullptr;
     QDockWidget *logDock_ = nullptr;
     QPlainTextEdit *logView_ = nullptr;
     UpdateChecker *updateChecker_ = nullptr;
