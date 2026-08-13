@@ -26,7 +26,7 @@ set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)
 
-find_package(Qt6 REQUIRED COMPONENTS Concurrent Core Gui Network Widgets)
+find_package(Qt6 REQUIRED COMPONENTS Concurrent Core Gui LinguistTools Network Widgets)
 
 add_executable(SquidyGit
         main.cpp
@@ -51,6 +51,14 @@ add_executable(SquidyGit
 
 target_compile_definitions(SquidyGit PRIVATE
         SQUIDYGIT_VERSION="${SQUIDYGIT_BUILD_VERSION}")
+
+# The English strings live in the sources, the other languages are compiled into
+# the executable so that a translation is always available next to the binary.
+qt_add_translations(SquidyGit
+        TS_FILES
+            translations/squidygit_ru.ts
+            translations/squidygit_zh_CN.ts
+        RESOURCE_PREFIX "/i18n")
 
 target_link_libraries(SquidyGit PRIVATE
         Qt6::Concurrent
@@ -90,9 +98,10 @@ if (WIN32)
             HINTS "${Qt6_DIR}/../../../bin"
             REQUIRED)
 
+    # The Qt catalogs are deployed as well: they hold the translations of the
+    # buttons in the standard dialogs.
     add_custom_command(TARGET SquidyGit POST_BUILD
             COMMAND "${WINDEPLOYQT_EXECUTABLE}"
-                    --no-translations
                     --compiler-runtime
                     "$<TARGET_FILE:SquidyGit>"
             COMMENT "Deploying Qt runtime next to SquidyGit"
@@ -261,6 +270,10 @@ if (UNIX AND NOT APPLE)
             ", libqt6gui6 (>= ${SQUIDYGIT_QT_RUNTIME})"
             ", libqt6network6 (>= ${SQUIDYGIT_QT_RUNTIME})"
             ", libqt6widgets6 (>= ${SQUIDYGIT_QT_RUNTIME})")
+
+    # Without the Qt catalogs the buttons of the standard dialogs stay English
+    # while the rest of the interface is translated.
+    set(CPACK_DEBIAN_PACKAGE_RECOMMENDS "qt6-translations-l10n")
 
     include(CPack)
 

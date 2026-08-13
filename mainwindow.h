@@ -12,6 +12,7 @@ class QDockWidget;
 class QGraphicsDropShadowEffect;
 class QLabel;
 class QListWidget;
+class QMenu;
 class QMenuBar;
 class QPlainTextEdit;
 class QProgressBar;
@@ -39,6 +40,8 @@ private:
     void buildInterface();
     void buildToolbar();
     void buildMenus();
+    void buildLanguageMenu(QMenu *menu);
+    void selectLanguage(const QString &language);
     QWidget *buildTitleBar();
     QWidget *buildWelcomePage();
     QDockWidget *buildCommandLog();

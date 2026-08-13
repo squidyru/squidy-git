@@ -113,7 +113,7 @@ QString GitCommandResult::errorText() const {
         return gitOutput;
     }
 
-    return QStringLiteral("Git завершился с кодом %1").arg(exitCode);
+    return GitClient::tr("Git exited with code %1").arg(exitCode);
 }
 
 QString GitCommandResult::reportText() const {
@@ -155,12 +155,12 @@ bool GitRepositoryState::isBusy() const {
 }
 
 QString GitRepositoryState::description() const {
-    if (merging) return QStringLiteral("Слияние в процессе");
-    if (rebasing) return QStringLiteral("Rebase в процессе");
-    if (cherryPicking) return QStringLiteral("Cherry-pick в процессе");
-    if (reverting) return QStringLiteral("Revert в процессе");
-    if (bisecting) return QStringLiteral("Bisect в процессе");
-    if (detachedHead) return QStringLiteral("Отсоединённый HEAD");
+    if (merging) return GitClient::tr("Merge in progress");
+    if (rebasing) return GitClient::tr("Rebase in progress");
+    if (cherryPicking) return GitClient::tr("Cherry-pick in progress");
+    if (reverting) return GitClient::tr("Revert in progress");
+    if (bisecting) return GitClient::tr("Bisect in progress");
+    if (detachedHead) return GitClient::tr("Detached HEAD");
     return {};
 }
 
@@ -649,7 +649,7 @@ QList<GitCommitInfo> GitClient::search(const GitSearchMode mode, const QString &
             });
             if (!verification.succeeded()) {
                 if (errorMessage != nullptr) {
-                    *errorMessage = QStringLiteral("Коммит «%1» не найден.").arg(query.trimmed());
+                    *errorMessage = tr("Commit “%1” was not found.").arg(query.trimmed());
                 }
                 return {};
             }
@@ -816,13 +816,13 @@ GitCommandResult GitClient::diff(const QString &path, const bool staged, const b
         const QFileInfo fileInfo(QDir(repositoryRoot_).filePath(path));
 
         if (!fileInfo.exists() || !fileInfo.isFile()) {
-            result.processError = QStringLiteral("Файл больше не существует: %1").arg(path);
+            result.processError = tr("The file no longer exists: %1").arg(path);
             return result;
         }
 
         if (fileInfo.size() > MaximumPreviewSize) {
             result.exitCode = 0;
-            result.output = QStringLiteral("Новый файл слишком велик для предпросмотра (%1 МБ).")
+            result.output = tr("The new file is too large to preview (%1 MB).")
                                 .arg(fileInfo.size() / (1024.0 * 1024.0), 0, 'f', 1)
                                 .toUtf8();
             return result;
@@ -910,7 +910,7 @@ GitCommandResult GitClient::showCommit(const QString &hash) const {
 GitCommandResult GitClient::stage(const QStringList &paths) const {
     if (paths.isEmpty()) {
         GitCommandResult result;
-        result.processError = QStringLiteral("Не выбраны файлы для добавления в индекс.");
+        result.processError = tr("No files are selected for staging.");
         return result;
     }
 
@@ -922,7 +922,7 @@ GitCommandResult GitClient::stage(const QStringList &paths) const {
 GitCommandResult GitClient::unstage(const QStringList &paths) const {
     if (paths.isEmpty()) {
         GitCommandResult result;
-        result.processError = QStringLiteral("Не выбраны файлы для удаления из индекса.");
+        result.processError = tr("No files are selected for unstaging.");
         return result;
     }
 
@@ -964,7 +964,7 @@ GitCommandResult GitClient::unstageAll() const {
 GitCommandResult GitClient::discard(const QStringList &paths, const bool untracked) const {
     if (paths.isEmpty()) {
         GitCommandResult result;
-        result.processError = QStringLiteral("Не выбраны файлы.");
+        result.processError = tr("No files are selected.");
         return result;
     }
 
@@ -1023,7 +1023,7 @@ GitCommandResult GitClient::applyPatch(const QByteArray &patch, const bool cache
 GitCommandResult GitClient::resolveWith(const QStringList &paths, const bool useMine) const {
     if (paths.isEmpty()) {
         GitCommandResult result;
-        result.processError = QStringLiteral("Не выбраны файлы.");
+        result.processError = tr("No files are selected.");
         return result;
     }
 
@@ -1043,7 +1043,7 @@ GitCommandResult GitClient::resolveWith(const QStringList &paths, const bool use
 GitCommandResult GitClient::ignore(const QStringList &patterns) const {
     GitCommandResult result;
     if (patterns.isEmpty()) {
-        result.processError = QStringLiteral("Нечего добавлять в .gitignore.");
+        result.processError = tr("There is nothing to add to .gitignore.");
         return result;
     }
 
@@ -1071,7 +1071,7 @@ GitCommandResult GitClient::ignore(const QStringList &patterns) const {
     ignoreFile.close();
 
     result.exitCode = 0;
-    result.output = QStringLiteral("Обновлён .gitignore").toUtf8();
+    result.output = tr("Updated .gitignore").toUtf8();
     return result;
 }
 
@@ -1116,7 +1116,7 @@ GitCommandResult GitClient::createBranch(const QString &name, const QString &sta
     });
     if (!validation.succeeded()) {
         GitCommandResult result = validation;
-        result.processError = QStringLiteral("Недопустимое имя ветки: %1").arg(name);
+        result.processError = tr("Invalid branch name: %1").arg(name);
         return result;
     }
 
@@ -1207,7 +1207,7 @@ GitCommandResult GitClient::abortOperation() const {
     }
 
     GitCommandResult result;
-    result.processError = QStringLiteral("Нет незавершённой операции.");
+    result.processError = tr("There is no operation in progress.");
     return result;
 }
 
@@ -1229,7 +1229,7 @@ GitCommandResult GitClient::continueOperation() const {
     }
 
     GitCommandResult result;
-    result.processError = QStringLiteral("Нет незавершённой операции.");
+    result.processError = tr("There is no operation in progress.");
     return result;
 }
 
@@ -1353,7 +1353,7 @@ QString GitClient::configValue(const QString &key) const {
 GitCommandResult GitClient::run(const QStringList &arguments, const int timeoutMs) const {
     if (!hasRepository()) {
         GitCommandResult result;
-        result.processError = QStringLiteral("Репозиторий не открыт.");
+        result.processError = tr("No repository is open.");
         return result;
     }
     return runAt(repositoryRoot_, arguments, timeoutMs);
@@ -1363,7 +1363,7 @@ GitCommandResult GitClient::runWithInput(const QStringList &arguments,
                                          const QByteArray &input) const {
     if (!hasRepository()) {
         GitCommandResult result;
-        result.processError = QStringLiteral("Репозиторий не открыт.");
+        result.processError = tr("No repository is open.");
         return result;
     }
     return runAt(repositoryRoot_, arguments, 30'000, &input);
@@ -1374,8 +1374,8 @@ GitCommandResult GitClient::runAt(const QString &directory, const QStringList &a
     GitCommandResult result;
     const QString executable = gitExecutable();
     if (executable.isEmpty()) {
-        result.processError = QStringLiteral(
-            "Git не найден. Установите Git и добавьте его в системный PATH.");
+        result.processError = tr("Git was not found. Install Git and add it to the system "
+                                 "PATH.");
         GitLog::instance()->record(directory, arguments, result);
         return result;
     }
@@ -1414,7 +1414,7 @@ GitCommandResult GitClient::runAt(const QString &directory, const QStringList &a
     if (!process.waitForFinished(timeoutMs)) {
         process.kill();
         process.waitForFinished();
-        result.processError = QStringLiteral("Git не завершил операцию за отведённое время.");
+        result.processError = tr("Git did not finish the operation in time.");
         GitLog::instance()->record(directory, arguments, result);
         return result;
     }

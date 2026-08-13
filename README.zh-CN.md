@@ -67,6 +67,7 @@ SquidyGit 旨在让常用的 Git 操作清晰直观，同时不隐藏底层工�
 - 管理储藏（stash）、标签、远程仓库和子模块
 - 按提交信息、作者、文件内容、路径或 SHA 搜索提交
 - 浅色和深色主题
+- 英文、俄文和中文界面，跟随系统语言
 - 内置所有已执行 Git 命令的日志
 
 ## 技术栈
@@ -83,7 +84,8 @@ SquidyGit 是一款使用 C++20 构建的原生应用，依赖：
 
 ### Linux
 
-安装支持 C++20 的编译器、CMake、Git 和 Qt 6 开发包，然后运行：
+安装支持 C++20 的编译器、CMake、Git、Qt 6 开发包以及 Qt Linguist 工具
+（在 Debian 和 Ubuntu 上为 `qt6-l10n-tools` 和 `qt6-tools-dev`），然后运行：
 
 ```bash
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release

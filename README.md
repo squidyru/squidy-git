@@ -69,6 +69,7 @@ Open an existing repository, clone a remote project or initialize a new one.
 - Stash, tags, remotes and submodule management
 - Commit search by message, author, file contents, path or SHA
 - Light and dark themes
+- English, Russian and Chinese interface, following the system language
 - Built-in log of all executed Git commands
 
 ## Technology
@@ -85,7 +86,8 @@ No additional runtime library or embedded Git implementation is used.
 
 ### Linux
 
-Install a C++20 compiler, CMake, Git and the Qt 6 development packages, then run:
+Install a C++20 compiler, CMake, Git and the Qt 6 development packages, including the
+Qt Linguist tools (`qt6-l10n-tools` and `qt6-tools-dev` on Debian and Ubuntu), then run:
 
 ```bash
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release

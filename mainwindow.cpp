@@ -10,6 +10,7 @@
 #include "updatechecker.h"
 
 #include <QAction>
+#include <QActionGroup>
 #include <QApplication>
 #include <QCloseEvent>
 #include <QCursor>
@@ -29,6 +30,7 @@
 #include <QMessageBox>
 #include <QMouseEvent>
 #include <QPlainTextEdit>
+#include <QProcess>
 #include <QProgressBar>
 #include <QPushButton>
 #include <QResizeEvent>
@@ -131,9 +133,9 @@ void MainWindow::buildInterface() {
     tabs_->setUsesScrollButtons(false);
     tabs_->setContextMenuPolicy(Qt::CustomContextMenu);
     tabs_->addTab(QString());
-    auto *homeTabTitle = new QLabel(QStringLiteral("Репозитории"));
+    auto *homeTabTitle = new QLabel(tr("Repositories"));
     homeTabTitle->setObjectName(QStringLiteral("repositoryTabTitle"));
-    homeTabTitle->setProperty("fullTitle", QStringLiteral("Репозитории"));
+    homeTabTitle->setProperty("fullTitle", tr("Repositories"));
     homeTabTitle->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Preferred);
     tabs_->setTabButton(0, QTabBar::LeftSide, homeTabTitle);
     tabs_->setTabButton(0, QTabBar::RightSide, nullptr);
@@ -146,7 +148,7 @@ void MainWindow::buildInterface() {
     addTabButton_->setObjectName(QStringLiteral("addTabButton"));
     addTabButton_->setIcon(Icons::icon(Icons::Glyph::Add, Qt::white));
     addTabButton_->setIconSize(QSize(24, 24));
-    addTabButton_->setToolTip(QStringLiteral("Открыть репозиторий в новой вкладке"));
+    addTabButton_->setToolTip(tr("Open a repository in a new tab"));
     connect(addTabButton_, &QToolButton::clicked, this, [this] { openRepositoryDialog(); });
     // Keep the add button attached to the last visible tab instead of pinning
     // it to the far edge of the window.
@@ -197,7 +199,7 @@ void MainWindow::buildInterface() {
     addDockWidget(Qt::BottomDockWidgetArea, logDock_);
     logDock_->hide();
 
-    statusLabel_ = new QLabel(QStringLiteral("Откройте или клонируйте репозиторий"));
+    statusLabel_ = new QLabel(tr("Open or clone a repository"));
     statusBar()->addWidget(statusLabel_, 1);
     busyIndicator_ = new QProgressBar;
     busyIndicator_->setRange(0, 0);
@@ -208,7 +210,7 @@ void MainWindow::buildInterface() {
 }
 
 void MainWindow::buildToolbar() {
-    mainToolbar_ = new QToolBar(QStringLiteral("Действия"), this);
+    mainToolbar_ = new QToolBar(tr("Actions"), this);
     mainToolbar_->setObjectName(QStringLiteral("mainToolbar"));
     mainToolbar_->setMovable(false);
     mainToolbar_->setFloatable(false);
@@ -225,47 +227,47 @@ void MainWindow::buildToolbar() {
 
     // Keep the frequent commands in this exact order.
     commitAction_ = addAction(Icons::Glyph::Commit, QStringLiteral("Commit"),
-                              QStringLiteral("Зафиксировать проиндексированные изменения"));
+                              tr("Commit the staged changes"));
     mainToolbar_->addSeparator();
     pushAction_ = addAction(Icons::Glyph::Push, QStringLiteral("Push"),
-                            QStringLiteral("Отправить изменения"));
+                            tr("Push the changes"));
     pullAction_ = addAction(Icons::Glyph::Pull, QStringLiteral("Pull"),
-                            QStringLiteral("Забрать и влить изменения"));
+                            tr("Pull and merge the changes"));
     fetchAction_ = addAction(Icons::Glyph::Fetch, QStringLiteral("Fetch"),
-                             QStringLiteral("Получить изменения из всех удалённых репозиториев"));
+                             tr("Fetch from all remote repositories"));
     mainToolbar_->addSeparator();
     branchAction_ = addAction(Icons::Glyph::Branch, QStringLiteral("Branch"),
-                              QStringLiteral("Создать ветку"));
+                              tr("Create a branch"));
     mergeAction_ = addAction(Icons::Glyph::Merge, QStringLiteral("Merge"),
-                             QStringLiteral("Влить ветку в текущую"));
+                             tr("Merge a branch into the current one"));
     mainToolbar_->addSeparator();
     stashAction_ = addAction(Icons::Glyph::Stash, QStringLiteral("Stash"),
-                             QStringLiteral("Спрятать текущие изменения"));
+                             tr("Stash the current changes"));
     mainToolbar_->addSeparator();
     discardAction_ = addAction(Icons::Glyph::Discard, QStringLiteral("Discard"),
-                               QStringLiteral("Откатить выбранные файлы"));
+                               tr("Discard the selected files"));
     tagAction_ = addAction(Icons::Glyph::Tag, QStringLiteral("Tag"),
-                           QStringLiteral("Создать тег"));
+                           tr("Create a tag"));
 
     // Less frequent operations stay available in Repository/Actions menus.
     checkoutAction_ = new QAction(Icons::icon(Icons::Glyph::Checkout),
                                   QStringLiteral("Checkout"), this);
-    checkoutAction_->setToolTip(QStringLiteral("Переключиться на ветку или тег"));
+    checkoutAction_->setToolTip(tr("Switch to a branch or tag"));
     stashPopAction_ = new QAction(Icons::icon(Icons::Glyph::StashPop),
-                                  QStringLiteral("Применить последний stash"), this);
-    stashPopAction_->setToolTip(QStringLiteral("Вернуть последний stash"));
+                                  tr("Apply the latest stash"), this);
+    stashPopAction_->setToolTip(tr("Pop the latest stash"));
 
     auto *spacer = new QWidget;
     spacer->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
     spacer->setAttribute(Qt::WA_TranslucentBackground);
     mainToolbar_->addWidget(spacer);
 
-    terminalAction_ = addAction(Icons::Glyph::Terminal, QStringLiteral("Терминал"),
-                                QStringLiteral("Открыть терминал в папке репозитория"));
-    explorerAction_ = addAction(Icons::Glyph::Explorer, QStringLiteral("Папка"),
-                                QStringLiteral("Открыть папку репозитория"));
-    settingsAction_ = addAction(Icons::Glyph::Settings, QStringLiteral("Настройки"),
-                                QStringLiteral("Настройки репозитория и приложения"));
+    terminalAction_ = addAction(Icons::Glyph::Terminal, tr("Terminal"),
+                                tr("Open a terminal in the repository folder"));
+    explorerAction_ = addAction(Icons::Glyph::Explorer, tr("Folder"),
+                                tr("Open the repository folder"));
+    settingsAction_ = addAction(Icons::Glyph::Settings, tr("Settings"),
+                                tr("Repository and application settings"));
 
     commitAction_->setShortcut(QKeySequence(QStringLiteral("Ctrl+Return")));
     fetchAction_->setShortcut(QKeySequence(QStringLiteral("Ctrl+Shift+F")));
@@ -336,11 +338,11 @@ QWidget *MainWindow::buildTitleBar() {
     };
 
     QToolButton *minimizeButton = addWindowButton(Icons::Glyph::WindowMinimize,
-                                                  QStringLiteral("Свернуть"), false);
+                                                  tr("Minimize"), false);
     maximizeButton_ = addWindowButton(Icons::Glyph::WindowMaximize,
-                                      QStringLiteral("Развернуть"), false);
+                                      tr("Maximize"), false);
     QToolButton *closeButton = addWindowButton(Icons::Glyph::WindowClose,
-                                               QStringLiteral("Закрыть"), true);
+                                               tr("Close"), true);
 
     connect(minimizeButton, &QToolButton::clicked, this, [this] { showMinimized(); });
     connect(maximizeButton_, &QToolButton::clicked, this, [this] { toggleMaximized(); });
@@ -363,8 +365,8 @@ void MainWindow::updateWindowButtons() {
         maximizeButton_->setIcon(Icons::icon(maximized ? Icons::Glyph::WindowRestore
                                                        : Icons::Glyph::WindowMaximize,
                                              QColor()));
-        maximizeButton_->setToolTip(maximized ? QStringLiteral("Восстановить")
-                                              : QStringLiteral("Развернуть"));
+        maximizeButton_->setToolTip(maximized ? tr("Restore")
+                                              : tr("Maximize"));
     }
     // A maximized window has no edges to drag, so the resize band is dropped.
     const int margin = maximized || isFullScreen() ? 0 : WindowShadowMargin;
@@ -468,45 +470,47 @@ void MainWindow::buildMenus() {
     menuBar_->setNativeMenuBar(false);
     menuBar_->setSizePolicy(QSizePolicy::Maximum, QSizePolicy::Preferred);
 
-    auto *fileMenu = menuBar_->addMenu(QStringLiteral("&Файл"));
+    auto *fileMenu = menuBar_->addMenu(tr("&File"));
     openAction_ = fileMenu->addAction(Icons::icon(Icons::Glyph::OpenFolder),
-                                      QStringLiteral("Открыть репозиторий…"));
+                                      tr("Open Repository…"));
     openAction_->setShortcut(QKeySequence::Open);
     cloneAction_ = fileMenu->addAction(Icons::icon(Icons::Glyph::Clone),
-                                       QStringLiteral("Клонировать…"));
+                                       tr("Clone…"));
     cloneAction_->setShortcut(QKeySequence(QStringLiteral("Ctrl+Shift+N")));
     createAction_ = fileMenu->addAction(Icons::icon(Icons::Glyph::Create),
-                                        QStringLiteral("Создать репозиторий…"));
+                                        tr("Create Repository…"));
     fileMenu->addSeparator();
-    closeTabAction_ = fileMenu->addAction(QStringLiteral("Закрыть вкладку"));
+    closeTabAction_ = fileMenu->addAction(tr("Close Tab"));
     closeTabAction_->setShortcut(QKeySequence::Close);
     fileMenu->addSeparator();
-    QAction *quitAction = fileMenu->addAction(QStringLiteral("Выход"));
+    QAction *quitAction = fileMenu->addAction(tr("Quit"));
     quitAction->setShortcut(QKeySequence::Quit);
 
-    auto *editMenu = menuBar_->addMenu(QStringLiteral("&Правка"));
+    auto *editMenu = menuBar_->addMenu(tr("&Edit"));
     editMenu->addAction(checkoutAction_);
     editMenu->addSeparator();
     editMenu->addAction(settingsAction_);
 
-    auto *viewMenu = menuBar_->addMenu(QStringLiteral("&Вид"));
+    auto *viewMenu = menuBar_->addMenu(tr("&View"));
     fileStatusPageAction_ = viewMenu->addAction(Icons::icon(Icons::Glyph::FileStatus),
-                                                QStringLiteral("Состояние файлов"));
+                                                tr("File Status"));
     fileStatusPageAction_->setShortcut(QKeySequence(QStringLiteral("Ctrl+1")));
     historyPageAction_ = viewMenu->addAction(Icons::icon(Icons::Glyph::History),
-                                             QStringLiteral("История"));
+                                             tr("History"));
     historyPageAction_->setShortcut(QKeySequence(QStringLiteral("Ctrl+2")));
     searchPageAction_ = viewMenu->addAction(Icons::icon(Icons::Glyph::Search),
-                                            QStringLiteral("Поиск"));
+                                            tr("Search"));
     searchPageAction_->setShortcut(QKeySequence(QStringLiteral("Ctrl+3")));
     viewMenu->addSeparator();
-    themeAction_ = viewMenu->addAction(QStringLiteral("Тёмная тема"));
+    themeAction_ = viewMenu->addAction(tr("Dark Theme"));
     themeAction_->setCheckable(true);
     themeAction_->setChecked(Theme::instance()->mode() == Theme::Mode::Dark);
+    viewMenu->addSeparator();
+    buildLanguageMenu(viewMenu->addMenu(tr("Language")));
 
-    auto *repositoryMenu = menuBar_->addMenu(QStringLiteral("&Репозиторий"));
+    auto *repositoryMenu = menuBar_->addMenu(tr("&Repository"));
     refreshAction_ = repositoryMenu->addAction(Icons::icon(Icons::Glyph::Refresh),
-                                               QStringLiteral("Обновить"));
+                                               tr("Refresh"));
     refreshAction_->setShortcut(QKeySequence::Refresh);
     repositoryMenu->addSeparator();
     repositoryMenu->addAction(checkoutAction_);
@@ -515,9 +519,9 @@ void MainWindow::buildMenus() {
     repositoryMenu->addAction(tagAction_);
     repositoryMenu->addSeparator();
     QAction *addRemoteAction = repositoryMenu->addAction(Icons::icon(Icons::Glyph::Remote),
-                                                         QStringLiteral("Добавить remote…"));
+                                                         tr("Add Remote…"));
 
-    auto *actionsMenu = menuBar_->addMenu(QStringLiteral("&Действия"));
+    auto *actionsMenu = menuBar_->addMenu(tr("&Actions"));
     actionsMenu->addAction(commitAction_);
     actionsMenu->addAction(discardAction_);
     actionsMenu->addSeparator();
@@ -528,24 +532,24 @@ void MainWindow::buildMenus() {
     actionsMenu->addAction(pullAction_);
     actionsMenu->addAction(pushAction_);
 
-    auto *toolsMenu = menuBar_->addMenu(QStringLiteral("&Инструменты"));
+    auto *toolsMenu = menuBar_->addMenu(tr("&Tools"));
     toolsMenu->addAction(terminalAction_);
     toolsMenu->addAction(explorerAction_);
     toolsMenu->addSeparator();
-    logAction_ = toolsMenu->addAction(QStringLiteral("Журнал команд git"));
+    logAction_ = toolsMenu->addAction(tr("Git Command Log"));
     logAction_->setCheckable(true);
     logAction_->setShortcut(QKeySequence(QStringLiteral("Ctrl+`")));
 
-    auto *helpMenu = menuBar_->addMenu(QStringLiteral("&Справка"));
+    auto *helpMenu = menuBar_->addMenu(tr("&Help"));
     QAction *checkUpdatesAction = helpMenu->addAction(
-        QStringLiteral("Проверить обновления…"));
+        tr("Check for Updates…"));
     QAction *automaticUpdatesAction = helpMenu->addAction(
-        QStringLiteral("Проверять обновления автоматически"));
+        tr("Check for Updates Automatically"));
     automaticUpdatesAction->setCheckable(true);
     automaticUpdatesAction->setChecked(
         QSettings().value(QStringLiteral("updates/automaticCheck"), true).toBool());
     helpMenu->addSeparator();
-    QAction *aboutAction = helpMenu->addAction(QStringLiteral("О программе"));
+    QAction *aboutAction = helpMenu->addAction(tr("About"));
 
     connect(openAction_, &QAction::triggered, this, [this] { openRepositoryDialog(); });
     connect(cloneAction_, &QAction::triggered, this, [this] { cloneRepository(); });
@@ -574,16 +578,69 @@ void MainWindow::buildMenus() {
         QSettings().setValue(QStringLiteral("updates/automaticCheck"), checked);
     });
     connect(aboutAction, &QAction::triggered, this, [this] {
-        QMessageBox::about(this, QStringLiteral("О SquidyGit"),
-                           QStringLiteral(
-                               "<h3>SquidyGit</h3>"
-                               "<p>Настольный Git-клиент: вкладки репозиториев, "
-                               "граф коммитов, индексация по ханкам и строкам, ветки, теги, "
-                               "stash и работа с удалёнными репозиториями.</p>"
-                               "<p>Версия %1. Собран на Qt %2, использует системный git.</p>")
+        QMessageBox::about(this, tr("About SquidyGit"),
+                           tr("<h3>SquidyGit</h3><p>A desktop Git client: repository tabs, "
+                              "a commit graph, staging by hunks and lines, branches, tags, "
+                              "stashes and work with remote repositories.</p><p>Version "
+                              "%1. Built with Qt %2, uses the system git.</p>")
                                .arg(QApplication::applicationVersion(),
                                     QStringLiteral(QT_VERSION_STR)));
     });
+}
+
+void MainWindow::buildLanguageMenu(QMenu *menu) {
+    // The names of the languages are left untranslated on purpose: everybody
+    // should find their own language in the list, whatever the interface shows.
+    const QList<QPair<QString, QString>> languages = {
+        {QString(), tr("System")},
+        {QStringLiteral("en"), QStringLiteral("English")},
+        {QStringLiteral("ru"), QStringLiteral("Русский")},
+        {QStringLiteral("zh_CN"), QStringLiteral("中文")},
+    };
+
+    const QString selected =
+        QSettings().value(QStringLiteral("interface/language")).toString();
+    auto *group = new QActionGroup(menu);
+    for (const auto &[code, title] : languages) {
+        QAction *action = menu->addAction(title);
+        action->setCheckable(true);
+        action->setChecked(code == selected);
+        group->addAction(action);
+        connect(action, &QAction::triggered, this, [this, code] { selectLanguage(code); });
+    }
+}
+
+void MainWindow::selectLanguage(const QString &language) {
+    QSettings settings;
+    if (settings.value(QStringLiteral("interface/language")).toString() == language) {
+        return;
+    }
+    settings.setValue(QStringLiteral("interface/language"), language);
+
+    const QMessageBox::StandardButton answer = QMessageBox::question(
+        this, tr("Language"),
+        tr("The interface language changes after a restart. Restart SquidyGit now?"),
+        QMessageBox::Yes | QMessageBox::No, QMessageBox::Yes);
+    if (answer != QMessageBox::Yes) {
+        return;
+    }
+
+    // The session is stored before the new process starts, so that it opens the
+    // repositories that are on screen right now.
+    saveSession();
+    settings.sync();
+    QStringList arguments = QCoreApplication::arguments();
+    if (!arguments.isEmpty()) {
+        arguments.removeFirst();
+    }
+    if (QProcess::startDetached(QCoreApplication::applicationFilePath(), arguments,
+                                QDir::currentPath())) {
+        QApplication::quit();
+    } else {
+        QMessageBox::warning(this, tr("Language"),
+                             tr("SquidyGit could not be restarted. Start it manually to "
+                                "apply the new language."));
+    }
 }
 
 QWidget *MainWindow::buildWelcomePage() {
@@ -592,25 +649,25 @@ QWidget *MainWindow::buildWelcomePage() {
     layout->setContentsMargins(28, 24, 28, 24);
     layout->setSpacing(14);
 
-    auto *title = new QLabel(QStringLiteral("Локальные репозитории"));
+    auto *title = new QLabel(tr("Local repositories"));
     title->setObjectName(QStringLiteral("pageTitle"));
     layout->addWidget(title);
 
-    auto *subtitle = new QLabel(QStringLiteral(
-        "Закладки сохраняются между запусками. Двойной щелчок открывает репозиторий во вкладке."));
+    auto *subtitle = new QLabel(tr("Bookmarks are kept between sessions. A double click "
+                                   "opens the repository in a tab."));
     subtitle->setObjectName(QStringLiteral("mutedText"));
     layout->addWidget(subtitle);
 
     auto *buttonRow = new QHBoxLayout;
     auto *cloneButton = new QPushButton(Icons::icon(Icons::Glyph::Clone, Qt::white),
-                                        QStringLiteral("Клонировать"));
+                                        tr("Clone"));
     cloneButton->setProperty("accent", true);
     auto *openButton = new QPushButton(Icons::icon(Icons::Glyph::OpenFolder),
-                                       QStringLiteral("Добавить существующий"));
+                                       tr("Add existing"));
     auto *createButton = new QPushButton(Icons::icon(Icons::Glyph::Create),
-                                         QStringLiteral("Создать новый"));
+                                         tr("Create new"));
     auto *removeButton = new QPushButton(Icons::icon(Icons::Glyph::Remove),
-                                         QStringLiteral("Убрать из списка"));
+                                         tr("Remove from the list"));
     buttonRow->addWidget(cloneButton);
     buttonRow->addWidget(openButton);
     buttonRow->addWidget(createButton);
@@ -638,7 +695,7 @@ QWidget *MainWindow::buildWelcomePage() {
 }
 
 QDockWidget *MainWindow::buildCommandLog() {
-    auto *dock = new QDockWidget(QStringLiteral("Журнал команд git"), this);
+    auto *dock = new QDockWidget(tr("Git Command Log"), this);
     dock->setObjectName(QStringLiteral("commandLogDock"));
     dock->setAllowedAreas(Qt::BottomDockWidgetArea | Qt::TopDockWidgetArea);
 
@@ -675,13 +732,13 @@ QDockWidget *MainWindow::buildCommandLog() {
 
 void MainWindow::openRepositoryDialog() {
     const QString directory = QFileDialog::getExistingDirectory(
-        this, QStringLiteral("Открыть Git-репозиторий"), QDir::homePath());
+        this, tr("Open a Git repository"), QDir::homePath());
     if (directory.isEmpty()) {
         return;
     }
     if (!GitClient::isRepository(directory)) {
-        QMessageBox::warning(this, QStringLiteral("Не Git-репозиторий"),
-                             QStringLiteral("В папке %1 нет репозитория Git.")
+        QMessageBox::warning(this, tr("Not a Git repository"),
+                             tr("The folder %1 does not contain a Git repository.")
                                  .arg(QDir::toNativeSeparators(directory)));
         return;
     }
@@ -706,7 +763,7 @@ bool MainWindow::openRepository(const QString &path, const bool activate) {
     auto *view = new RepositoryView(path);
     if (!view->isValid()) {
         delete view;
-        statusLabel_->setText(QStringLiteral("Не удалось открыть репозиторий: %1")
+        statusLabel_->setText(tr("The repository could not be opened: %1")
                                   .arg(QDir::toNativeSeparators(path)));
         return false;
     }
@@ -737,7 +794,7 @@ bool MainWindow::openRepository(const QString &path, const bool activate) {
                                      Theme::instance()->palette().text));
     closeButton->setIconSize(QSize(22, 22));
     closeButton->setFixedSize(QSize(24, 24));
-    closeButton->setToolTip(QStringLiteral("Закрыть вкладку"));
+    closeButton->setToolTip(tr("Close Tab"));
     closeLayout->addWidget(closeButton);
     connect(closeButton, &QToolButton::clicked, this,
             [this, view] { closeTab(tabPages_->indexOf(view)); });
@@ -782,7 +839,7 @@ void MainWindow::cloneRepository() {
 
 void MainWindow::createRepository() {
     const QString directory = QFileDialog::getExistingDirectory(
-        this, QStringLiteral("Папка для нового репозитория"), QDir::homePath());
+        this, tr("Folder for the new repository"), QDir::homePath());
     if (directory.isEmpty()) {
         return;
     }
@@ -794,7 +851,7 @@ void MainWindow::createRepository() {
 
     const GitCommandResult result = GitClient::initRepository(directory, false);
     if (!result.succeeded()) {
-        QMessageBox::warning(this, QStringLiteral("Не удалось создать репозиторий"),
+        QMessageBox::warning(this, tr("The repository could not be created"),
                              result.errorText());
         return;
     }
@@ -824,9 +881,9 @@ void MainWindow::showTabContextMenu(const QPoint &position) {
     }
 
     QMenu menu(this);
-    QAction *closeAll = menu.addAction(QStringLiteral("Закрыть все вкладки"));
-    QAction *closeLeft = menu.addAction(QStringLiteral("Закрыть вкладки слева"));
-    QAction *closeRight = menu.addAction(QStringLiteral("Закрыть вкладки справа"));
+    QAction *closeAll = menu.addAction(tr("Close all tabs"));
+    QAction *closeLeft = menu.addAction(tr("Close tabs to the left"));
+    QAction *closeRight = menu.addAction(tr("Close tabs to the right"));
 
     closeAll->setEnabled(tabs_->count() > 1);
     closeLeft->setEnabled(target > 1);
@@ -880,7 +937,7 @@ void MainWindow::updateTabTitle(RepositoryView *view) {
             tabs_->tabButton(index, QTabBar::LeftSide))) {
         label->setProperty("fullTitle", title);
     }
-    tabs_->setTabToolTip(index, QStringLiteral("%1\nВетка: %2")
+    tabs_->setTabToolTip(index, tr("%1\nBranch: %2")
                                     .arg(QDir::toNativeSeparators(view->repositoryRoot()),
                                          view->currentBranchName()));
     updateTabMetrics();
@@ -971,7 +1028,7 @@ void MainWindow::updateActions() {
     if (hasRepository) {
         setWindowTitle(QStringLiteral("%1 — %2 — SquidyGit")
                            .arg(view->repositoryName(), view->currentBranchName()));
-        statusLabel_->setText(QStringLiteral("%1  ·  ветка %2  ·  изменений: %3  ·  ↑%4 ↓%5")
+        statusLabel_->setText(tr("%1  ·  branch %2  ·  changes: %3  ·  ↑%4 ↓%5")
                                   .arg(QDir::toNativeSeparators(view->repositoryRoot()),
                                        view->currentBranchName())
                                   .arg(view->changeCount())
@@ -979,7 +1036,7 @@ void MainWindow::updateActions() {
                                   .arg(view->behindCount()));
     } else {
         setWindowTitle(QStringLiteral("SquidyGit"));
-        statusLabel_->setText(QStringLiteral("Откройте или клонируйте репозиторий"));
+        statusLabel_->setText(tr("Open or clone a repository"));
     }
 }
 
@@ -1018,7 +1075,7 @@ void MainWindow::refreshBookmarks() {
         item->setData(Qt::UserRole, path);
         if (!info.exists()) {
             item->setForeground(Theme::instance()->palette().danger);
-            item->setToolTip(QStringLiteral("Папка больше не существует"));
+            item->setToolTip(tr("The folder no longer exists"));
         }
     }
 }

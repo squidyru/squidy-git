@@ -3,6 +3,7 @@
 #pragma once
 
 #include <QByteArray>
+#include <QCoreApplication>
 #include <QDateTime>
 #include <QList>
 #include <QObject>
@@ -152,6 +153,10 @@ private:
 };
 
 class GitClient {
+    // Messages of the plain result structures above are translated in this
+    // context as well, so the whole Git layer shares one catalog section.
+    Q_DECLARE_TR_FUNCTIONS(GitClient)
+
 public:
     [[nodiscard]] GitCommandResult openRepository(const QString &directory);
     [[nodiscard]] bool hasRepository() const;

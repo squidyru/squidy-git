@@ -246,8 +246,8 @@ UpdateChecker::UpdateChecker(QWidget *dialogParent)
 void UpdateChecker::checkForUpdates(const bool userInitiated) {
     if (busy_) {
         if (userInitiated) {
-            QMessageBox::information(dialogParent_, QStringLiteral("Обновление SquidyGit"),
-                                     QStringLiteral("Проверка обновлений уже выполняется."));
+            QMessageBox::information(dialogParent_, tr("SquidyGit Update"),
+                                     tr("An update check is already running."));
         }
         return;
     }
@@ -278,10 +278,10 @@ void UpdateChecker::checkForUpdates(const bool userInitiated) {
 
         if (networkError != QNetworkReply::NoError) {
             if (statusCode == 404) {
-                finishWithError(QStringLiteral("Опубликованных выпусков пока нет."),
+                finishWithError(tr("There are no published releases yet."),
                                 userInitiated);
             } else {
-                finishWithError(QStringLiteral("Не удалось проверить обновления.\n%1")
+                finishWithError(tr("The update check failed.\n%1")
                                     .arg(errorString),
                                 userInitiated);
             }
@@ -291,14 +291,14 @@ void UpdateChecker::checkForUpdates(const bool userInitiated) {
         QJsonParseError parseError;
         const QJsonDocument document = QJsonDocument::fromJson(response, &parseError);
         if (parseError.error != QJsonParseError::NoError || !document.isArray()) {
-            finishWithError(QStringLiteral("GitHub вернул некорректный список выпусков."),
+            finishWithError(tr("GitHub returned a malformed list of releases."),
                             userInitiated);
             return;
         }
 
         const auto currentVersion = parseVersion(QApplication::applicationVersion());
         if (!currentVersion) {
-            finishWithError(QStringLiteral("Не удалось определить установленную версию."),
+            finishWithError(tr("The installed version could not be determined."),
                             userInitiated);
             return;
         }
@@ -327,8 +327,8 @@ void UpdateChecker::checkForUpdates(const bool userInitiated) {
             busy_ = false;
             if (userInitiated) {
                 QMessageBox::information(
-                    dialogParent_, QStringLiteral("Обновление SquidyGit"),
-                    QStringLiteral("Установлена актуальная версия %1.")
+                    dialogParent_, tr("SquidyGit Update"),
+                    tr("Version %1 is up to date.")
                         .arg(QApplication::applicationVersion()));
             }
             return;
@@ -337,7 +337,7 @@ void UpdateChecker::checkForUpdates(const bool userInitiated) {
         const QString suffix = wantedAssetSuffix();
         if (suffix.isEmpty()) {
             finishWithError(
-                QStringLiteral("Для этой архитектуры пока нет готовой сборки.\n%1")
+                tr("There is no build for this architecture yet.\n%1")
                     .arg(QString::fromLatin1(ReleasesPageUrl)),
                 true);
             return;
@@ -363,16 +363,16 @@ void UpdateChecker::checkForUpdates(const bool userInitiated) {
 
         if (!selectedAsset) {
             finishWithError(
-                QStringLiteral("В выпуске %1 нет пакета для этой платформы.\n%2")
+                tr("Release %1 has no package for this platform.\n%2")
                     .arg(availableVersion->display, QString::fromLatin1(ReleasesPageUrl)),
                 true);
             return;
         }
 
         const QMessageBox::StandardButton answer = QMessageBox::question(
-            dialogParent_, QStringLiteral("Доступно обновление"),
-            QStringLiteral("Доступна SquidyGit %1. Сейчас установлена версия %2.\n\n"
-                           "Скачать проверенный пакет обновления?")
+            dialogParent_, tr("Update available"),
+            tr("SquidyGit %1 is available. Version %2 is installed.\n\nDownload the "
+               "verified update package?")
                 .arg(selectedAsset->version, QApplication::applicationVersion()),
             QMessageBox::Yes | QMessageBox::No, QMessageBox::Yes);
         if (answer != QMessageBox::Yes) {
@@ -386,7 +386,7 @@ void UpdateChecker::checkForUpdates(const bool userInitiated) {
             requestChecksums(*selectedAsset, checksumsUrl);
         } else {
             finishWithError(
-                QStringLiteral("Пакет не скачан: в выпуске отсутствует контрольная сумма SHA-256."),
+                tr("The package was not downloaded: the release has no SHA-256 checksum."),
                 true);
         }
     });
@@ -396,7 +396,7 @@ void UpdateChecker::requestChecksums(const ReleaseAsset &asset,
                                      const QString &checksumsUrl) {
     const QUrl url(checksumsUrl);
     if (!isSafeDownloadUrl(url)) {
-        finishWithError(QStringLiteral("Небезопасный адрес файла контрольных сумм."), true);
+        finishWithError(tr("The address of the checksum file is not safe."), true);
         return;
     }
 
@@ -407,7 +407,7 @@ void UpdateChecker::requestChecksums(const ReleaseAsset &asset,
         const QString errorString = reply->errorString();
         reply->deleteLater();
         if (networkError != QNetworkReply::NoError) {
-            finishWithError(QStringLiteral("Не удалось получить контрольные суммы.\n%1")
+            finishWithError(tr("The checksums could not be downloaded.\n%1")
                                 .arg(errorString),
                             true);
             return;
@@ -426,7 +426,7 @@ void UpdateChecker::requestChecksums(const ReleaseAsset &asset,
         }
 
         if (expectedDigest.isEmpty()) {
-            finishWithError(QStringLiteral("Для пакета не найдена контрольная сумма SHA-256."),
+            finishWithError(tr("No SHA-256 checksum was found for the package."),
                             true);
             return;
         }
@@ -444,7 +444,7 @@ void UpdateChecker::downloadAsset(const ReleaseAsset &asset) {
         downloadDirectory = QDir::tempPath();
     }
     if (!QDir().mkpath(downloadDirectory)) {
-        finishWithError(QStringLiteral("Не удалось создать папку для загрузки."), true);
+        finishWithError(tr("The download folder could not be created."), true);
         return;
     }
 
@@ -462,15 +462,15 @@ void UpdateChecker::downloadAsset(const ReleaseAsset &asset) {
 
     const auto state = QSharedPointer<DownloadState>::create(targetPath);
     if (!state->file.open(QIODevice::WriteOnly)) {
-        finishWithError(QStringLiteral("Не удалось сохранить пакет в:\n%1").arg(targetPath),
+        finishWithError(tr("The package could not be saved to:\n%1").arg(targetPath),
                         true);
         return;
     }
 
     state->progress = new QProgressDialog(
-        QStringLiteral("Загрузка %1…").arg(asset.name), QStringLiteral("Отмена"), 0, 100,
+        tr("Downloading %1…").arg(asset.name), tr("Cancel"), 0, 100,
         dialogParent_);
-    state->progress->setWindowTitle(QStringLiteral("Обновление SquidyGit"));
+    state->progress->setWindowTitle(tr("SquidyGit Update"));
     state->progress->setWindowModality(Qt::WindowModal);
     state->progress->setMinimumDuration(0);
     state->progress->setValue(0);
@@ -517,8 +517,8 @@ void UpdateChecker::downloadAsset(const ReleaseAsset &asset) {
                     state->file.cancelWriting();
                     finishWithError(
                         state->writeFailed
-                            ? QStringLiteral("Не удалось записать пакет обновления.")
-                            : QStringLiteral("Загрузка обновления прервана.\n%1")
+                            ? tr("The update package could not be written.")
+                            : tr("The update download was interrupted.\n%1")
                                   .arg(errorString),
                         networkError != QNetworkReply::OperationCanceledError
                             || state->writeFailed);
@@ -530,13 +530,13 @@ void UpdateChecker::downloadAsset(const ReleaseAsset &asset) {
                 if (actualDigest != asset.sha256) {
                     state->file.cancelWriting();
                     finishWithError(
-                        QStringLiteral("Пакет повреждён: контрольная сумма SHA-256 не совпала."),
+                        tr("The package is damaged: the SHA-256 checksum does not match."),
                         true);
                     return;
                 }
 
                 if (!state->file.commit()) {
-                    finishWithError(QStringLiteral("Не удалось завершить сохранение пакета."),
+                    finishWithError(tr("Saving the package could not be completed."),
                                     true);
                     return;
                 }
@@ -569,22 +569,22 @@ void UpdateChecker::openDownloadedPackage(const QString &path) {
                                         | QFileDevice::ExeGroup | QFileDevice::ExeOther);
     }
 
-    QString hint = QStringLiteral("Сейчас откроется штатная установка для вашей системы.");
+    QString hint = tr("The standard installer of your system is about to open.");
     if (isAppImage) {
-        hint = QStringLiteral("Замените текущий AppImage этим файлом и запустите его.");
+        hint = tr("Replace the current AppImage with this file and start it.");
     } else if (isArchive) {
-        hint = QStringLiteral("Распакуйте архив поверх текущей папки с программой.");
+        hint = tr("Unpack the archive over the current program folder.");
     }
 
-    QMessageBox::information(dialogParent_, QStringLiteral("Обновление загружено"),
-                             QStringLiteral("Пакет проверен и сохранён в:\n%1\n\n%2")
+    QMessageBox::information(dialogParent_, tr("Update downloaded"),
+                             tr("The package is verified and saved to:\n%1\n\n%2")
                                  .arg(path, hint));
 
     const QUrl target =
         QUrl::fromLocalFile(isAppImage || isArchive ? fileInfo.absolutePath() : path);
     if (!QDesktopServices::openUrl(target)) {
-        QMessageBox::warning(dialogParent_, QStringLiteral("Обновление SquidyGit"),
-                             QStringLiteral("Не удалось открыть пакет. Он сохранён в:\n%1")
+        QMessageBox::warning(dialogParent_, tr("SquidyGit Update"),
+                             tr("The package could not be opened. It is saved to:\n%1")
                                  .arg(path));
     }
 }
@@ -592,11 +592,10 @@ void UpdateChecker::openDownloadedPackage(const QString &path) {
 #if defined(Q_OS_WIN)
 void UpdateChecker::installWindowsPackage(const QString &path) {
     const QMessageBox::StandardButton answer = QMessageBox::question(
-        dialogParent_, QStringLiteral("Установить обновление"),
-        QStringLiteral("Пакет проверен и готов к установке:\n%1\n\n"
-                       "Windows запросит права администратора. SquidyGit закроется "
-                       "на время установки и запустится снова. Установить обновление "
-                       "сейчас?")
+        dialogParent_, tr("Install update"),
+        tr("The package is verified and ready to install:\n%1\n\nWindows will ask for "
+           "administrator rights. SquidyGit closes for the installation and starts again "
+           "afterwards. Install the update now?")
             .arg(path),
         QMessageBox::Yes | QMessageBox::No, QMessageBox::Yes);
     if (answer != QMessageBox::Yes) {
@@ -623,11 +622,11 @@ void UpdateChecker::installWindowsPackage(const QString &path) {
 
     const DWORD error = GetLastError();
     QMessageBox::warning(
-        dialogParent_, QStringLiteral("Обновление SquidyGit"),
+        dialogParent_, tr("SquidyGit Update"),
         error == ERROR_CANCELLED
-            ? QStringLiteral("Установка отменена. Пакет сохранён в:\n%1").arg(path)
-            : QStringLiteral("Не удалось запустить установку обновления.\n"
-                             "Пакет сохранён в:\n%1")
+            ? tr("The installation was cancelled. The package is saved to:\n%1").arg(path)
+            : tr("The update installation could not be started.\nThe package is saved "
+                 "to:\n%1")
                   .arg(path));
 }
 #endif
@@ -635,8 +634,8 @@ void UpdateChecker::installWindowsPackage(const QString &path) {
 #if defined(Q_OS_LINUX)
 void UpdateChecker::installDebPackage(const QString &path) {
     if (packageInstaller_ != nullptr) {
-        QMessageBox::information(dialogParent_, QStringLiteral("Обновление SquidyGit"),
-                                 QStringLiteral("Установка обновления уже выполняется."));
+        QMessageBox::information(dialogParent_, tr("SquidyGit Update"),
+                                 tr("An update installation is already running."));
         return;
     }
 
@@ -644,22 +643,22 @@ void UpdateChecker::installDebPackage(const QString &path) {
     const QString aptGet = QStandardPaths::findExecutable(QStringLiteral("apt-get"));
     if (pkexec.isEmpty() || aptGet.isEmpty()) {
         QMessageBox::information(
-            dialogParent_, QStringLiteral("Обновление загружено"),
-            QStringLiteral("Пакет проверен и сохранён в:\n%1\n\n"
-                           "Не найден системный установщик apt. Пакет будет открыт вручную.")
+            dialogParent_, tr("Update downloaded"),
+            tr("The package is verified and saved to:\n%1\n\nThe apt system installer was "
+               "not found. The package will be opened manually.")
                 .arg(path));
         if (!QDesktopServices::openUrl(QUrl::fromLocalFile(path))) {
-            QMessageBox::warning(dialogParent_, QStringLiteral("Обновление SquidyGit"),
-                                 QStringLiteral("Не удалось открыть пакет. Он сохранён в:\n%1")
+            QMessageBox::warning(dialogParent_, tr("SquidyGit Update"),
+                                 tr("The package could not be opened. It is saved to:\n%1")
                                      .arg(path));
         }
         return;
     }
 
     const QMessageBox::StandardButton answer = QMessageBox::question(
-        dialogParent_, QStringLiteral("Установить обновление"),
-        QStringLiteral("Пакет проверен и готов к установке:\n%1\n\n"
-                       "Ubuntu запросит пароль администратора. Установить обновление сейчас?")
+        dialogParent_, tr("Install update"),
+        tr("The package is verified and ready to install:\n%1\n\nUbuntu will ask for the "
+           "administrator password. Install the update now?")
             .arg(path),
         QMessageBox::Yes | QMessageBox::No, QMessageBox::Yes);
     if (answer != QMessageBox::Yes) {
@@ -667,8 +666,8 @@ void UpdateChecker::installDebPackage(const QString &path) {
     }
 
     auto *progress = new QProgressDialog(
-        QStringLiteral("Ubuntu устанавливает обновление…"), QString(), 0, 0, dialogParent_);
-    progress->setWindowTitle(QStringLiteral("Обновление SquidyGit"));
+        tr("Ubuntu is installing the update…"), QString(), 0, 0, dialogParent_);
+    progress->setWindowTitle(tr("SquidyGit Update"));
     progress->setWindowModality(Qt::WindowModal);
     progress->setCancelButton(nullptr);
     progress->setMinimumDuration(0);
@@ -696,9 +695,9 @@ void UpdateChecker::installDebPackage(const QString &path) {
                 progress->deleteLater();
                 process->deleteLater();
                 QMessageBox::warning(
-                    dialogParent_, QStringLiteral("Обновление SquidyGit"),
-                    QStringLiteral("Не удалось запустить системную установку.\n"
-                                   "Пакет сохранён в:\n%1")
+                    dialogParent_, tr("SquidyGit Update"),
+                    tr("The system installation could not be started.\nThe package is "
+                       "saved to:\n%1")
                         .arg(path));
             });
     connect(process, &QProcess::finished, this,
@@ -719,14 +718,14 @@ void UpdateChecker::installDebPackage(const QString &path) {
                     // dialog with 126 and 127.
                     QString message =
                         exitCode == 126 || exitCode == 127
-                            ? QStringLiteral("Установка отменена: не получены права "
-                                             "администратора.")
-                            : QStringLiteral("Установка завершилась с ошибкой.");
+                            ? tr("The installation was cancelled: administrator rights "
+                                 "were not granted.")
+                            : tr("The installation failed.");
                     if (!output.isEmpty()) {
                         message += QStringLiteral("\n\n%1").arg(output.right(1600));
                     }
                     QMessageBox::warning(dialogParent_,
-                                         QStringLiteral("Обновление SquidyGit"), message);
+                                         tr("SquidyGit Update"), message);
                     return;
                 }
 
@@ -735,16 +734,16 @@ void UpdateChecker::installDebPackage(const QString &path) {
                 const QString currentVersion = installedPackageVersion();
                 if (!currentVersion.isEmpty() && currentVersion == previousVersion) {
                     QMessageBox::warning(
-                        dialogParent_, QStringLiteral("Обновление SquidyGit"),
-                        QStringLiteral("Версия пакета не изменилась (%1). "
-                                       "Установите пакет вручную:\n%2")
+                        dialogParent_, tr("SquidyGit Update"),
+                        tr("The package version did not change (%1). Install the package "
+                           "manually:\n%2")
                             .arg(currentVersion, path));
                     return;
                 }
 
                 const QMessageBox::StandardButton restart = QMessageBox::question(
-                    dialogParent_, QStringLiteral("Обновление установлено"),
-                    QStringLiteral("SquidyGit успешно обновлён. Перезапустить приложение?"),
+                    dialogParent_, tr("Update installed"),
+                    tr("SquidyGit was updated successfully. Restart the application?"),
                     QMessageBox::Yes | QMessageBox::No, QMessageBox::Yes);
                 if (restart != QMessageBox::Yes) {
                     return;
@@ -759,9 +758,9 @@ void UpdateChecker::installDebPackage(const QString &path) {
                     QApplication::quit();
                 } else {
                     QMessageBox::warning(
-                        dialogParent_, QStringLiteral("Обновление SquidyGit"),
-                        QStringLiteral("Не удалось перезапустить приложение. "
-                                       "Запустите SquidyGit вручную."));
+                        dialogParent_, tr("SquidyGit Update"),
+                        tr("The application could not be restarted. Start SquidyGit "
+                           "manually."));
                 }
             });
 
@@ -773,6 +772,6 @@ void UpdateChecker::installDebPackage(const QString &path) {
 void UpdateChecker::finishWithError(const QString &message, const bool showMessage) {
     busy_ = false;
     if (showMessage) {
-        QMessageBox::warning(dialogParent_, QStringLiteral("Обновление SquidyGit"), message);
+        QMessageBox::warning(dialogParent_, tr("SquidyGit Update"), message);
     }
 }

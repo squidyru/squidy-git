@@ -181,15 +181,15 @@ QString statusLetter(const QChar status) {
 
 QString statusDescription(const QChar status) {
     switch (status.unicode()) {
-        case 'M': return QStringLiteral("Изменён");
-        case 'A': return QStringLiteral("Добавлен");
-        case 'D': return QStringLiteral("Удалён");
-        case 'R': return QStringLiteral("Переименован");
-        case 'C': return QStringLiteral("Скопирован");
-        case 'U': return QStringLiteral("Конфликт");
-        case 'T': return QStringLiteral("Изменён тип");
-        case '?': return QStringLiteral("Новый файл");
-        default: return QStringLiteral("Без изменений");
+        case 'M': return RepositoryView::tr("Modified");
+        case 'A': return RepositoryView::tr("Added");
+        case 'D': return RepositoryView::tr("Deleted");
+        case 'R': return RepositoryView::tr("Renamed");
+        case 'C': return RepositoryView::tr("Copied");
+        case 'U': return RepositoryView::tr("Conflict");
+        case 'T': return RepositoryView::tr("Type changed");
+        case '?': return RepositoryView::tr("New file");
+        default: return RepositoryView::tr("Unchanged");
     }
 }
 
@@ -394,15 +394,15 @@ QWidget *RepositoryView::buildStateBanner() {
     layout->addWidget(stateBadge_);
     layout->addStretch();
 
-    continueButton_ = new QPushButton(QStringLiteral("Продолжить"));
-    abortButton_ = new QPushButton(QStringLiteral("Прервать"));
+    continueButton_ = new QPushButton(tr("Continue"));
+    abortButton_ = new QPushButton(tr("Abort"));
     abortButton_->setProperty("danger", true);
     connect(continueButton_, &QPushButton::clicked, this, [this] {
-        runOperation(QStringLiteral("Продолжение операции"),
+        runOperation(tr("Continuing the operation"),
                      [this] { return git_.continueOperation(); });
     });
     connect(abortButton_, &QPushButton::clicked, this, [this] {
-        runOperation(QStringLiteral("Прерывание операции"),
+        runOperation(tr("Aborting the operation"),
                      [this] { return git_.abortOperation(); });
     });
     layout->addWidget(continueButton_);
@@ -429,9 +429,9 @@ QWidget *RepositoryView::buildViewSwitcher() {
         return button;
     };
 
-    fileStatusButton_ = addButton(QStringLiteral("Состояние файлов"), Page::FileStatus);
-    historyButton_ = addButton(QStringLiteral("Лог / История"), Page::History);
-    searchButton_ = addButton(QStringLiteral("Поиск"), Page::Search);
+    fileStatusButton_ = addButton(tr("File Status"), Page::FileStatus);
+    historyButton_ = addButton(tr("Log / History"), Page::History);
+    searchButton_ = addButton(tr("Search"), Page::Search);
     fileStatusButton_->setChecked(true);
 
     // Switching to the log explicitly drops any branch filter picked in the sidebar.
@@ -484,13 +484,13 @@ QWidget *RepositoryView::buildFileStatusPage() {
 
     auto *toolRow = new QHBoxLayout;
     fileFilter_ = new QLineEdit;
-    fileFilter_->setPlaceholderText(QStringLiteral("Фильтр файлов…"));
+    fileFilter_->setPlaceholderText(tr("Filter files…"));
     fileFilter_->setClearButtonEnabled(true);
     fileFilter_->setMaximumWidth(260);
     treeModeButton_ = new QToolButton;
-    treeModeButton_->setText(QStringLiteral("Дерево"));
+    treeModeButton_->setText(tr("Tree"));
     treeModeButton_->setCheckable(true);
-    treeModeButton_->setToolTip(QStringLiteral("Показать файлы деревом каталогов"));
+    treeModeButton_->setToolTip(tr("Show the files as a directory tree"));
     toolRow->addWidget(fileFilter_);
     toolRow->addWidget(treeModeButton_);
     toolRow->addStretch();
@@ -546,15 +546,15 @@ QWidget *RepositoryView::buildFileStatusPage() {
     QPushButton *unstageSelectedButton = nullptr;
     QPushButton *unstageAllButton = nullptr;
 
-    auto *unstagedPanel = buildFilePanel(QStringLiteral("НЕПРОИНДЕКСИРОВАННЫЕ ФАЙЛЫ"),
+    auto *unstagedPanel = buildFilePanel(tr("UNSTAGED FILES"),
                                          &unstagedCaption_, &unstagedTree_,
-                                         QStringLiteral("Индексировать всё"),
-                                         QStringLiteral("Индексировать"),
+                                         tr("Stage all"),
+                                         tr("Stage"),
                                          &stageAllButton, &stageSelectedButton);
-    auto *stagedPanel = buildFilePanel(QStringLiteral("ПРОИНДЕКСИРОВАННЫЕ ФАЙЛЫ"),
+    auto *stagedPanel = buildFilePanel(tr("STAGED FILES"),
                                        &stagedCaption_, &stagedTree_,
-                                       QStringLiteral("Убрать всё"),
-                                       QStringLiteral("Убрать"),
+                                       tr("Unstage all"),
+                                       tr("Unstage"),
                                        &unstageAllButton, &unstageSelectedButton);
     fileSplitter->addWidget(unstagedPanel);
     fileSplitter->addWidget(stagedPanel);
@@ -566,11 +566,11 @@ QWidget *RepositoryView::buildFileStatusPage() {
     auto *diffLayout = new QVBoxLayout(diffPanel);
     diffLayout->setContentsMargins(0, 0, 0, 0);
     diffLayout->setSpacing(4);
-    diffCaption_ = new QLabel(QStringLiteral("ИЗМЕНЕНИЯ"));
+    diffCaption_ = new QLabel(tr("CHANGES"));
     diffCaption_->setObjectName(QStringLiteral("sectionCaption"));
     diffLayout->addWidget(diffCaption_);
     diffView_ = new DiffView;
-    diffView_->setPlaceholderMessage(QStringLiteral("Выберите файл, чтобы увидеть изменения"));
+    diffView_->setPlaceholderMessage(tr("Select a file to see the changes"));
     diffLayout->addWidget(diffView_, 1);
 
     topSplitter->addWidget(filesPanel);
@@ -587,20 +587,20 @@ QWidget *RepositoryView::buildFileStatusPage() {
     auto *commitHeader = new QHBoxLayout;
     authorLabel_ = new QLabel;
     authorLabel_->setObjectName(QStringLiteral("mutedText"));
-    amendCheck_ = new QCheckBox(QStringLiteral("Исправить предыдущий коммит"));
+    amendCheck_ = new QCheckBox(tr("Amend the previous commit"));
     commitHeader->addWidget(authorLabel_);
     commitHeader->addStretch();
     commitHeader->addWidget(amendCheck_);
     commitLayout->addLayout(commitHeader);
 
     commitMessage_ = new QPlainTextEdit;
-    commitMessage_->setPlaceholderText(QStringLiteral("Сообщение коммита"));
+    commitMessage_->setPlaceholderText(tr("Commit message"));
     commitMessage_->setMaximumHeight(96);
     commitLayout->addWidget(commitMessage_);
 
     auto *commitFooter = new QHBoxLayout;
-    pushAfterCommitCheck_ = new QCheckBox(QStringLiteral("Сразу отправить изменения"));
-    commitButton_ = new QPushButton(QStringLiteral("Зафиксировать"));
+    pushAfterCommitCheck_ = new QCheckBox(tr("Push right after the commit"));
+    commitButton_ = new QPushButton(tr("Commit"));
     commitButton_->setProperty("accent", true);
     commitButton_->setIcon(Icons::icon(Icons::Glyph::Commit, Qt::white));
     commitFooter->addWidget(pushAfterCommitCheck_);
@@ -633,8 +633,8 @@ QWidget *RepositoryView::buildFileStatusPage() {
         if (checked && commitMessage_->toPlainText().trimmed().isEmpty()) {
             commitMessage_->setPlainText(git_.lastCommitMessage());
         }
-        commitButton_->setText(checked ? QStringLiteral("Исправить коммит")
-                                       : QStringLiteral("Зафиксировать"));
+        commitButton_->setText(checked ? tr("Amend commit")
+                                       : tr("Commit"));
         commitButton_->setEnabled(!operationInProgress_
                                   && !commitMessage_->toPlainText().trimmed().isEmpty()
                                   && (hasStagedChanges_ || checked));
@@ -680,24 +680,24 @@ QWidget *RepositoryView::buildHistoryPage() {
 
     auto *toolRow = new QHBoxLayout;
     historyScope_ = new QComboBox;
-    historyScope_->addItem(QStringLiteral("Все ветки"),
+    historyScope_->addItem(tr("All branches"),
                            static_cast<int>(GitHistoryScope::AllBranches));
-    historyScope_->addItem(QStringLiteral("Текущая ветка"),
+    historyScope_->addItem(tr("Current branch"),
                            static_cast<int>(GitHistoryScope::CurrentBranch));
-    showRemoteBranches_ = new QCheckBox(QStringLiteral("Показывать удалённые ветки"));
+    showRemoteBranches_ = new QCheckBox(tr("Show remote branches"));
     showRemoteBranches_->setChecked(true);
     historyOrder_ = new QComboBox;
-    historyOrder_->addItem(QStringLiteral("По дате"), true);
-    historyOrder_->addItem(QStringLiteral("По топологии"), false);
+    historyOrder_->addItem(tr("By date"), true);
+    historyOrder_->addItem(tr("By topology"), false);
     historyFilter_ = new QLineEdit(page);
-    historyFilter_->setPlaceholderText(QStringLiteral("Фильтр по описанию, автору или SHA…"));
+    historyFilter_->setPlaceholderText(tr("Filter by message, author or SHA…"));
     historyFilter_->setClearButtonEnabled(true);
     // Full-text commit search has its own page. Hiding this secondary filter
     // keeps the history command row calm and spacious.
     historyFilter_->hide();
-    auto *jumpLabel = new QLabel(QStringLiteral("Перейти к:"));
+    auto *jumpLabel = new QLabel(tr("Go to:"));
     jumpToEdit_ = new QLineEdit;
-    jumpToEdit_->setPlaceholderText(QStringLiteral("SHA или ветка"));
+    jumpToEdit_->setPlaceholderText(tr("SHA or branch"));
     jumpToEdit_->setMaximumWidth(150);
 
     toolRow->addWidget(historyScope_);
@@ -714,11 +714,11 @@ QWidget *RepositoryView::buildHistoryPage() {
     historyTree_ = new QTreeWidget;
     historyTree_->setObjectName(QStringLiteral("historyTree"));
     historyTree_->setHeaderLabels({
-        QStringLiteral("Граф"),
-        QStringLiteral("Описание"),
-        QStringLiteral("Дата"),
-        QStringLiteral("Автор"),
-        QStringLiteral("Коммит")
+        tr("Graph"),
+        tr("Message"),
+        tr("Date"),
+        tr("Author"),
+        tr("Commit", "noun")
     });
     historyTree_->setRootIsDecorated(false);
     historyTree_->setUniformRowHeights(true);
@@ -761,7 +761,7 @@ QWidget *RepositoryView::buildHistoryPage() {
 
     commitDiffView_ = new DiffView;
     commitDiffView_->setMode(DiffView::Mode::ReadOnly);
-    commitDiffView_->setPlaceholderMessage(QStringLiteral("Выберите файл коммита"));
+    commitDiffView_->setPlaceholderMessage(tr("Select a file of the commit"));
 
     detailsSplitter->addWidget(leftSplitter);
     detailsSplitter->addWidget(commitDiffView_);
@@ -799,7 +799,7 @@ QWidget *RepositoryView::buildHistoryPage() {
                 return;
             }
         }
-        Q_EMIT messagePosted(QStringLiteral("Коммит «%1» не найден в загруженной истории.")
+        Q_EMIT messagePosted(tr("Commit “%1” was not found in the loaded history.")
                                  .arg(query), 5'000);
     });
     connect(historyFilter_, &QLineEdit::textChanged, this, [this](const QString &text) {
@@ -819,7 +819,7 @@ QWidget *RepositoryView::buildHistoryPage() {
     connect(commitFilesTree_, &QTreeWidget::currentItemChanged, this, [this] {
         QTreeWidgetItem *fileItem = commitFilesTree_->currentItem();
         if (fileItem == nullptr) {
-            commitDiffView_->setPlaceholderMessage(QStringLiteral("Выберите файл коммита"));
+            commitDiffView_->setPlaceholderMessage(tr("Select a file of the commit"));
             return;
         }
         const QString path = fileItem->data(0, PathRole).toString();
@@ -848,17 +848,17 @@ QWidget *RepositoryView::buildSearchPage() {
 
     auto *toolRow = new QHBoxLayout;
     searchMode_ = new QComboBox;
-    searchMode_->addItem(QStringLiteral("Описание"), static_cast<int>(GitSearchMode::Message));
-    searchMode_->addItem(QStringLiteral("Автор"), static_cast<int>(GitSearchMode::Author));
-    searchMode_->addItem(QStringLiteral("Содержимое файлов"),
+    searchMode_->addItem(tr("Message"), static_cast<int>(GitSearchMode::Message));
+    searchMode_->addItem(tr("Author"), static_cast<int>(GitSearchMode::Author));
+    searchMode_->addItem(tr("File contents"),
                          static_cast<int>(GitSearchMode::FileContents));
-    searchMode_->addItem(QStringLiteral("Путь к файлу"),
+    searchMode_->addItem(tr("File path"),
                          static_cast<int>(GitSearchMode::FilePath));
-    searchMode_->addItem(QStringLiteral("SHA коммита"), static_cast<int>(GitSearchMode::Hash));
+    searchMode_->addItem(tr("Commit SHA"), static_cast<int>(GitSearchMode::Hash));
     searchEdit_ = new QLineEdit;
-    searchEdit_->setPlaceholderText(QStringLiteral("Что ищем?"));
+    searchEdit_->setPlaceholderText(tr("What are we looking for?"));
     searchEdit_->setClearButtonEnabled(true);
-    auto *searchButton = new QPushButton(QStringLiteral("Искать"));
+    auto *searchButton = new QPushButton(tr("Search", "button"));
     searchButton->setProperty("accent", true);
     searchButton->setIcon(Icons::icon(Icons::Glyph::Search, Qt::white));
     toolRow->addWidget(searchMode_);
@@ -868,10 +868,10 @@ QWidget *RepositoryView::buildSearchPage() {
 
     searchResults_ = new QTreeWidget;
     searchResults_->setHeaderLabels({
-        QStringLiteral("Описание"),
-        QStringLiteral("Дата"),
-        QStringLiteral("Автор"),
-        QStringLiteral("Коммит")
+        tr("Message"),
+        tr("Date"),
+        tr("Author"),
+        tr("Commit", "noun")
     });
     searchResults_->setRootIsDecorated(false);
     searchResults_->setUniformRowHeights(true);
@@ -880,7 +880,7 @@ QWidget *RepositoryView::buildSearchPage() {
     layout->addWidget(searchResults_, 1);
 
     auto *hintLabel = new QLabel(
-        QStringLiteral("Двойной щелчок по результату откроет коммит в истории."));
+        tr("A double click on a result opens the commit in the history."));
     hintLabel->setObjectName(QStringLiteral("mutedText"));
     layout->addWidget(hintLabel);
 
@@ -940,7 +940,7 @@ void RepositoryView::refreshHeader() {
     const QString stateText = state_.description();
     stateBanner_->setVisible(state_.isBusy());
     stateBadge_->setText(state_.isBusy()
-                             ? QStringLiteral("%1 — завершите операцию или прервите её")
+                             ? tr("%1 — finish the operation or abort it")
                                    .arg(stateText)
                              : stateText);
 
@@ -948,7 +948,8 @@ void RepositoryView::refreshHeader() {
     const QString email = git_.userEmail();
     if (authorLabel_ != nullptr) {
         authorLabel_->setText(author.isEmpty()
-                                  ? QStringLiteral("Автор не настроен — задайте его в настройках")
+                                  ? tr("The author is not configured — set it in the "
+                                       "settings")
                                   : QStringLiteral("%1 <%2>").arg(author, email));
     }
 }
@@ -971,19 +972,19 @@ void RepositoryView::refreshNavigation() {
 
     const ThemePalette &palette = Theme::instance()->palette();
     const QColor sectionColor = palette.sectionText;
-    auto *workspace = addSection(navigationTree_, QStringLiteral("Состояние файлов"),
+    auto *workspace = addSection(navigationTree_, tr("File Status"),
                                  navigationSectionIcon(Icons::Glyph::FileStatus, sectionColor));
-    auto *statusItem = addNavigationItem(workspace, QStringLiteral("Рабочая копия"),
+    auto *statusItem = addNavigationItem(workspace, tr("Working tree"),
                                          NavigationFileStatus);
     if (!files_.isEmpty()) {
-        statusItem->setText(0, QStringLiteral("Рабочая копия  (%1)").arg(files_.size()));
+        statusItem->setText(0, tr("Working tree  (%1)").arg(files_.size()));
     }
     if (previousKind == NavigationFileStatus || previousKind == NavigationHistory
         || previousKind == NavigationSearch) {
         itemToSelect = statusItem;
     }
 
-    auto *branchesSection = addSection(navigationTree_, QStringLiteral("Ветки"),
+    auto *branchesSection = addSection(navigationTree_, tr("Branches"),
                                        navigationSectionIcon(Icons::Glyph::Branch, sectionColor));
     const QList<GitBranchInfo> branches = git_.branches();
     QHash<QString, QTreeWidgetItem *> folders;
@@ -1013,8 +1014,8 @@ void RepositoryView::refreshNavigation() {
         item->setToolTip(0, QStringLiteral("%1\n%2\n%3")
                                 .arg(branch.name, branch.subject,
                                      branch.upstream.isEmpty()
-                                         ? QStringLiteral("Без отслеживания")
-                                         : QStringLiteral("Отслеживает %1").arg(branch.upstream)));
+                                         ? tr("Not tracking")
+                                         : tr("Tracks %1").arg(branch.upstream)));
         if (branch.current) {
             QFont font = item->font(0);
             font.setBold(true);
@@ -1026,13 +1027,13 @@ void RepositoryView::refreshNavigation() {
         }
     }
     if (branches.isEmpty()) {
-        addNavigationItem(branchesSection, QStringLiteral("Нет веток"), NavigationPlaceholder)
+        addNavigationItem(branchesSection, tr("No branches"), NavigationPlaceholder)
             ->setDisabled(true);
     }
 
     const QList<GitTagInfo> tags = git_.tags();
     if (!tags.isEmpty()) {
-        auto *tagsSection = addSection(navigationTree_, QStringLiteral("Теги"),
+        auto *tagsSection = addSection(navigationTree_, tr("Tags"),
                                        navigationSectionIcon(Icons::Glyph::Tag, sectionColor));
         for (const GitTagInfo &tag : tags) {
             auto *item = addNavigationItem(tagsSection, tag.name, NavigationTag, tag.name);
@@ -1043,7 +1044,7 @@ void RepositoryView::refreshNavigation() {
         }
     }
 
-    auto *remotesSection = addSection(navigationTree_, QStringLiteral("Удалённые"),
+    auto *remotesSection = addSection(navigationTree_, tr("Remotes"),
                                       navigationSectionIcon(Icons::Glyph::Remote, sectionColor));
     const QList<GitRemoteInfo> remotes = git_.remotes();
     for (const GitRemoteInfo &remote : remotes) {
@@ -1061,12 +1062,12 @@ void RepositoryView::refreshNavigation() {
         }
     }
     if (remotes.isEmpty()) {
-        addNavigationItem(remotesSection, QStringLiteral("Нет удалённых"), NavigationPlaceholder)
+        addNavigationItem(remotesSection, tr("No remotes"), NavigationPlaceholder)
             ->setDisabled(true);
     }
 
     if (!stashes_.isEmpty()) {
-        auto *stashSection = addSection(navigationTree_, QStringLiteral("Спрятанное"),
+        auto *stashSection = addSection(navigationTree_, tr("Stashes"),
                                         navigationSectionIcon(Icons::Glyph::Stash, sectionColor));
         for (const GitStashInfo &stash : stashes_) {
             auto *item = addNavigationItem(
@@ -1081,7 +1082,7 @@ void RepositoryView::refreshNavigation() {
 
     const QList<GitSubmoduleInfo> submodules = git_.submodules();
     if (!submodules.isEmpty()) {
-        auto *submoduleSection = addSection(navigationTree_, QStringLiteral("Подмодули"),
+        auto *submoduleSection = addSection(navigationTree_, tr("Submodules"),
                                             navigationSectionIcon(Icons::Glyph::Submodule,
                                                                   sectionColor));
         for (const GitSubmoduleInfo &submodule : submodules) {
@@ -1124,9 +1125,9 @@ void RepositoryView::refreshStatus() {
     populateFileTree(unstagedTree_, unstaged, false);
     populateFileTree(stagedTree_, staged, true);
 
-    unstagedCaption_->setText(QStringLiteral("НЕПРОИНДЕКСИРОВАННЫЕ ФАЙЛЫ  (%1)")
+    unstagedCaption_->setText(tr("UNSTAGED FILES  (%1)")
                                   .arg(unstaged.size()));
-    stagedCaption_->setText(QStringLiteral("ПРОИНДЕКСИРОВАННЫЕ ФАЙЛЫ  (%1)").arg(staged.size()));
+    stagedCaption_->setText(tr("STAGED FILES  (%1)").arg(staged.size()));
 
     // Always preview something: fall back to the first changed file.
     if (unstagedTree_->selectedItems().isEmpty() && stagedTree_->selectedItems().isEmpty()) {
@@ -1200,7 +1201,7 @@ void RepositoryView::populateFileTree(QTreeWidget *tree, const QList<GitFileStat
 
         QString tooltip = QStringLiteral("%1\n%2").arg(file.path, statusDescription(status));
         if (!file.originalPath.isEmpty()) {
-            tooltip += QStringLiteral("\nРанее: %1").arg(file.originalPath);
+            tooltip += tr("\nPreviously: %1").arg(file.originalPath);
         }
         item->setToolTip(0, tooltip);
         if (file.isConflicted()) {
@@ -1248,19 +1249,19 @@ void RepositoryView::refreshWorkingTreeDiff() {
     }
 
     if (item == nullptr || item->data(0, IsDirectoryRole).toBool()) {
-        diffCaption_->setText(QStringLiteral("ИЗМЕНЕНИЯ"));
+        diffCaption_->setText(tr("CHANGES"));
         diffView_->setMode(DiffView::Mode::ReadOnly);
         diffView_->setPlaceholderMessage(
-            files_.isEmpty() ? QStringLiteral("Рабочая копия чистая — изменений нет")
-                             : QStringLiteral("Выберите файл, чтобы увидеть изменения"));
+            files_.isEmpty() ? tr("The working tree is clean — there are no changes")
+                             : tr("Select a file to see the changes"));
         return;
     }
 
     const QString path = item->data(0, PathRole).toString();
     const bool untracked = item->data(0, IsUntrackedRole).toBool();
     diffCaption_->setText(QStringLiteral("%1  —  %2")
-                              .arg(staged ? QStringLiteral("В ИНДЕКСЕ")
-                                          : QStringLiteral("РАБОЧАЯ КОПИЯ"),
+                              .arg(staged ? tr("STAGED")
+                                          : tr("WORKING TREE"),
                                    path.toUpper()));
 
     const GitCommandResult result = git_.diff(path, staged, untracked);
@@ -1274,7 +1275,7 @@ void RepositoryView::refreshWorkingTreeDiff() {
                                  : (staged ? DiffView::Mode::Staged : DiffView::Mode::Unstaged));
     const QString patch = result.outputText();
     if (patch.trimmed().isEmpty()) {
-        diffView_->setPlaceholderMessage(QStringLiteral("Git не вернул различий для этого файла."));
+        diffView_->setPlaceholderMessage(tr("Git returned no differences for this file."));
     } else {
         diffView_->setPatch(patch);
     }
@@ -1325,7 +1326,7 @@ void RepositoryView::refreshHistory() {
 
     if (showUncommitted) {
         auto *item = new QTreeWidgetItem(historyTree_);
-        item->setText(1, QStringLiteral("Незафиксированные изменения"));
+        item->setText(1, tr("Uncommitted changes"));
         item->setData(0, CommitRoles::IsUncommitted, true);
         QFont font = item->font(1);
         font.setItalic(true);
@@ -1372,7 +1373,7 @@ void RepositoryView::refreshHistory() {
     if (!errorMessage.isEmpty()) {
         commitDetails_->setPlainText(errorMessage);
     } else if (commits_.isEmpty() && !showUncommitted) {
-        commitDetails_->setPlainText(QStringLiteral("В репозитории пока нет коммитов."));
+        commitDetails_->setPlainText(tr("The repository has no commits yet."));
         commitFilesTree_->clear();
         commitDiffView_->setPlaceholderMessage(QString());
     } else {
@@ -1383,7 +1384,7 @@ void RepositoryView::refreshHistory() {
 void RepositoryView::refreshCommitDetails() {
     QTreeWidgetItem *item = historyTree_->currentItem();
     commitFilesTree_->clear();
-    commitDiffView_->setPlaceholderMessage(QStringLiteral("Выберите файл"));
+    commitDiffView_->setPlaceholderMessage(tr("Select a file"));
 
     if (item == nullptr) {
         commitDetails_->clear();
@@ -1392,11 +1393,8 @@ void RepositoryView::refreshCommitDetails() {
 
     if (item->data(0, CommitRoles::IsUncommitted).toBool()) {
         commitDetails_->setHtml(
-            QStringLiteral("<p><b>Незафиксированные изменения</b></p>"
-                           "<table cellspacing='0' cellpadding='2'>"
-                           "<tr><td><b>Файлов:&nbsp;&nbsp;</b></td><td>%1</td></tr>"
-                           "<tr><td><b>Ветка:&nbsp;&nbsp;</b></td><td>%2</td></tr>"
-                           "</table>")
+            tr("<p><b>Uncommitted changes</b></p><table cellspacing='0' "
+               "cellpadding='2'><tr><td><b>Files:&nbsp;&nbsp;</b></td><td>%1</td></tr><tr><td><b>Branch:&nbsp;&nbsp;</b></td><td>%2</td></tr></table>")
                 .arg(files_.size())
                 .arg(currentBranch_.toHtmlEscaped()));
         for (const GitFileStatus &file : files_) {
@@ -1444,18 +1442,18 @@ void RepositoryView::refreshCommitDetails() {
         details += row(QStringLiteral("Commit:"),
                        QStringLiteral("%1 [%2]").arg(commit->hash, commit->shortHash));
         if (!parents.isEmpty()) {
-            details += row(QStringLiteral("Родители:"), parents.join(QStringLiteral("&nbsp; ")));
+            details += row(tr("Parents:"), parents.join(QStringLiteral("&nbsp; ")));
         }
-        details += row(QStringLiteral("Автор:"),
+        details += row(tr("Author:"),
                        QStringLiteral("%1 &lt;%2&gt;")
                            .arg(commit->author.toHtmlEscaped(),
                                 commit->authorEmail.toHtmlEscaped()));
-        details += row(QStringLiteral("Дата:"), formatTimestamp(commit->authoredAt));
+        details += row(tr("Date:"), formatTimestamp(commit->authoredAt));
         if (commit->committer != commit->author) {
-            details += row(QStringLiteral("Коммитер:"), commit->committer.toHtmlEscaped());
+            details += row(tr("Committer:"), commit->committer.toHtmlEscaped());
         }
         if (!commit->references.isEmpty()) {
-            details += row(QStringLiteral("Ссылки:"), commit->references.toHtmlEscaped());
+            details += row(tr("Refs:"), commit->references.toHtmlEscaped());
         }
         details += QStringLiteral("</table>");
 
@@ -1477,7 +1475,7 @@ void RepositoryView::refreshCommitDetails() {
         fileItem->setData(0, PathRole, file.path);
         QString tooltip = QStringLiteral("%1\n%2").arg(file.path, statusDescription(file.status));
         if (!file.originalPath.isEmpty()) {
-            tooltip += QStringLiteral("\nРанее: %1").arg(file.originalPath);
+            tooltip += tr("\nPreviously: %1").arg(file.originalPath);
         }
         if (file.additions > 0 || file.deletions > 0) {
             tooltip += QStringLiteral("\n+%1 / -%2").arg(file.additions).arg(file.deletions);
@@ -1596,37 +1594,37 @@ void RepositoryView::showNavigationContextMenu(const QPoint &position) {
     if (kind == NavigationBranch) {
         const bool isCurrent = value == currentBranch_;
         if (!isCurrent) {
-            menu.addAction(Icons::icon(Icons::Glyph::Checkout), QStringLiteral("Переключиться"),
+            menu.addAction(Icons::icon(Icons::Glyph::Checkout), tr("Switch"),
                            this, [this, value] { checkoutBranch(value); });
             menu.addAction(Icons::icon(Icons::Glyph::Merge),
-                           QStringLiteral("Влить в текущую ветку"), this, [this, value] {
+                           tr("Merge into the current branch"), this, [this, value] {
                                MergeDialog dialog(value, currentBranch_, this);
                                if (dialog.exec() == QDialog::Accepted) {
-                                   runOperation(QStringLiteral("Слияние"), [this, &dialog, value] {
+                                   runOperation(tr("Merge"), [this, &dialog, value] {
                                        return git_.merge(value, dialog.noFastForward(),
                                                          dialog.squash(), dialog.commitResult());
                                    });
                                }
                            });
             menu.addAction(Icons::icon(Icons::Glyph::Rebase),
-                           QStringLiteral("Перебазировать текущую ветку сюда"), this,
+                           tr("Rebase the current branch here"), this,
                            [this, value] {
                                runOperation(QStringLiteral("Rebase"),
                                             [this, value] { return git_.rebase(value); });
                            });
         }
         menu.addSeparator();
-        menu.addAction(QStringLiteral("Переименовать…"), this, [this, value] {
+        menu.addAction(tr("Rename…"), this, [this, value] {
             bool accepted = false;
             const QString name = QInputDialog::getText(
-                this, QStringLiteral("Переименовать ветку"), QStringLiteral("Новое имя:"),
+                this, tr("Rename branch"), tr("New name:"),
                 QLineEdit::Normal, value, &accepted).trimmed();
             if (accepted && !name.isEmpty()) {
-                runOperation(QStringLiteral("Переименование ветки"),
+                runOperation(tr("Renaming the branch"),
                              [this, value, name] { return git_.renameBranch(value, name); });
             }
         });
-        menu.addAction(Icons::icon(Icons::Glyph::Push), QStringLiteral("Отправить ветку"), this,
+        menu.addAction(Icons::icon(Icons::Glyph::Push), tr("Push the branch"), this,
                        [this, value] {
                            runRemoteOperation(QStringLiteral("Push"), [this, value] {
                                return git_.push(QStringLiteral("origin"), {value}, true, false,
@@ -1634,23 +1632,23 @@ void RepositoryView::showNavigationContextMenu(const QPoint &position) {
                            });
                        });
         if (!isCurrent) {
-            menu.addAction(Icons::icon(Icons::Glyph::Trash), QStringLiteral("Удалить ветку"), this,
+            menu.addAction(Icons::icon(Icons::Glyph::Trash), tr("Delete branch"), this,
                            [this, value] {
                                const QMessageBox::StandardButton answer = QMessageBox::question(
-                                   this, QStringLiteral("Удалить ветку"),
-                                   QStringLiteral("Удалить ветку «%1»?").arg(value));
+                                   this, tr("Delete branch"),
+                                   tr("Delete the branch “%1”?").arg(value));
                                if (answer != QMessageBox::Yes) {
                                    return;
                                }
-                               if (!runOperation(QStringLiteral("Удаление ветки"),
+                               if (!runOperation(tr("Deleting the branch"),
                                                  [this, value] {
                                                      return git_.deleteBranch(value, false);
                                                  })) {
                                    const QMessageBox::StandardButton force = QMessageBox::question(
-                                       this, QStringLiteral("Ветка не слита"),
-                                       QStringLiteral("Удалить «%1» принудительно?").arg(value));
+                                       this, tr("The branch is not merged"),
+                                       tr("Delete “%1” anyway?").arg(value));
                                    if (force == QMessageBox::Yes) {
-                                       runOperation(QStringLiteral("Удаление ветки"),
+                                       runOperation(tr("Deleting the branch"),
                                                     [this, value] {
                                                         return git_.deleteBranch(value, true);
                                                     });
@@ -1660,17 +1658,17 @@ void RepositoryView::showNavigationContextMenu(const QPoint &position) {
         }
     } else if (kind == NavigationRemoteBranch) {
         menu.addAction(Icons::icon(Icons::Glyph::Checkout),
-                       QStringLiteral("Создать локальную ветку и переключиться"), this,
+                       tr("Create a local branch and switch to it"), this,
                        [this, value] { checkoutRemoteBranch(value); });
-        menu.addAction(Icons::icon(Icons::Glyph::Merge), QStringLiteral("Влить в текущую ветку"),
+        menu.addAction(Icons::icon(Icons::Glyph::Merge), tr("Merge into the current branch"),
                        this, [this, value] {
-                           runOperation(QStringLiteral("Слияние"), [this, value] {
+                           runOperation(tr("Merge"), [this, value] {
                                return git_.merge(value, false, false, true);
                            });
                        });
         menu.addSeparator();
         menu.addAction(Icons::icon(Icons::Glyph::Trash),
-                       QStringLiteral("Удалить ветку в удалённом репозитории"), this,
+                       tr("Delete the branch in the remote repository"), this,
                        [this, value] {
                            const qsizetype separator = value.indexOf(u'/');
                            if (separator <= 0) {
@@ -1679,10 +1677,10 @@ void RepositoryView::showNavigationContextMenu(const QPoint &position) {
                            const QString remote = value.left(separator);
                            const QString branch = value.mid(separator + 1);
                            const QMessageBox::StandardButton answer = QMessageBox::question(
-                               this, QStringLiteral("Удалить удалённую ветку"),
-                               QStringLiteral("Удалить «%1» в «%2»?").arg(branch, remote));
+                               this, tr("Delete remote branch"),
+                               tr("Delete “%1” in “%2”?").arg(branch, remote));
                            if (answer == QMessageBox::Yes) {
-                               runRemoteOperation(QStringLiteral("Удаление ветки"),
+                               runRemoteOperation(tr("Deleting the branch"),
                                                   [this, remote, branch] {
                                                       return git_.deleteRemoteBranch(remote,
                                                                                      branch);
@@ -1690,55 +1688,55 @@ void RepositoryView::showNavigationContextMenu(const QPoint &position) {
                            }
                        });
     } else if (kind == NavigationTag) {
-        menu.addAction(Icons::icon(Icons::Glyph::Checkout), QStringLiteral("Перейти к тегу"), this,
+        menu.addAction(Icons::icon(Icons::Glyph::Checkout), tr("Go to the tag"), this,
                        [this, value] {
                            runOperation(QStringLiteral("Checkout"),
                                         [this, value] { return git_.checkoutRevision(value); });
                        });
-        menu.addAction(Icons::icon(Icons::Glyph::Push), QStringLiteral("Отправить тег"), this,
+        menu.addAction(Icons::icon(Icons::Glyph::Push), tr("Push the tag"), this,
                        [this, value] {
-                           runRemoteOperation(QStringLiteral("Push тега"), [this, value] {
+                           runRemoteOperation(tr("Pushing the tag"), [this, value] {
                                return git_.push(QStringLiteral("origin"), {value}, false, false,
                                                 false);
                            });
                        });
-        menu.addAction(Icons::icon(Icons::Glyph::Trash), QStringLiteral("Удалить тег"), this,
+        menu.addAction(Icons::icon(Icons::Glyph::Trash), tr("Delete tag"), this,
                        [this, value] {
-                           runOperation(QStringLiteral("Удаление тега"),
+                           runOperation(tr("Deleting the tag"),
                                         [this, value] { return git_.deleteTag(value); });
                        });
     } else if (kind == NavigationStash) {
         const int index = value.toInt();
-        menu.addAction(Icons::icon(Icons::Glyph::StashPop), QStringLiteral("Применить и удалить"),
+        menu.addAction(Icons::icon(Icons::Glyph::StashPop), tr("Apply and drop"),
                        this, [this, index] {
                            runOperation(QStringLiteral("Stash pop"),
                                         [this, index] { return git_.stashApply(index, true); });
                        });
-        menu.addAction(QStringLiteral("Применить, сохранив в списке"), this, [this, index] {
+        menu.addAction(tr("Apply and keep in the list"), this, [this, index] {
             runOperation(QStringLiteral("Stash apply"),
                          [this, index] { return git_.stashApply(index, false); });
         });
-        menu.addAction(Icons::icon(Icons::Glyph::Trash), QStringLiteral("Удалить"), this,
+        menu.addAction(Icons::icon(Icons::Glyph::Trash), tr("Delete"), this,
                        [this, index] {
                            runOperation(QStringLiteral("Stash drop"),
                                         [this, index] { return git_.stashDrop(index); });
                        });
     } else if (kind == NavigationRemote) {
-        menu.addAction(Icons::icon(Icons::Glyph::Fetch), QStringLiteral("Получить изменения"),
+        menu.addAction(Icons::icon(Icons::Glyph::Fetch), tr("Fetch"),
                        this, [this, value] {
                            runRemoteOperation(QStringLiteral("Fetch"), [this, value] {
                                return git_.fetch(value, true, true);
                            });
                        });
-        menu.addAction(Icons::icon(Icons::Glyph::Trash), QStringLiteral("Удалить репозиторий"),
+        menu.addAction(Icons::icon(Icons::Glyph::Trash), tr("Delete the remote"),
                        this, [this, value] {
-                           runOperation(QStringLiteral("Удаление remote"),
+                           runOperation(tr("Deleting the remote"),
                                         [this, value] { return git_.removeRemote(value); });
                        });
     } else if (kind == NavigationSection || kind == NavigationPlaceholder) {
-        menu.addAction(Icons::icon(Icons::Glyph::Branch), QStringLiteral("Новая ветка…"), this,
+        menu.addAction(Icons::icon(Icons::Glyph::Branch), tr("New branch…"), this,
                        [this] { createBranchInteractive(); });
-        menu.addAction(Icons::icon(Icons::Glyph::Remote), QStringLiteral("Добавить remote…"),
+        menu.addAction(Icons::icon(Icons::Glyph::Remote), tr("Add remote…"),
                        this, [this] { addRemoteInteractive(); });
     }
 
@@ -1756,42 +1754,42 @@ void RepositoryView::showFileContextMenu(QTreeWidget *tree, const bool staged,
 
     QMenu menu(this);
     if (staged) {
-        menu.addAction(QStringLiteral("Убрать из индекса"), this, [this] { unstageSelected(); });
+        menu.addAction(tr("Unstage", "context menu"), this, [this] { unstageSelected(); });
     } else {
-        menu.addAction(QStringLiteral("Добавить в индекс"), this, [this] { stageSelected(); });
-        menu.addAction(Icons::icon(Icons::Glyph::Discard), QStringLiteral("Откатить изменения"),
+        menu.addAction(tr("Stage", "context menu"), this, [this] { stageSelected(); });
+        menu.addAction(Icons::icon(Icons::Glyph::Discard), tr("Discard the changes"),
                        this, [this] { discardSelectedFiles(); });
     }
 
     QTreeWidgetItem *item = tree->itemAt(position);
     if (item != nullptr && item->data(0, IsConflictedRole).toBool()) {
         menu.addSeparator();
-        menu.addAction(QStringLiteral("Разрешить: оставить свои изменения"), this,
+        menu.addAction(tr("Resolve: keep our changes"), this,
                        [this, paths] {
-                           runOperation(QStringLiteral("Разрешение конфликта"), [this, paths] {
+                           runOperation(tr("Resolving the conflict"), [this, paths] {
                                return git_.resolveWith(paths, true);
                            });
                        });
-        menu.addAction(QStringLiteral("Разрешить: принять чужие изменения"), this,
+        menu.addAction(tr("Resolve: take their changes"), this,
                        [this, paths] {
-                           runOperation(QStringLiteral("Разрешение конфликта"), [this, paths] {
+                           runOperation(tr("Resolving the conflict"), [this, paths] {
                                return git_.resolveWith(paths, false);
                            });
                        });
     }
 
     menu.addSeparator();
-    menu.addAction(QStringLiteral("Открыть файл"), this, [this, tree] { openSelectedFile(tree); });
-    menu.addAction(QStringLiteral("Показать в папке"), this, [this, paths] {
+    menu.addAction(tr("Open the file"), this, [this, tree] { openSelectedFile(tree); });
+    menu.addAction(tr("Show in the folder"), this, [this, paths] {
         const QFileInfo info(QDir(git_.repositoryRoot()).filePath(paths.constFirst()));
         QDesktopServices::openUrl(QUrl::fromLocalFile(info.absolutePath()));
     });
-    menu.addAction(QStringLiteral("Скопировать путь"), this, [paths] {
+    menu.addAction(tr("Copy the path"), this, [paths] {
         QGuiApplication::clipboard()->setText(paths.join(u'\n'));
     });
     menu.addSeparator();
-    menu.addAction(QStringLiteral("Добавить в .gitignore"), this, [this, paths] {
-        runOperation(QStringLiteral("Обновление .gitignore"),
+    menu.addAction(tr("Add to .gitignore"), this, [this, paths] {
+        runOperation(tr("Updating .gitignore"),
                      [this, paths] { return git_.ignore(paths); });
     });
 
@@ -1812,7 +1810,7 @@ void RepositoryView::stageSelected() {
     if (paths.isEmpty()) {
         return;
     }
-    runOperation(QStringLiteral("Индексация"), [this, paths] { return git_.stage(paths); });
+    runOperation(tr("Staging"), [this, paths] { return git_.stage(paths); });
 }
 
 void RepositoryView::unstageSelected() {
@@ -1820,16 +1818,16 @@ void RepositoryView::unstageSelected() {
     if (paths.isEmpty()) {
         return;
     }
-    runOperation(QStringLiteral("Удаление из индекса"),
+    runOperation(tr("Unstaging"),
                  [this, paths] { return git_.unstage(paths); });
 }
 
 void RepositoryView::stageAll() {
-    runOperation(QStringLiteral("Индексация всех файлов"), [this] { return git_.stageAll(); });
+    runOperation(tr("Staging all files"), [this] { return git_.stageAll(); });
 }
 
 void RepositoryView::unstageAll() {
-    runOperation(QStringLiteral("Очистка индекса"), [this] { return git_.unstageAll(); });
+    runOperation(tr("Clearing the index"), [this] { return git_.unstageAll(); });
 }
 
 void RepositoryView::discardSelectedFiles() {
@@ -1848,14 +1846,14 @@ void RepositoryView::discardSelectedFiles() {
     }
 
     if (tracked.isEmpty() && untracked.isEmpty()) {
-        Q_EMIT messagePosted(QStringLiteral("Выберите файлы в списке непроиндексированных."),
+        Q_EMIT messagePosted(tr("Select files in the list of unstaged files."),
                              4'000);
         return;
     }
 
     const QMessageBox::StandardButton answer = QMessageBox::warning(
-        this, QStringLiteral("Откатить изменения"),
-        QStringLiteral("Изменения в %1 файл(ах) будут потеряны безвозвратно. Продолжить?")
+        this, tr("Discard the changes"),
+        tr("The changes in %1 file(s) will be lost irreversibly. Continue?")
             .arg(tracked.size() + untracked.size()),
         QMessageBox::Yes | QMessageBox::No, QMessageBox::No);
     if (answer != QMessageBox::Yes) {
@@ -1863,11 +1861,11 @@ void RepositoryView::discardSelectedFiles() {
     }
 
     if (!tracked.isEmpty()) {
-        runOperation(QStringLiteral("Откат изменений"),
+        runOperation(tr("Discarding the changes"),
                      [this, tracked] { return git_.discard(tracked, false); }, untracked.isEmpty());
     }
     if (!untracked.isEmpty()) {
-        runOperation(QStringLiteral("Удаление новых файлов"),
+        runOperation(tr("Deleting the new files"),
                      [this, untracked] { return git_.discard(untracked, true); });
     }
 }
@@ -1879,12 +1877,12 @@ void RepositoryView::createCommit() {
     }
     const bool amend = amendCheck_->isChecked();
     if (!hasStagedChanges_ && !amend) {
-        Q_EMIT messagePosted(QStringLiteral("Нет проиндексированных изменений."), 4'000);
+        Q_EMIT messagePosted(tr("There are no staged changes."), 4'000);
         return;
     }
 
     pushAfterCommitPending_ = pushAfterCommitCheck_->isChecked();
-    if (!runOperation(QStringLiteral("Коммит"),
+    if (!runOperation(tr("Commit", "noun"),
                       [this, message, amend] { return git_.commit(message, amend); })) {
         pushAfterCommitPending_ = false;
         return;
@@ -1892,7 +1890,7 @@ void RepositoryView::createCommit() {
 
     commitMessage_->clear();
     amendCheck_->setChecked(false);
-    Q_EMIT messagePosted(QStringLiteral("Коммит создан"), 4'000);
+    Q_EMIT messagePosted(tr("The commit was created"), 4'000);
 
     if (pushAfterCommitPending_) {
         pushAfterCommitPending_ = false;
@@ -1904,8 +1902,8 @@ void RepositoryView::applyPatchAction(const QByteArray &patch, const int action)
     const auto diffAction = static_cast<DiffAction>(action);
     if (diffAction == DiffAction::Discard) {
         const QMessageBox::StandardButton answer = QMessageBox::warning(
-            this, QStringLiteral("Откатить изменения"),
-            QStringLiteral("Выбранные строки будут удалены из рабочей копии. Продолжить?"),
+            this, tr("Discard the changes"),
+            tr("The selected lines will be removed from the working tree. Continue?"),
             QMessageBox::Yes | QMessageBox::No, QMessageBox::No);
         if (answer != QMessageBox::Yes) {
             return;
@@ -1913,10 +1911,10 @@ void RepositoryView::applyPatchAction(const QByteArray &patch, const int action)
     }
 
     const QString title = diffAction == DiffAction::Stage
-                              ? QStringLiteral("Индексация фрагмента")
+                              ? tr("Staging the fragment")
                               : (diffAction == DiffAction::Unstage
-                                     ? QStringLiteral("Удаление фрагмента из индекса")
-                                     : QStringLiteral("Откат фрагмента"));
+                                     ? tr("Unstaging the fragment")
+                                     : tr("Discarding the fragment"));
 
     runOperation(title, [this, patch, diffAction] {
         switch (diffAction) {
@@ -1937,9 +1935,9 @@ void RepositoryView::showHistoryContextMenu(const QPoint &position) {
 
     if (item->data(0, CommitRoles::IsUncommitted).toBool()) {
         QMenu menu(this);
-        menu.addAction(Icons::icon(Icons::Glyph::Commit), QStringLiteral("Перейти к коммиту"),
+        menu.addAction(Icons::icon(Icons::Glyph::Commit), tr("Go to the commit"),
                        this, [this] { focusCommitMessage(); });
-        menu.addAction(Icons::icon(Icons::Glyph::Stash), QStringLiteral("Спрятать изменения…"),
+        menu.addAction(Icons::icon(Icons::Glyph::Stash), tr("Stash the changes…"),
                        this, [this] { createStash(); });
         menu.exec(historyTree_->viewport()->mapToGlobal(position));
         return;
@@ -1952,44 +1950,44 @@ void RepositoryView::showHistoryContextMenu(const QPoint &position) {
     const QString shortHash = item->text(4);
 
     QMenu menu(this);
-    menu.addAction(Icons::icon(Icons::Glyph::Checkout), QStringLiteral("Перейти к этому коммиту"),
+    menu.addAction(Icons::icon(Icons::Glyph::Checkout), tr("Go to this commit"),
                    this, [this, hash] {
                        const QMessageBox::StandardButton answer = QMessageBox::question(
                            this, QStringLiteral("Checkout"),
-                           QStringLiteral("Перейти в состояние отсоединённого HEAD?"));
+                           tr("Switch to a detached HEAD state?"));
                        if (answer == QMessageBox::Yes) {
                            runOperation(QStringLiteral("Checkout"),
                                         [this, hash] { return git_.checkoutRevision(hash); });
                        }
                    });
-    menu.addAction(Icons::icon(Icons::Glyph::Branch), QStringLiteral("Создать ветку отсюда…"),
+    menu.addAction(Icons::icon(Icons::Glyph::Branch), tr("Create a branch from here…"),
                    this, [this, hash, shortHash] {
-                       BranchDialog dialog(QStringLiteral("коммита %1").arg(shortHash), this);
+                       BranchDialog dialog(tr("commit %1").arg(shortHash), this);
                        if (dialog.exec() == QDialog::Accepted) {
                            const QString name = dialog.branchName();
                            const bool checkout = dialog.checkoutAfterCreate();
-                           runOperation(QStringLiteral("Создание ветки"), [this, name, hash,
+                           runOperation(tr("Creating the branch"), [this, name, hash,
                                                                           checkout] {
                                return git_.createBranch(name, hash, checkout);
                            });
                        }
                    });
-    menu.addAction(Icons::icon(Icons::Glyph::Tag), QStringLiteral("Создать тег…"), this,
+    menu.addAction(Icons::icon(Icons::Glyph::Tag), tr("Create a tag…"), this,
                    [this, hash, shortHash] {
                        TagDialog dialog(shortHash, this);
                        if (dialog.exec() == QDialog::Accepted) {
                            const QString name = dialog.tagName();
                            const QString message = dialog.tagMessage();
-                           runOperation(QStringLiteral("Создание тега"), [this, name, hash,
+                           runOperation(tr("Creating the tag"), [this, name, hash,
                                                                          message] {
                                return git_.createTag(name, hash, message);
                            });
                        }
                    });
     menu.addSeparator();
-    menu.addAction(Icons::icon(Icons::Glyph::Merge), QStringLiteral("Влить в текущую ветку"),
+    menu.addAction(Icons::icon(Icons::Glyph::Merge), tr("Merge into the current branch"),
                    this, [this, hash] {
-                       runOperation(QStringLiteral("Слияние"),
+                       runOperation(tr("Merge"),
                                     [this, hash] { return git_.merge(hash, false, false, true); });
                    });
     menu.addAction(Icons::icon(Icons::Glyph::CherryPick), QStringLiteral("Cherry-pick"), this,
@@ -1997,13 +1995,13 @@ void RepositoryView::showHistoryContextMenu(const QPoint &position) {
                        runOperation(QStringLiteral("Cherry-pick"),
                                     [this, hash] { return git_.cherryPick(hash); });
                    });
-    menu.addAction(Icons::icon(Icons::Glyph::Discard), QStringLiteral("Откатить коммит (revert)"),
+    menu.addAction(Icons::icon(Icons::Glyph::Discard), tr("Revert the commit"),
                    this, [this, hash] {
                        runOperation(QStringLiteral("Revert"),
                                     [this, hash] { return git_.revert(hash); });
                    });
     menu.addAction(Icons::icon(Icons::Glyph::Reset),
-                   QStringLiteral("Сбросить текущую ветку сюда…"), this,
+                   tr("Reset the current branch here…"), this,
                    [this, hash, shortHash] {
                        ResetDialog dialog(shortHash, this);
                        if (dialog.exec() == QDialog::Accepted) {
@@ -2013,10 +2011,10 @@ void RepositoryView::showHistoryContextMenu(const QPoint &position) {
                        }
                    });
     menu.addSeparator();
-    menu.addAction(QStringLiteral("Скопировать SHA"), this, [hash] {
+    menu.addAction(tr("Copy the SHA"), this, [hash] {
         QGuiApplication::clipboard()->setText(hash);
     });
-    menu.addAction(QStringLiteral("Скопировать описание"), this, [item] {
+    menu.addAction(tr("Copy the message"), this, [item] {
         QGuiApplication::clipboard()->setText(item->text(1));
     });
 
@@ -2054,7 +2052,7 @@ void RepositoryView::runSearch() {
         item->setData(0, CommitRoles::Hash, commit.hash);
     }
 
-    Q_EMIT messagePosted(QStringLiteral("Найдено коммитов: %1").arg(results.size()), 5'000);
+    Q_EMIT messagePosted(tr("Commits found: %1").arg(results.size()), 5'000);
 }
 
 void RepositoryView::focusCommitMessage() {
@@ -2073,13 +2071,13 @@ void RepositoryView::checkoutInteractive() {
         options.append(QStringLiteral("tag: %1").arg(tag.name));
     }
     if (options.isEmpty()) {
-        Q_EMIT messagePosted(QStringLiteral("Нет доступных веток или тегов."), 4'000);
+        Q_EMIT messagePosted(tr("There are no branches or tags available."), 4'000);
         return;
     }
 
     bool accepted = false;
     const QString choice = QInputDialog::getItem(
-        this, QStringLiteral("Переключиться"), QStringLiteral("Ветка или тег:"), options, 0,
+        this, tr("Switch"), tr("Branch or tag:"), options, 0,
         false, &accepted);
     if (!accepted || choice.isEmpty()) {
         return;
@@ -2098,7 +2096,7 @@ void RepositoryView::checkoutBranch(const QString &name) {
     if (name == currentBranch_) {
         return;
     }
-    runOperation(QStringLiteral("Переключение ветки"),
+    runOperation(tr("Switching the branch"),
                  [this, name] { return git_.checkoutBranch(name); });
 }
 
@@ -2111,8 +2109,8 @@ void RepositoryView::checkoutRemoteBranch(const QString &remoteBranch) {
 
     bool accepted = false;
     const QString name = QInputDialog::getText(
-        this, QStringLiteral("Локальная ветка"),
-        QStringLiteral("Имя локальной ветки для %1:").arg(remoteBranch),
+        this, tr("Local branch"),
+        tr("Name of the local branch for %1:").arg(remoteBranch),
         QLineEdit::Normal, localName, &accepted).trimmed();
     if (!accepted || name.isEmpty()) {
         return;
@@ -2126,7 +2124,7 @@ void RepositoryView::checkoutRemoteBranch(const QString &remoteBranch) {
 void RepositoryView::createBranchInteractive() {
     const QString startPoint = currentBranch_.isEmpty()
                                    ? QStringLiteral("HEAD")
-                                   : QStringLiteral("ветки %1").arg(currentBranch_);
+                                   : tr("branch %1").arg(currentBranch_);
     BranchDialog dialog(startPoint, this);
     if (dialog.exec() != QDialog::Accepted) {
         return;
@@ -2134,7 +2132,7 @@ void RepositoryView::createBranchInteractive() {
 
     const QString name = dialog.branchName();
     const bool checkout = dialog.checkoutAfterCreate();
-    runOperation(QStringLiteral("Создание ветки"),
+    runOperation(tr("Creating the branch"),
                  [this, name, checkout] { return git_.createBranch(name, {}, checkout); });
 }
 
@@ -2151,13 +2149,13 @@ void RepositoryView::mergeInteractive() {
         }
     }
     if (options.isEmpty()) {
-        Q_EMIT messagePosted(QStringLiteral("Нет веток для слияния."), 4'000);
+        Q_EMIT messagePosted(tr("There are no branches to merge."), 4'000);
         return;
     }
 
     bool accepted = false;
     const QString source = QInputDialog::getItem(
-        this, QStringLiteral("Слияние"), QStringLiteral("Влить ветку:"), options, 0, false,
+        this, tr("Merge"), tr("Merge branch:"), options, 0, false,
         &accepted);
     if (!accepted || source.isEmpty()) {
         return;
@@ -2171,7 +2169,7 @@ void RepositoryView::mergeInteractive() {
     const bool noFastForward = dialog.noFastForward();
     const bool squash = dialog.squash();
     const bool commitResult = dialog.commitResult();
-    runOperation(QStringLiteral("Слияние"), [this, source, noFastForward, squash, commitResult] {
+    runOperation(tr("Merge"), [this, source, noFastForward, squash, commitResult] {
         return git_.merge(source, noFastForward, squash, commitResult);
     });
 }
@@ -2189,13 +2187,13 @@ void RepositoryView::createTagInteractive() {
 
     const QString name = dialog.tagName();
     const QString message = dialog.tagMessage();
-    runOperation(QStringLiteral("Создание тега"),
+    runOperation(tr("Creating the tag"),
                  [this, name, hash, message] { return git_.createTag(name, hash, message); });
 }
 
 void RepositoryView::createStash() {
     if (files_.isEmpty()) {
-        Q_EMIT messagePosted(QStringLiteral("Нет изменений для stash."), 4'000);
+        Q_EMIT messagePosted(tr("There are no changes to stash."), 4'000);
         return;
     }
 
@@ -2214,7 +2212,7 @@ void RepositoryView::createStash() {
 
 void RepositoryView::popLatestStash() {
     if (stashes_.isEmpty()) {
-        Q_EMIT messagePosted(QStringLiteral("Список stash пуст."), 4'000);
+        Q_EMIT messagePosted(tr("The stash list is empty."), 4'000);
         return;
     }
     runOperation(QStringLiteral("Stash pop"), [this] { return git_.stashApply(0, true); });
@@ -2232,8 +2230,8 @@ void RepositoryView::startPush() {
     const QList<GitRemoteInfo> remotes = git_.remotes();
     if (remotes.isEmpty()) {
         const QMessageBox::StandardButton answer = QMessageBox::question(
-            this, QStringLiteral("Нет удалённых репозиториев"),
-            QStringLiteral("Добавить удалённый репозиторий сейчас?"));
+            this, tr("There are no remote repositories"),
+            tr("Add a remote repository now?"));
         if (answer == QMessageBox::Yes) {
             addRemoteInteractive();
         }
@@ -2251,7 +2249,7 @@ void RepositoryView::startPush() {
     const bool tags = dialog.pushTags();
     const bool force = dialog.forcePush();
     if (branches.isEmpty() && !tags) {
-        Q_EMIT messagePosted(QStringLiteral("Не выбрано ни одной ветки."), 4'000);
+        Q_EMIT messagePosted(tr("No branch is selected."), 4'000);
         return;
     }
 
@@ -2270,7 +2268,7 @@ void RepositoryView::addRemoteInteractive() {
     if (name.isEmpty() || url.isEmpty()) {
         return;
     }
-    runOperation(QStringLiteral("Добавление remote"),
+    runOperation(tr("Adding the remote"),
                  [this, name, url] { return git_.addRemote(name, url); });
 }
 
@@ -2290,7 +2288,7 @@ void RepositoryView::openTerminal() {
             return;
         }
     }
-    Q_EMIT messagePosted(QStringLiteral("Не удалось запустить терминал."), 5'000);
+    Q_EMIT messagePosted(tr("The terminal could not be started."), 5'000);
 }
 
 void RepositoryView::openFileManager() {
@@ -2336,7 +2334,7 @@ bool RepositoryView::runOperation(const QString &title,
     }
 
     const QString report = result.reportText().trimmed();
-    Q_EMIT messagePosted(report.isEmpty() ? QStringLiteral("%1: готово").arg(title)
+    Q_EMIT messagePosted(report.isEmpty() ? tr("%1: done").arg(title)
                                           : QStringLiteral("%1: %2").arg(title,
                                                                          report.section(u'\n', 0, 0)),
                          5'000);
@@ -2355,7 +2353,7 @@ void RepositoryView::runRemoteOperation(const QString &title,
     operationInProgress_ = true;
     operationTitle_ = title;
     Q_EMIT busyChanged(true);
-    Q_EMIT messagePosted(QStringLiteral("%1 выполняется…").arg(title), 0);
+    Q_EMIT messagePosted(tr("%1 is running…").arg(title), 0);
     operationWatcher_->setFuture(QtConcurrent::run(operation));
 }
 
@@ -2369,7 +2367,7 @@ void RepositoryView::finishRemoteOperation() {
     } else {
         const QString report = result.reportText().trimmed();
         Q_EMIT messagePosted(report.isEmpty()
-                                 ? QStringLiteral("%1: готово").arg(operationTitle_)
+                                 ? tr("%1: done").arg(operationTitle_)
                                  : QStringLiteral("%1: %2").arg(operationTitle_,
                                                                 report.section(u'\n', -1)),
                              8'000);
@@ -2382,7 +2380,7 @@ void RepositoryView::reportError(const QString &title, const GitCommandResult &r
     QMessageBox box(this);
     box.setIcon(QMessageBox::Warning);
     box.setWindowTitle(title);
-    box.setText(QStringLiteral("Команда git завершилась с ошибкой."));
+    box.setText(tr("The git command failed."));
     box.setInformativeText(result.errorText().section(u'\n', 0, 4));
     box.setDetailedText(result.reportText());
     box.exec();

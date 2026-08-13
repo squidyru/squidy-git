@@ -506,14 +506,14 @@ void DiffView::contextMenuEvent(QContextMenuEvent *event) {
         auto *first = menu->actions().isEmpty() ? nullptr : menu->actions().constFirst();
         const bool staged = mode_ == Mode::Staged;
 
-        auto *hunkAction = new QAction(staged ? tr("Убрать ханк из индекса")
-                                              : tr("Добавить ханк в индекс"), menu);
+        auto *hunkAction = new QAction(staged ? tr("Unstage hunk")
+                                              : tr("Stage hunk"), menu);
         connect(hunkAction, &QAction::triggered, this, [this, staged] {
             requestHunk(staged ? DiffAction::Unstage : DiffAction::Stage);
         });
 
-        auto *linesAction = new QAction(staged ? tr("Убрать выбранные строки")
-                                               : tr("Добавить выбранные строки"), menu);
+        auto *linesAction = new QAction(staged ? tr("Unstage selected lines")
+                                               : tr("Stage selected lines"), menu);
         connect(linesAction, &QAction::triggered, this, [this, staged] {
             requestLines(staged ? DiffAction::Unstage : DiffAction::Stage);
         });
@@ -522,10 +522,10 @@ void DiffView::contextMenuEvent(QContextMenuEvent *event) {
         menu->insertAction(first, linesAction);
 
         if (!staged) {
-            auto *discardHunk = new QAction(tr("Откатить ханк"), menu);
+            auto *discardHunk = new QAction(tr("Discard hunk"), menu);
             connect(discardHunk, &QAction::triggered, this,
                     [this] { requestHunk(DiffAction::Discard); });
-            auto *discardLines = new QAction(tr("Откатить выбранные строки"), menu);
+            auto *discardLines = new QAction(tr("Discard selected lines"), menu);
             connect(discardLines, &QAction::triggered, this,
                     [this] { requestLines(DiffAction::Discard); });
             menu->insertAction(first, discardHunk);

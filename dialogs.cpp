@@ -54,7 +54,7 @@ QString repositoryNameFromUrl(const QString &url) {
 
 CloneDialog::CloneDialog(QWidget *parent)
     : QDialog(parent) {
-    setWindowTitle(QStringLiteral("Клонировать репозиторий"));
+    setWindowTitle(tr("Clone Repository"));
     setModal(true);
     resize(640, 460);
 
@@ -64,21 +64,21 @@ CloneDialog::CloneDialog(QWidget *parent)
 
     sourceEdit_ = new QLineEdit;
     sourceEdit_->setPlaceholderText(QStringLiteral("https://github.com/user/project.git"));
-    form->addRow(QStringLiteral("Исходный путь / URL:"), sourceEdit_);
+    form->addRow(tr("Source path or URL:"), sourceEdit_);
 
     auto *destinationRow = new QHBoxLayout;
     destinationEdit_ = new QLineEdit;
-    auto *browseButton = new QPushButton(QStringLiteral("Обзор…"));
+    auto *browseButton = new QPushButton(tr("Browse…"));
     destinationRow->addWidget(destinationEdit_, 1);
     destinationRow->addWidget(browseButton);
-    form->addRow(QStringLiteral("Локальная папка:"), destinationRow);
+    form->addRow(tr("Local folder:"), destinationRow);
 
-    recursiveCheck_ = new QCheckBox(QStringLiteral("Клонировать подмодули (--recurse-submodules)"));
+    recursiveCheck_ = new QCheckBox(tr("Clone submodules (--recurse-submodules)"));
     form->addRow(QString(), recursiveCheck_);
     layout->addLayout(form);
 
-    layout->addWidget(hint(QStringLiteral(
-        "Интерактивный ввод пароля отключён: используйте SSH-ключ или менеджер учётных данных Git.")));
+    layout->addWidget(hint(tr("Interactive password entry is disabled: use an SSH key or a "
+                              "Git credential helper.")));
 
     progress_ = new QProgressBar;
     progress_->setRange(0, 0);
@@ -88,11 +88,11 @@ CloneDialog::CloneDialog(QWidget *parent)
     outputView_ = new QPlainTextEdit;
     outputView_->setReadOnly(true);
     outputView_->setFont(QFontDatabase::systemFont(QFontDatabase::FixedFont));
-    outputView_->setPlaceholderText(QStringLiteral("Вывод git clone появится здесь"));
+    outputView_->setPlaceholderText(tr("The output of git clone appears here"));
     layout->addWidget(outputView_, 1);
 
     buttons_ = new QDialogButtonBox(QDialogButtonBox::Cancel);
-    cloneButton_ = buttons_->addButton(QStringLiteral("Клонировать"),
+    cloneButton_ = buttons_->addButton(tr("Clone"),
                                        QDialogButtonBox::AcceptRole);
     cloneButton_->setProperty("accent", true);
     cloneButton_->setIcon(Icons::icon(Icons::Glyph::Clone));
@@ -118,7 +118,7 @@ QString CloneDialog::clonedPath() const {
 
 void CloneDialog::browseDestination() {
     const QString directory = QFileDialog::getExistingDirectory(
-        this, QStringLiteral("Выберите папку назначения"), destinationEdit_->text());
+        this, tr("Select the destination folder"), destinationEdit_->text());
     if (!directory.isEmpty()) {
         destinationEdit_->setText(QDir::toNativeSeparators(directory));
     }
@@ -143,19 +143,19 @@ void CloneDialog::startClone() {
     const QString source = sourceEdit_->text().trimmed();
     const QString destination = destinationEdit_->text().trimmed();
     if (source.isEmpty() || destination.isEmpty()) {
-        appendOutput(QStringLiteral("Укажите URL репозитория и папку назначения."));
+        appendOutput(tr("Enter the repository URL and the destination folder."));
         return;
     }
 
     const QDir destinationDir(destination);
     if (destinationDir.exists() && !destinationDir.isEmpty()) {
-        appendOutput(QStringLiteral("Папка %1 не пуста.").arg(destination));
+        appendOutput(tr("The folder %1 is not empty.").arg(destination));
         return;
     }
 
     const QString executable = GitClient::gitExecutable();
     if (executable.isEmpty()) {
-        appendOutput(QStringLiteral("Git не найден в PATH."));
+        appendOutput(tr("Git was not found in PATH."));
         return;
     }
 
@@ -212,33 +212,33 @@ void CloneDialog::finishClone(const int exitCode) {
     destinationEdit_->setEnabled(true);
 
     if (exitCode == 0) {
-        appendOutput(QStringLiteral("\nГотово."));
+        appendOutput(tr("\nDone."));
         accept();
     } else {
         clonedPath_.clear();
-        appendOutput(QStringLiteral("\nКлонирование не удалось (код %1).").arg(exitCode));
+        appendOutput(tr("\nCloning failed (code %1).").arg(exitCode));
     }
 }
 
 BranchDialog::BranchDialog(const QString &startPointDescription, QWidget *parent)
     : QDialog(parent) {
-    setWindowTitle(QStringLiteral("Новая ветка"));
+    setWindowTitle(tr("New Branch"));
     setModal(true);
 
     auto *layout = new QVBoxLayout(this);
     auto *form = new QFormLayout;
     nameEdit_ = new QLineEdit;
-    nameEdit_->setPlaceholderText(QStringLiteral("feature/новая-функция"));
-    form->addRow(QStringLiteral("Имя ветки:"), nameEdit_);
-    form->addRow(QStringLiteral("Создать от:"), new QLabel(startPointDescription));
+    nameEdit_->setPlaceholderText(tr("feature/new-feature"));
+    form->addRow(tr("Branch name:"), nameEdit_);
+    form->addRow(tr("Create from:"), new QLabel(startPointDescription));
     layout->addLayout(form);
 
-    checkoutCheck_ = new QCheckBox(QStringLiteral("Переключиться на новую ветку"));
+    checkoutCheck_ = new QCheckBox(tr("Switch to the new branch"));
     checkoutCheck_->setChecked(true);
     layout->addWidget(checkoutCheck_);
 
     auto *buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel);
-    buttons->button(QDialogButtonBox::Ok)->setText(QStringLiteral("Создать ветку"));
+    buttons->button(QDialogButtonBox::Ok)->setText(tr("Create Branch"));
     buttons->button(QDialogButtonBox::Ok)->setProperty("accent", true);
     layout->addWidget(buttons);
 
@@ -260,17 +260,17 @@ bool BranchDialog::checkoutAfterCreate() const {
 
 MergeDialog::MergeDialog(const QString &source, const QString &target, QWidget *parent)
     : QDialog(parent) {
-    setWindowTitle(QStringLiteral("Слияние"));
+    setWindowTitle(tr("Merge"));
     setModal(true);
 
     auto *layout = new QVBoxLayout(this);
-    layout->addWidget(new QLabel(QStringLiteral("Влить «%1» в текущую ветку «%2».")
+    layout->addWidget(new QLabel(tr("Merge “%1” into the current branch “%2”.")
                                      .arg(source, target)));
 
     noFastForwardCheck_ = new QCheckBox(
-        QStringLiteral("Создать коммит слияния, даже если возможен fast-forward"));
-    squashCheck_ = new QCheckBox(QStringLiteral("Squash — свести изменения в одно"));
-    commitCheck_ = new QCheckBox(QStringLiteral("Зафиксировать результат сразу"));
+        tr("Create a merge commit even when fast-forward is possible"));
+    squashCheck_ = new QCheckBox(tr("Squash — combine the changes into one"));
+    commitCheck_ = new QCheckBox(tr("Commit the result right away"));
     commitCheck_->setChecked(true);
     layout->addWidget(noFastForwardCheck_);
     layout->addWidget(squashCheck_);
@@ -282,7 +282,7 @@ MergeDialog::MergeDialog(const QString &source, const QString &target, QWidget *
     });
 
     auto *buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel);
-    buttons->button(QDialogButtonBox::Ok)->setText(QStringLiteral("Слить"));
+    buttons->button(QDialogButtonBox::Ok)->setText(tr("Merge", "button"));
     buttons->button(QDialogButtonBox::Ok)->setProperty("accent", true);
     layout->addWidget(buttons);
     connect(buttons, &QDialogButtonBox::accepted, this, &QDialog::accept);
@@ -303,7 +303,7 @@ bool MergeDialog::commitResult() const {
 
 TagDialog::TagDialog(const QString &revisionDescription, QWidget *parent)
     : QDialog(parent) {
-    setWindowTitle(QStringLiteral("Новый тег"));
+    setWindowTitle(tr("New Tag"));
     setModal(true);
 
     auto *layout = new QVBoxLayout(this);
@@ -311,14 +311,14 @@ TagDialog::TagDialog(const QString &revisionDescription, QWidget *parent)
     nameEdit_ = new QLineEdit;
     nameEdit_->setPlaceholderText(QStringLiteral("v1.0.0"));
     messageEdit_ = new QLineEdit;
-    messageEdit_->setPlaceholderText(QStringLiteral("Необязательное описание (annotated tag)"));
-    form->addRow(QStringLiteral("Имя тега:"), nameEdit_);
-    form->addRow(QStringLiteral("Сообщение:"), messageEdit_);
-    form->addRow(QStringLiteral("Коммит:"), new QLabel(revisionDescription));
+    messageEdit_->setPlaceholderText(tr("Optional description (annotated tag)"));
+    form->addRow(tr("Tag name:"), nameEdit_);
+    form->addRow(tr("Message:"), messageEdit_);
+    form->addRow(tr("Commit:"), new QLabel(revisionDescription));
     layout->addLayout(form);
 
     auto *buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel);
-    buttons->button(QDialogButtonBox::Ok)->setText(QStringLiteral("Создать тег"));
+    buttons->button(QDialogButtonBox::Ok)->setText(tr("Create Tag"));
     buttons->button(QDialogButtonBox::Ok)->setProperty("accent", true);
     buttons->button(QDialogButtonBox::Ok)->setEnabled(false);
     layout->addWidget(buttons);
@@ -340,24 +340,24 @@ QString TagDialog::tagMessage() const {
 
 StashDialog::StashDialog(QWidget *parent)
     : QDialog(parent) {
-    setWindowTitle(QStringLiteral("Спрятать изменения"));
+    setWindowTitle(tr("Stash Changes"));
     setModal(true);
 
     auto *layout = new QVBoxLayout(this);
     auto *form = new QFormLayout;
     messageEdit_ = new QLineEdit;
-    messageEdit_->setPlaceholderText(QStringLiteral("Описание stash'а"));
-    form->addRow(QStringLiteral("Сообщение:"), messageEdit_);
+    messageEdit_->setPlaceholderText(tr("Stash description"));
+    form->addRow(tr("Message:"), messageEdit_);
     layout->addLayout(form);
 
-    keepStagedCheck_ = new QCheckBox(QStringLiteral("Оставить проиндексированные изменения"));
-    untrackedCheck_ = new QCheckBox(QStringLiteral("Включить неотслеживаемые файлы"));
+    keepStagedCheck_ = new QCheckBox(tr("Keep the staged changes"));
+    untrackedCheck_ = new QCheckBox(tr("Include untracked files"));
     untrackedCheck_->setChecked(true);
     layout->addWidget(keepStagedCheck_);
     layout->addWidget(untrackedCheck_);
 
     auto *buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel);
-    buttons->button(QDialogButtonBox::Ok)->setText(QStringLiteral("Спрятать"));
+    buttons->button(QDialogButtonBox::Ok)->setText(tr("Stash"));
     buttons->button(QDialogButtonBox::Ok)->setProperty("accent", true);
     layout->addWidget(buttons);
     connect(buttons, &QDialogButtonBox::accepted, this, &QDialog::accept);
@@ -378,25 +378,25 @@ bool StashDialog::includeUntracked() const {
 
 ResetDialog::ResetDialog(const QString &revisionDescription, QWidget *parent)
     : QDialog(parent) {
-    setWindowTitle(QStringLiteral("Сбросить текущую ветку"));
+    setWindowTitle(tr("Reset Current Branch"));
     setModal(true);
 
     auto *layout = new QVBoxLayout(this);
-    layout->addWidget(new QLabel(QStringLiteral("Переместить текущую ветку на %1")
+    layout->addWidget(new QLabel(tr("Move the current branch to %1")
                                      .arg(revisionDescription)));
 
-    softButton_ = new QRadioButton(QStringLiteral("Soft — оставить изменения в индексе"));
-    mixedButton_ = new QRadioButton(QStringLiteral("Mixed — оставить изменения в рабочей копии"));
-    hardButton_ = new QRadioButton(QStringLiteral("Hard — удалить все локальные изменения"));
+    softButton_ = new QRadioButton(tr("Soft — keep the changes staged"));
+    mixedButton_ = new QRadioButton(tr("Mixed — keep the changes in the working tree"));
+    hardButton_ = new QRadioButton(tr("Hard — discard all local changes"));
     mixedButton_->setChecked(true);
     layout->addWidget(softButton_);
     layout->addWidget(mixedButton_);
     layout->addWidget(hardButton_);
-    layout->addWidget(hint(QStringLiteral(
-        "Hard-сброс необратимо удаляет несохранённые изменения в рабочей копии.")));
+    layout->addWidget(hint(tr("A hard reset irreversibly deletes uncommitted changes in "
+                              "the working tree.")));
 
     auto *buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel);
-    buttons->button(QDialogButtonBox::Ok)->setText(QStringLiteral("Сбросить"));
+    buttons->button(QDialogButtonBox::Ok)->setText(tr("Reset"));
     layout->addWidget(buttons);
     connect(buttons, &QDialogButtonBox::accepted, this, &QDialog::accept);
     connect(buttons, &QDialogButtonBox::rejected, this, &QDialog::reject);
@@ -429,17 +429,17 @@ PushDialog::PushDialog(const QList<GitRemoteInfo> &remotes, const QList<GitBranc
     if (remoteCombo_->count() == 0) {
         remoteCombo_->addItem(QStringLiteral("origin"), QStringLiteral("origin"));
     }
-    form->addRow(QStringLiteral("Репозиторий:"), remoteCombo_);
+    form->addRow(tr("Repository:"), remoteCombo_);
     layout->addLayout(form);
 
-    layout->addWidget(new QLabel(QStringLiteral("Ветки для отправки:")));
+    layout->addWidget(new QLabel(tr("Branches to push:")));
     branchList_ = new QListWidget;
     for (const GitBranchInfo &branch : branches) {
         auto *item = new QListWidgetItem(branch.name, branchList_);
         item->setFlags(item->flags() | Qt::ItemIsUserCheckable);
         item->setCheckState(branch.name == currentBranch ? Qt::Checked : Qt::Unchecked);
         if (!branch.upstream.isEmpty()) {
-            item->setToolTip(QStringLiteral("Отслеживает %1 (ahead %2, behind %3)")
+            item->setToolTip(tr("Tracks %1 (ahead %2, behind %3)")
                                  .arg(branch.upstream)
                                  .arg(branch.ahead)
                                  .arg(branch.behind));
@@ -447,10 +447,10 @@ PushDialog::PushDialog(const QList<GitRemoteInfo> &remotes, const QList<GitBranc
     }
     layout->addWidget(branchList_, 1);
 
-    upstreamCheck_ = new QCheckBox(QStringLiteral("Отслеживать ветку в удалённом репозитории"));
+    upstreamCheck_ = new QCheckBox(tr("Track the branch in the remote repository"));
     upstreamCheck_->setChecked(true);
-    tagsCheck_ = new QCheckBox(QStringLiteral("Отправить теги"));
-    forceCheck_ = new QCheckBox(QStringLiteral("Принудительно (--force-with-lease)"));
+    tagsCheck_ = new QCheckBox(tr("Push tags"));
+    forceCheck_ = new QCheckBox(tr("Force (--force-with-lease)"));
     layout->addWidget(upstreamCheck_);
     layout->addWidget(tagsCheck_);
     layout->addWidget(forceCheck_);
@@ -492,7 +492,7 @@ bool PushDialog::setUpstream() const {
 
 RemoteDialog::RemoteDialog(QWidget *parent)
     : QDialog(parent) {
-    setWindowTitle(QStringLiteral("Добавить удалённый репозиторий"));
+    setWindowTitle(tr("Add Remote"));
     setModal(true);
 
     auto *layout = new QVBoxLayout(this);
@@ -500,7 +500,7 @@ RemoteDialog::RemoteDialog(QWidget *parent)
     nameEdit_ = new QLineEdit(QStringLiteral("origin"));
     urlEdit_ = new QLineEdit;
     urlEdit_->setPlaceholderText(QStringLiteral("git@github.com:user/project.git"));
-    form->addRow(QStringLiteral("Имя:"), nameEdit_);
+    form->addRow(tr("Name:"), nameEdit_);
     form->addRow(QStringLiteral("URL:"), urlEdit_);
     layout->addLayout(form);
 
@@ -522,7 +522,7 @@ QString RemoteDialog::remoteUrl() const {
 PreferencesDialog::PreferencesDialog(const QString &userName, const QString &userEmail,
                                      QWidget *parent)
     : QDialog(parent) {
-    setWindowTitle(QStringLiteral("Настройки"));
+    setWindowTitle(tr("Settings"));
     setModal(true);
 
     auto *layout = new QVBoxLayout(this);
@@ -530,22 +530,22 @@ PreferencesDialog::PreferencesDialog(const QString &userName, const QString &use
     nameEdit_ = new QLineEdit(userName);
     emailEdit_ = new QLineEdit(userEmail);
     themeCombo_ = new QComboBox;
-    themeCombo_->addItem(QStringLiteral("Светлая"), false);
-    themeCombo_->addItem(QStringLiteral("Тёмная"), true);
+    themeCombo_->addItem(tr("Light"), false);
+    themeCombo_->addItem(tr("Dark"), true);
     historyCombo_ = new QComboBox;
     for (const int limit : {200, 500, 1000, 5000}) {
-        historyCombo_->addItem(QStringLiteral("%1 коммитов").arg(limit), limit);
+        historyCombo_->addItem(tr("%1 commits").arg(limit), limit);
     }
     themeCombo_->setCurrentIndex(Theme::instance()->mode() == Theme::Mode::Dark ? 1 : 0);
     historyCombo_->setCurrentIndex(qMax(0, historyCombo_->findData(
         QSettings().value(QStringLiteral("historyLimit"), 500).toInt())));
-    form->addRow(QStringLiteral("Имя автора:"), nameEdit_);
+    form->addRow(tr("Author name:"), nameEdit_);
     form->addRow(QStringLiteral("E-mail:"), emailEdit_);
-    form->addRow(QStringLiteral("Тема оформления:"), themeCombo_);
-    form->addRow(QStringLiteral("Глубина истории:"), historyCombo_);
+    form->addRow(tr("Theme:"), themeCombo_);
+    form->addRow(tr("History depth:"), historyCombo_);
     layout->addLayout(form);
-    layout->addWidget(hint(QStringLiteral(
-        "Имя и e-mail записываются в локальную конфигурацию репозитория.")));
+    layout->addWidget(hint(tr("The name and e-mail are written to the local repository "
+                              "configuration.")));
 
     auto *buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel);
     buttons->button(QDialogButtonBox::Ok)->setProperty("accent", true);
