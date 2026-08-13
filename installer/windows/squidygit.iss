@@ -73,23 +73,54 @@ Type: files; Name: "{app}\components.xml"
 Type: files; Name: "{app}\installer.dat"
 Type: files; Name: "{app}\network.xml"
 Type: files; Name: "{app}\SquidyGit.ini"
+Type: files; Name: "{app}\Uninstall SquidyGit.exe"
 
 [Code]
+const
+  UninstallKey = 'Software\Microsoft\Windows\CurrentVersion\Uninstall';
+
+// The Qt Installer Framework registered its maintenance tool in Programs and
+// Features under a generated key name, so the entry is found by the uninstaller
+// it points to. Both registry views are searched because the key name and the
+// bitness of the old installer are not known here.
+procedure RemoveLegacyUninstallEntry(RootKey: Integer);
+var
+  KeyNames: TArrayOfString;
+  Index: Integer;
+  Command: String;
+begin
+  if not RegGetSubkeyNames(RootKey, UninstallKey, KeyNames) then
+    Exit;
+
+  for Index := 0 to GetArrayLength(KeyNames) - 1 do
+  begin
+    if RegQueryStringValue(RootKey, UninstallKey + '\' + KeyNames[Index],
+                           'UninstallString', Command)
+       and (Pos('uninstall squidygit.exe', Lowercase(Command)) > 0) then
+      RegDeleteKeyIncludingSubkeys(RootKey, UninstallKey + '\' + KeyNames[Index]);
+  end;
+end;
+
 // Installations made by the Qt Installer Framework keep their own maintenance
-// tool and Programs and Features entry. Remove them before the first Inno Setup
-// based installation, otherwise the old entry stays behind forever.
+// tool. It is asked to remove itself, but it cannot do that while SquidyGit is
+// still running, so whatever it leaves behind is cleaned up here as well.
 procedure RemoveLegacyInstallation;
 var
   MaintenanceTool: String;
   ResultCode: Integer;
 begin
   MaintenanceTool := ExpandConstant('{app}\Uninstall SquidyGit.exe');
-  if not FileExists(MaintenanceTool) then
-    Exit;
+  if FileExists(MaintenanceTool) then
+  begin
+    Exec(MaintenanceTool, 'purge --confirm-command', '', SW_HIDE,
+         ewWaitUntilTerminated, ResultCode);
+    DeleteFile(MaintenanceTool);
+  end;
 
-  Exec(MaintenanceTool, 'purge --confirm-command', '', SW_HIDE,
-       ewWaitUntilTerminated, ResultCode);
-  DeleteFile(MaintenanceTool);
+  RemoveLegacyUninstallEntry(HKLM64);
+  RemoveLegacyUninstallEntry(HKLM32);
+  RemoveLegacyUninstallEntry(HKCU64);
+  RemoveLegacyUninstallEntry(HKCU32);
 end;
 
 function PrepareToInstall(var NeedsRestart: Boolean): String;
