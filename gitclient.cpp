@@ -861,7 +861,8 @@ GitCommandResult GitClient::diff(const QString &path, const bool staged, const b
     return run(arguments);
 }
 
-GitCommandResult GitClient::commitDiff(const QString &hash, const QString &path) const {
+GitCommandResult GitClient::commitDiff(const QString &hash, const QString &path,
+                                       const int contextLines) const {
     QStringList arguments{
         QStringLiteral("show"),
         QStringLiteral("--format="),
@@ -869,6 +870,7 @@ GitCommandResult GitClient::commitDiff(const QString &hash, const QString &path)
         QStringLiteral("--find-renames"),
         QStringLiteral("--no-ext-diff"),
         QStringLiteral("--no-color"),
+        QStringLiteral("--unified=%1").arg(qMax(0, contextLines)),
         QStringLiteral("-m"),
         QStringLiteral("--first-parent"),
         hash
@@ -880,11 +882,13 @@ GitCommandResult GitClient::commitDiff(const QString &hash, const QString &path)
     return run(arguments);
 }
 
-GitCommandResult GitClient::stashDiff(const int index, const QString &path) const {
+GitCommandResult GitClient::stashDiff(const int index, const QString &path,
+                                      const int contextLines) const {
     QStringList arguments{
         QStringLiteral("diff"),
         QStringLiteral("--no-ext-diff"),
         QStringLiteral("--no-color"),
+        QStringLiteral("--unified=%1").arg(qMax(0, contextLines)),
         QStringLiteral("stash@{%1}^1").arg(index),
         QStringLiteral("stash@{%1}").arg(index)
     };

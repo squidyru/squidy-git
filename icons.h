@@ -9,6 +9,10 @@
 /// and stays crisp on high-DPI screens with flat toolbar icons.
 namespace Icons {
 
+inline constexpr int WindowControlButtonWidth = 46;
+inline constexpr int WindowControlButtonHeight = 30;
+inline constexpr int WindowControlIconSize = 16;
+
 enum class Glyph {
     Commit,
     Checkout,

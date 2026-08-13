@@ -8,6 +8,8 @@
 #include <QString>
 #include <QStringList>
 
+#include <functional>
+
 class QPaintEvent;
 class QResizeEvent;
 
@@ -85,7 +87,8 @@ public:
     explicit DiffView(QWidget *parent = nullptr);
 
     void setMode(Mode mode);
-    void setPatch(const QString &patch);
+    void setPatch(const QString &patch,
+                  std::function<QString()> fullPatchProvider = {});
     void setPlaceholderMessage(const QString &message);
     [[nodiscard]] bool hasPatch() const;
     [[nodiscard]] int hunkCountAtCursor() const;
@@ -108,9 +111,11 @@ private:
     [[nodiscard]] QList<int> selectedLineIndices() const;
     void requestHunk(DiffAction action);
     void requestLines(DiffAction action);
+    void openSideBySideDiff();
 
     DiffDocument document_;
     Mode mode_ = Mode::ReadOnly;
     QWidget *gutter_ = nullptr;
     QString placeholderMessage_;
+    std::function<QString()> fullPatchProvider_;
 };

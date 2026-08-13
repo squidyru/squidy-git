@@ -29,6 +29,7 @@
 #include <QMenu>
 #include <QMessageBox>
 #include <QPainter>
+#include <QPaintEvent>
 #include <QPainterPath>
 #include <QPlainTextEdit>
 #include <QProcess>
@@ -40,7 +41,10 @@
 #include <QSplitter>
 #include <QStackedWidget>
 #include <QStyledItemDelegate>
+#include <QStyle>
 #include <QTextBrowser>
+#include <QTextDocument>
+#include <QTimer>
 #include <QToolButton>
 #include <QTreeWidget>
 #include <QUrl>
@@ -59,6 +63,11 @@ constexpr int IsDirectoryRole = Qt::UserRole + 26;
 constexpr int NavigationKindRole = Qt::UserRole + 30;
 constexpr int NavigationValueRole = Qt::UserRole + 31;
 constexpr int NavigationExtraRole = Qt::UserRole + 32;
+constexpr int NavigationAheadRole = Qt::UserRole + 33;
+constexpr int NavigationBehindRole = Qt::UserRole + 34;
+constexpr int HistoryRevisionRole = Qt::UserRole + 35;
+constexpr int FullDiffContextLines = 1'000'000;
+constexpr int RepositorySplitterWidth = 0;
 
 enum NavigationKind {
     NavigationSection,
@@ -81,6 +90,32 @@ QColor navigationTextColor() {
                : Theme::instance()->palette().text;
 }
 
+/// Compact history combo with a custom dropdown arrow.
+class HistoryComboBox final : public QComboBox {
+public:
+    using QComboBox::QComboBox;
+
+protected:
+    void paintEvent(QPaintEvent *event) override {
+        QComboBox::paintEvent(event);
+
+        QPainter painter(this);
+        painter.setRenderHint(QPainter::Antialiasing, true);
+        painter.setPen(Qt::NoPen);
+        painter.setBrush(palette().color(isEnabled() ? QPalette::Active
+                                                      : QPalette::Disabled,
+                                         QPalette::ButtonText));
+        const qreal centerX = width() - 9.0;
+        const qreal centerY = height() / 2.0 + 1.0;
+        QPainterPath arrow;
+        arrow.moveTo(centerX - 3.5, centerY - 2.0);
+        arrow.lineTo(centerX + 3.5, centerY - 2.0);
+        arrow.lineTo(centerX, centerY + 2.0);
+        arrow.closeSubpath();
+        painter.drawPath(arrow);
+    }
+};
+
 QIcon navigationSectionIcon(const Icons::Glyph glyph, const QColor &color) {
     // Toolbar glyphs intentionally have generous whitespace. Trim only two
     // logical pixels here: this enlarges sidebar icons slightly while leaving
@@ -102,7 +137,7 @@ protected:
             return;
         }
 
-        const qreal centerX = rect.right() - 12.0;
+        const qreal centerX = rect.right() - 7.0;
         const qreal centerY = rect.center().y();
         QPainterPath chevron;
         if (isExpanded(index)) {
@@ -121,7 +156,7 @@ protected:
         painter->setPen(QPen(Theme::instance()->mode() == Theme::Mode::Light
                                  ? QColor(QStringLiteral("#B5B5B5"))
                                  : Theme::instance()->palette().mutedText,
-                             1.8, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
+                             1.4, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
         painter->drawPath(chevron);
         painter->restore();
     }
@@ -135,18 +170,78 @@ public:
 
     void paint(QPainter *painter, const QStyleOptionViewItem &option,
                const QModelIndex &index) const override {
-        QStyledItemDelegate::paint(painter, option, index);
         if (index.data(NavigationKindRole).toInt() != NavigationBranch) {
+            QStyledItemDelegate::paint(painter, option, index);
             return;
         }
+
+        QStyleOptionViewItem branchOption(option);
+        initStyleOption(&branchOption, index);
+        const QString branchName = branchOption.text;
+        const QFont branchFont = branchOption.font;
+        branchOption.text.clear();
+        branchOption.icon = {};
+        QStyle *style = branchOption.widget != nullptr ? branchOption.widget->style()
+                                                       : QApplication::style();
+        style->drawControl(QStyle::CE_ItemViewItem, &branchOption, painter,
+                           branchOption.widget);
+
+        const int ahead = index.data(NavigationAheadRole).toInt();
+        const int behind = index.data(NavigationBehindRole).toInt();
+        QStringList counters;
+        if (ahead > 0) {
+            counters.append(QStringLiteral("%1↑").arg(ahead));
+        }
+        if (behind > 0) {
+            counters.append(QStringLiteral("%1↓").arg(behind));
+        }
+
+        QRect badgeRect;
+        if (!counters.isEmpty()) {
+            QFont badgeFont = option.font;
+            badgeFont.setPixelSize(10);
+            badgeFont.setBold(true);
+            const QString badgeText = counters.join(u' ');
+            const int badgeWidth = QFontMetrics(badgeFont).horizontalAdvance(badgeText) + 8;
+            badgeRect = QRect(option.rect.right() - badgeWidth,
+                              option.rect.center().y() - 8, badgeWidth, 16);
+
+            painter->save();
+            painter->setRenderHint(QPainter::Antialiasing, true);
+            painter->setPen(Qt::NoPen);
+            painter->setBrush(Theme::instance()->mode() == Theme::Mode::Light
+                                  ? QColor(QStringLiteral("#151515"))
+                                  : Theme::instance()->palette().text);
+            painter->drawRoundedRect(QRectF(badgeRect), 4.0, 4.0);
+            painter->setFont(badgeFont);
+            painter->setPen(Theme::instance()->mode() == Theme::Mode::Light
+                                ? Qt::white
+                                : Theme::instance()->palette().surface);
+            painter->drawText(badgeRect, Qt::AlignCenter, badgeText);
+            painter->restore();
+        }
+
+        painter->save();
+        painter->setFont(branchFont);
+        painter->setPen(option.state.testFlag(QStyle::State_Selected)
+                            ? option.palette.color(QPalette::HighlightedText)
+                            : navigationTextColor());
+        const int right = badgeRect.isValid() ? badgeRect.left() - 6
+                                               : option.rect.right() - 4;
+        const QRect textRect(option.rect.left() + 11, option.rect.top(),
+                             qMax(0, right - option.rect.left() - 11), option.rect.height());
+        painter->drawText(textRect, Qt::AlignVCenter | Qt::AlignLeft,
+                          QFontMetrics(branchFont).elidedText(branchName, Qt::ElideRight,
+                                                              textRect.width()));
+        painter->restore();
 
         painter->save();
         painter->setRenderHint(QPainter::Antialiasing, true);
         painter->setBrush(Qt::NoBrush);
-        painter->setPen(QPen(navigationTextColor(), 2.4, Qt::SolidLine,
+        painter->setPen(QPen(navigationTextColor(), 2.0, Qt::SolidLine,
                              Qt::RoundCap, Qt::RoundJoin));
-        painter->drawEllipse(QPointF(option.rect.left() - 11.0,
-                                     option.rect.center().y()), 4.8, 4.8);
+        painter->drawEllipse(QPointF(option.rect.left() - 5.0,
+                                     option.rect.center().y()), 4.0, 4.0);
         painter->restore();
     }
 };
@@ -217,7 +312,8 @@ QIcon statusBadge(const QChar status) {
     return {canvas};
 }
 
-QTreeWidgetItem *addSection(QTreeWidget *tree, const QString &title, const QIcon &icon = {}) {
+QTreeWidgetItem *addSection(QTreeWidget *tree, const QString &title, const QIcon &icon = {},
+                            const bool expanded = true) {
     auto *section = new QTreeWidgetItem(tree, {title.toUpper()});
     section->setData(0, NavigationKindRole, NavigationSection);
     if (!icon.isNull()) {
@@ -231,16 +327,14 @@ QTreeWidgetItem *addSection(QTreeWidget *tree, const QString &title, const QIcon
     section->setFont(0, font);
     section->setSizeHint(0, QSize(0, 30));
     section->setForeground(0, Theme::instance()->palette().sectionText);
-    section->setExpanded(true);
+    section->setExpanded(expanded);
     return section;
 }
 
 QTreeWidgetItem *addNavigationItem(QTreeWidgetItem *parent, const QString &text,
                                    const NavigationKind kind, const QString &value = {},
                                    const QIcon &icon = {}) {
-    // A narrow leading space aligns leaf labels while keeping
-    // section headings and disclosure arrows at their existing positions.
-    auto *item = new QTreeWidgetItem(parent, {QStringLiteral(" ") + text});
+    auto *item = new QTreeWidgetItem(parent, {text});
     item->setData(0, NavigationKindRole, kind);
     item->setData(0, NavigationValueRole, value);
     if (!icon.isNull()) {
@@ -267,6 +361,12 @@ QString pageSettingsKey(const QString &repositoryRoot) {
     const QByteArray digest = QCryptographicHash::hash(repositoryRoot.toUtf8(),
                                                        QCryptographicHash::Md5);
     return QStringLiteral("pages/%1").arg(QString::fromLatin1(digest.toHex()));
+}
+
+QString historyHeaderSettingsKey(const QString &repositoryRoot) {
+    const QByteArray digest = QCryptographicHash::hash(repositoryRoot.toUtf8(),
+                                                       QCryptographicHash::Md5);
+    return QStringLiteral("historyColumns/%1").arg(QString::fromLatin1(digest.toHex()));
 }
 
 QTreeWidgetItem *firstLeaf(QTreeWidgetItem *item) {
@@ -305,7 +405,7 @@ RepositoryView::RepositoryView(const QString &path, QWidget *parent)
     layout->addWidget(buildStateBanner());
 
     workspaceSplitter_ = new QSplitter(Qt::Horizontal);
-    workspaceSplitter_->setHandleWidth(5);
+    workspaceSplitter_->setHandleWidth(RepositorySplitterWidth);
     workspaceSplitter_->addWidget(buildSidebar());
 
     pages_ = new QStackedWidget;
@@ -419,6 +519,7 @@ QWidget *RepositoryView::buildStateBanner() {
 QWidget *RepositoryView::buildViewSwitcher() {
     auto *switcher = new QWidget;
     switcher->setObjectName(QStringLiteral("viewSwitcher"));
+    switcher->setMaximumWidth(184);
     auto *layout = new QVBoxLayout(switcher);
     layout->setContentsMargins(0, 0, 0, 0);
     layout->setSpacing(0);
@@ -440,8 +541,10 @@ QWidget *RepositoryView::buildViewSwitcher() {
 
     // Switching to the log explicitly drops any branch filter picked in the sidebar.
     connect(historyButton_, &QPushButton::clicked, this, [this] {
-        if (!historyRevision_.isEmpty()) {
+        if (!historyRevision_.isEmpty() || historyScope_->currentIndex() != 0) {
             historyRevision_.clear();
+            const QSignalBlocker blocker(historyScope_);
+            historyScope_->setCurrentIndex(0);
             refreshHistory();
         }
     });
@@ -456,17 +559,21 @@ QWidget *RepositoryView::buildSidebar() {
     sidebar->setMaximumWidth(280);
 
     auto *layout = new QVBoxLayout(sidebar);
-    layout->setContentsMargins(8, 5, 8, 5);
+    layout->setContentsMargins(9, 5, 11, 5);
     layout->setSpacing(0);
 
     auto *workspaceHeader = new QWidget;
     workspaceHeader->setObjectName(QStringLiteral("workspaceHeader"));
+    workspaceHeader->setMaximumWidth(184);
     auto *workspaceHeaderLayout = new QHBoxLayout(workspaceHeader);
-    workspaceHeaderLayout->setContentsMargins(20, 0, 0, 0);
+    workspaceHeaderLayout->setContentsMargins(18, 0, 0, 0);
     workspaceHeaderLayout->setSpacing(5);
     auto *workspaceIcon = new QLabel;
-    workspaceIcon->setPixmap(Icons::pixmap(Icons::Glyph::FileStatus, 16,
-                                           Theme::instance()->palette().sectionText));
+    const QColor workspaceIconColor = Theme::instance()->mode() == Theme::Mode::Light
+                                          ? QColor(QStringLiteral("#4F6B92"))
+                                          : Theme::instance()->palette().sectionText;
+    workspaceIcon->setPixmap(Icons::pixmap(Icons::Glyph::FileStatus, 20,
+                                           workspaceIconColor));
     workspaceHeaderLayout->addWidget(workspaceIcon);
     auto *workspaceTitle = new QLabel(QStringLiteral("WORKSPACE"));
     workspaceTitle->setObjectName(QStringLiteral("workspaceTitle"));
@@ -474,9 +581,17 @@ QWidget *RepositoryView::buildSidebar() {
     workspaceHeaderLayout->addStretch();
     layout->addWidget(workspaceHeader);
     layout->addWidget(buildViewSwitcher());
+    layout->addSpacing(6);
+
+    auto *topSeparator = new QFrame;
+    topSeparator->setObjectName(QStringLiteral("sidebarTopSeparator"));
+    topSeparator->setFrameShape(QFrame::HLine);
+    topSeparator->setMaximumWidth(184);
+    layout->addWidget(topSeparator);
 
     auto *navigationFilter = new QLineEdit;
     navigationFilter->setObjectName(QStringLiteral("navigationFilter"));
+    navigationFilter->setMaximumWidth(182);
     navigationFilter->setPlaceholderText(tr("Search"));
     navigationFilter->setClearButtonEnabled(true);
     navigationFilter->addAction(
@@ -487,6 +602,7 @@ QWidget *RepositoryView::buildSidebar() {
     auto *separator = new QFrame;
     separator->setObjectName(QStringLiteral("sidebarSeparator"));
     separator->setFrameShape(QFrame::HLine);
+    separator->setMaximumWidth(184);
     layout->addWidget(separator);
 
     navigationTree_ = new NavigationTree;
@@ -495,7 +611,7 @@ QWidget *RepositoryView::buildSidebar() {
     navigationTree_->setRootIsDecorated(true);
     navigationTree_->setIndentation(17);
     navigationTree_->setUniformRowHeights(false);
-    navigationTree_->setIconSize(QSize(16, 16));
+    navigationTree_->setIconSize(QSize(20, 20));
     navigationTree_->setItemDelegate(new NavigationDelegate(navigationTree_));
     navigationTree_->setContextMenuPolicy(Qt::CustomContextMenu);
     layout->addWidget(navigationTree_, 1);
@@ -549,9 +665,9 @@ QWidget *RepositoryView::buildFileStatusPage() {
     layout->addLayout(toolRow);
 
     auto *verticalSplitter = new QSplitter(Qt::Vertical);
-    verticalSplitter->setHandleWidth(5);
+    verticalSplitter->setHandleWidth(RepositorySplitterWidth);
     auto *topSplitter = new QSplitter(Qt::Horizontal);
-    topSplitter->setHandleWidth(5);
+    topSplitter->setHandleWidth(RepositorySplitterWidth);
 
     auto *filesPanel = new QWidget;
     auto *filesLayout = new QVBoxLayout(filesPanel);
@@ -559,7 +675,7 @@ QWidget *RepositoryView::buildFileStatusPage() {
     filesLayout->setSpacing(4);
 
     auto *fileSplitter = new QSplitter(Qt::Vertical);
-    fileSplitter->setHandleWidth(5);
+    fileSplitter->setHandleWidth(RepositorySplitterWidth);
 
     const auto buildFilePanel = [](const QString &caption, QLabel **captionLabel,
                                        QTreeWidget **tree, const QString &primaryText,
@@ -727,41 +843,56 @@ QWidget *RepositoryView::buildHistoryPage() {
     auto *page = new QWidget;
     page->setObjectName(QStringLiteral("historyPage"));
     auto *layout = new QVBoxLayout(page);
-    layout->setContentsMargins(4, 4, 4, 0);
-    layout->setSpacing(4);
+    layout->setContentsMargins(0, 4, 0, 0);
+    layout->setSpacing(0);
 
     auto *toolRow = new QHBoxLayout;
-    historyScope_ = new QComboBox;
+    toolRow->setContentsMargins(4, 0, 0, 2);
+    toolRow->setSpacing(8);
+    historyScope_ = new HistoryComboBox;
+    historyScope_->setObjectName(QStringLiteral("historyScope"));
+    historyScope_->setFixedWidth(88);
     historyScope_->addItem(tr("All branches"),
                            static_cast<int>(GitHistoryScope::AllBranches));
     historyScope_->addItem(tr("Current branch"),
                            static_cast<int>(GitHistoryScope::CurrentBranch));
     showRemoteBranches_ = new QCheckBox(tr("Show remote branches"));
     showRemoteBranches_->setChecked(true);
-    historyOrder_ = new QComboBox;
-    historyOrder_->addItem(tr("By date"), true);
-    historyOrder_->addItem(tr("By topology"), false);
+    historyOrder_ = new HistoryComboBox;
+    historyOrder_->setObjectName(QStringLiteral("historyOrder"));
+    historyOrder_->setFixedWidth(154);
+    historyOrder_->addItem(tr("Sort by date"), true);
+    historyOrder_->addItem(tr("Sort by ancestry"), false);
     historyFilter_ = new QLineEdit(page);
-    historyFilter_->setPlaceholderText(tr("Filter by message, author or SHA…"));
-    historyFilter_->setClearButtonEnabled(true);
-    // Full-text commit search has its own page. Hiding this secondary filter
-    // keeps the history command row calm and spacious.
-    historyFilter_->hide();
-    auto *jumpLabel = new QLabel(tr("Go to:"));
-    jumpToEdit_ = new QLineEdit;
-    jumpToEdit_->setPlaceholderText(tr("SHA or branch"));
-    jumpToEdit_->setMaximumWidth(150);
+    historyFilter_->setObjectName(QStringLiteral("historyAuthorFilter"));
+    historyFilter_->setPlaceholderText(tr("Author Name"));
+    historyFilter_->setClearButtonEnabled(false);
+    historyFilter_->setFixedWidth(150);
+    historyFilter_->addAction(
+        Icons::icon(Icons::Glyph::Search, Theme::instance()->palette().mutedText),
+        QLineEdit::TrailingPosition);
+
+    auto *jumpToButton = new QToolButton;
+    jumpToButton->setObjectName(QStringLiteral("historyJumpButton"));
+    jumpToButton->setText(tr("Go to:"));
+    jumpToButton->setToolButtonStyle(Qt::ToolButtonTextOnly);
+    jumpToButton->setPopupMode(QToolButton::InstantPopup);
+    jumpToButton->setFixedWidth(78);
+    auto *jumpMenu = new QMenu(jumpToButton);
+    jumpMenu->setObjectName(QStringLiteral("historyJumpMenu"));
+    jumpMenu->setMinimumWidth(198);
+    jumpToButton->setMenu(jumpMenu);
 
     toolRow->addWidget(historyScope_);
     toolRow->addWidget(showRemoteBranches_);
     toolRow->addWidget(historyOrder_);
     toolRow->addStretch(1);
-    toolRow->addWidget(jumpLabel);
-    toolRow->addWidget(jumpToEdit_);
+    toolRow->addWidget(historyFilter_);
+    toolRow->addWidget(jumpToButton);
     layout->addLayout(toolRow);
 
     auto *verticalSplitter = new QSplitter(Qt::Vertical);
-    verticalSplitter->setHandleWidth(5);
+    verticalSplitter->setHandleWidth(RepositorySplitterWidth);
 
     historyTree_ = new QTreeWidget;
     historyTree_->setObjectName(QStringLiteral("historyTree"));
@@ -774,30 +905,59 @@ QWidget *RepositoryView::buildHistoryPage() {
     });
     historyTree_->setRootIsDecorated(false);
     historyTree_->setUniformRowHeights(true);
-    historyTree_->setAlternatingRowColors(true);
+    historyTree_->setAlternatingRowColors(false);
     historyTree_->setSelectionMode(QAbstractItemView::SingleSelection);
     historyTree_->setContextMenuPolicy(Qt::CustomContextMenu);
     historyTree_->setItemDelegate(new CommitGraphDelegate(historyTree_));
-    historyTree_->header()->setSectionResizeMode(0, QHeaderView::Fixed);
-    historyTree_->header()->setSectionResizeMode(1, QHeaderView::Stretch);
-    historyTree_->header()->setSectionResizeMode(2, QHeaderView::ResizeToContents);
-    historyTree_->header()->setSectionResizeMode(3, QHeaderView::ResizeToContents);
-    historyTree_->header()->setSectionResizeMode(4, QHeaderView::ResizeToContents);
-    historyTree_->header()->resizeSection(0, 90);
+    historyTree_->header()->setSectionsMovable(false);
+    historyTree_->header()->setStretchLastSection(true);
+    historyTree_->header()->setMinimumSectionSize(36);
+    historyTree_->header()->setSectionResizeMode(QHeaderView::Interactive);
     for (int column = 0; column < historyTree_->columnCount(); ++column) {
         historyTree_->headerItem()->setTextAlignment(column, Qt::AlignCenter);
     }
+
+    // Restore interactive history column widths after the first layout pass.
+    QTimer::singleShot(0, historyTree_, [this] {
+        QHeaderView *header = historyTree_->header();
+        {
+            const QSignalBlocker blocker(header);
+            const QByteArray savedState =
+                QSettings().value(historyHeaderSettingsKey(git_.repositoryRoot())).toByteArray();
+            if (savedState.isEmpty() || !header->restoreState(savedState)) {
+                const int graphWidth = 80;
+                const int dateWidth = 112;
+                const int authorWidth = 114;
+                const int commitWidth = 60;
+                const int descriptionWidth = qMax(
+                    240, historyTree_->viewport()->width() - graphWidth - dateWidth
+                             - authorWidth - commitWidth);
+                header->resizeSection(0, graphWidth);
+                header->resizeSection(1, descriptionWidth);
+                header->resizeSection(2, dateWidth);
+                header->resizeSection(3, authorWidth);
+                header->resizeSection(4, commitWidth);
+            }
+            // Keep the Commit section anchored to the viewport edge.
+            header->setStretchLastSection(true);
+        }
+        connect(header, &QHeaderView::sectionResized, historyTree_, [this] {
+            QSettings().setValue(historyHeaderSettingsKey(git_.repositoryRoot()),
+                                 historyTree_->header()->saveState());
+        });
+    });
     verticalSplitter->addWidget(historyTree_);
 
     auto *detailsSplitter = new QSplitter(Qt::Horizontal);
-    detailsSplitter->setHandleWidth(5);
+    detailsSplitter->setHandleWidth(RepositorySplitterWidth);
     auto *leftSplitter = new QSplitter(Qt::Vertical);
-    leftSplitter->setHandleWidth(5);
+    leftSplitter->setHandleWidth(RepositorySplitterWidth);
 
     commitDetails_ = new QTextBrowser;
     commitDetails_->setObjectName(QStringLiteral("commitDetails"));
     commitDetails_->setOpenExternalLinks(false);
     commitDetails_->setOpenLinks(false);
+    commitDetails_->document()->setDocumentMargin(0.0);
     leftSplitter->addWidget(commitDetails_);
 
     commitFilesTree_ = new QTreeWidget;
@@ -828,40 +988,44 @@ QWidget *RepositoryView::buildHistoryPage() {
     layout->addWidget(verticalSplitter, 1);
 
     connect(historyScope_, &QComboBox::currentIndexChanged, this, [this] {
-        historyRevision_.clear();
+        historyRevision_ = historyScope_->currentData(HistoryRevisionRole).toString();
         refreshHistory();
     });
     connect(historyOrder_, &QComboBox::currentIndexChanged, this, [this] { refreshHistory(); });
     connect(showRemoteBranches_, &QCheckBox::toggled, this, [this] { refreshHistory(); });
-    connect(jumpToEdit_, &QLineEdit::returnPressed, this, [this] {
-        const QString query = jumpToEdit_->text().trimmed();
-        if (query.isEmpty()) {
-            return;
-        }
-        const GitCommandResult resolved = git_.runCustom({
-            QStringLiteral("rev-parse"), QStringLiteral("--verify"), QStringLiteral("--quiet"),
-            QStringLiteral("%1^{commit}").arg(query)
+    connect(historyFilter_, &QLineEdit::textChanged, this,
+            [this](const QString &text) { filterHistoryByAuthor(text); });
+    connect(jumpMenu, &QMenu::aboutToShow, this, [this, jumpMenu] {
+        jumpMenu->clear();
+
+        QAction *commitAction = jumpMenu->addAction(tr("Commit…"));
+        connect(commitAction, &QAction::triggered, this, [this] {
+            bool accepted = false;
+            const QString revision = QInputDialog::getText(
+                this, tr("Go to commit"), tr("Commit SHA:"), QLineEdit::Normal,
+                QString(), &accepted);
+            if (accepted) {
+                jumpToRevision(revision);
+            }
         });
-        const QString hash = resolved.succeeded() ? resolved.outputText().trimmed() : query;
-        for (int index = 0; index < historyTree_->topLevelItemCount(); ++index) {
-            QTreeWidgetItem *item = historyTree_->topLevelItem(index);
-            if (item->data(0, CommitRoles::Hash).toString().startsWith(hash)) {
-                historyTree_->setCurrentItem(item);
-                historyTree_->scrollToItem(item, QAbstractItemView::PositionAtCenter);
-                return;
+        jumpMenu->addSeparator();
+
+        const auto addReference = [this, jumpMenu](const QString &reference) {
+            QAction *action = jumpMenu->addAction(reference);
+            connect(action, &QAction::triggered, this,
+                    [this, reference] { jumpToRevision(reference); });
+        };
+        for (const GitBranchInfo &branch : git_.branches()) {
+            addReference(branch.name);
+        }
+        for (const GitRemoteInfo &remote : git_.remotes()) {
+            addReference(QStringLiteral("%1/HEAD").arg(remote.name));
+            for (const QString &branch : remote.branches) {
+                addReference(QStringLiteral("%1/%2").arg(remote.name, branch));
             }
         }
-        Q_EMIT messagePosted(tr("Commit “%1” was not found in the loaded history.")
-                                 .arg(query), 5'000);
-    });
-    connect(historyFilter_, &QLineEdit::textChanged, this, [this](const QString &text) {
-        for (int index = 0; index < historyTree_->topLevelItemCount(); ++index) {
-            QTreeWidgetItem *item = historyTree_->topLevelItem(index);
-            bool matches = text.isEmpty();
-            for (int column = 1; !matches && column < historyTree_->columnCount(); ++column) {
-                matches = item->text(column).contains(text, Qt::CaseInsensitive);
-            }
-            item->setHidden(!matches);
+        for (const GitTagInfo &tag : git_.tags()) {
+            addReference(tag.name);
         }
     });
     connect(historyTree_, &QTreeWidget::currentItemChanged, this,
@@ -882,10 +1046,22 @@ QWidget *RepositoryView::buildHistoryPage() {
         if (commitItem->data(0, CommitRoles::IsUncommitted).toBool()) {
             const bool untracked = fileItem->data(0, IsUntrackedRole).toBool();
             const bool staged = fileItem->data(0, IndexStatusRole).toBool();
-            commitDiffView_->setPatch(git_.diff(path, staged, untracked).outputText());
+            commitDiffView_->setPatch(
+                git_.diff(path, staged, untracked).outputText(),
+                [this, path, staged, untracked] {
+                    const GitCommandResult result =
+                        git_.diff(path, staged, untracked, FullDiffContextLines);
+                    return result.succeeded() ? result.outputText() : QString();
+                });
         } else {
             const QString hash = commitItem->data(0, CommitRoles::Hash).toString();
-            commitDiffView_->setPatch(git_.commitDiff(hash, path).outputText());
+            commitDiffView_->setPatch(
+                git_.commitDiff(hash, path).outputText(),
+                [this, hash, path] {
+                    const GitCommandResult result =
+                        git_.commitDiff(hash, path, FullDiffContextLines);
+                    return result.succeeded() ? result.outputText() : QString();
+                });
         }
     });
 
@@ -981,11 +1157,45 @@ void RepositoryView::refreshAll() {
         }
     }
 
+    refreshHistoryScope(branches);
     refreshHeader();
     refreshNavigation();
     refreshStatus();
     refreshHistory();
     Q_EMIT repositoryChanged();
+}
+
+void RepositoryView::refreshHistoryScope(const QList<GitBranchInfo> &branches) {
+    if (historyScope_ == nullptr) {
+        return;
+    }
+
+    const int previousScope = historyScope_->currentData().toInt();
+    const QString previousRevision = historyScope_->currentData(HistoryRevisionRole).toString();
+    const QString wantedRevision = !historyRevision_.isEmpty() ? historyRevision_
+                                                                : previousRevision;
+
+    const QSignalBlocker blocker(historyScope_);
+    historyScope_->clear();
+    historyScope_->addItem(tr("All branches"),
+                           static_cast<int>(GitHistoryScope::AllBranches));
+    historyScope_->addItem(tr("Current branch"),
+                           static_cast<int>(GitHistoryScope::CurrentBranch));
+    for (const GitBranchInfo &branch : branches) {
+        historyScope_->addItem(branch.name,
+                               static_cast<int>(GitHistoryScope::CurrentBranch));
+        historyScope_->setItemData(historyScope_->count() - 1, branch.name,
+                                   HistoryRevisionRole);
+    }
+
+    int selectedIndex = -1;
+    if (!wantedRevision.isEmpty()) {
+        selectedIndex = historyScope_->findData(wantedRevision, HistoryRevisionRole);
+    }
+    if (selectedIndex < 0) {
+        selectedIndex = previousScope == static_cast<int>(GitHistoryScope::CurrentBranch) ? 1 : 0;
+    }
+    historyScope_->setCurrentIndex(selectedIndex);
 }
 
 void RepositoryView::refreshHeader() {
@@ -1024,8 +1234,13 @@ void RepositoryView::refreshNavigation() {
 
     const ThemePalette &palette = Theme::instance()->palette();
     const QColor sectionColor = palette.sectionText;
+    const QColor sectionIconColor = Theme::instance()->mode() == Theme::Mode::Light
+                                        ? QColor(QStringLiteral("#4F6B92"))
+                                        : sectionColor;
     auto *branchesSection = addSection(navigationTree_, tr("Branches"),
-                                       navigationSectionIcon(Icons::Glyph::Branch, sectionColor));
+                                       navigationSectionIcon(Icons::Glyph::Branch,
+                                                             sectionIconColor),
+                                       true);
     const QList<GitBranchInfo> branches = git_.branches();
     QHash<QString, QTreeWidgetItem *> folders;
 
@@ -1045,12 +1260,11 @@ void RepositoryView::refreshNavigation() {
             parent = folders.value(prefix);
         }
 
-        QString label = components.constLast();
-        if (branch.ahead > 0 || branch.behind > 0) {
-            label += QStringLiteral("   ↑%1 ↓%2").arg(branch.ahead).arg(branch.behind);
-        }
-        auto *item = addNavigationItem(parent, label, NavigationBranch, branch.name);
+        auto *item = addNavigationItem(parent, components.constLast(), NavigationBranch,
+                                       branch.name);
         item->setData(0, NavigationExtraRole, branch.upstream);
+        item->setData(0, NavigationAheadRole, branch.ahead);
+        item->setData(0, NavigationBehindRole, branch.behind);
         item->setToolTip(0, QStringLiteral("%1\n%2\n%3")
                                 .arg(branch.name, branch.subject,
                                      branch.upstream.isEmpty()
@@ -1072,20 +1286,26 @@ void RepositoryView::refreshNavigation() {
     }
 
     const QList<GitTagInfo> tags = git_.tags();
-    if (!tags.isEmpty()) {
-        auto *tagsSection = addSection(navigationTree_, tr("Tags"),
-                                       navigationSectionIcon(Icons::Glyph::Tag, sectionColor));
-        for (const GitTagInfo &tag : tags) {
-            auto *item = addNavigationItem(tagsSection, tag.name, NavigationTag, tag.name);
-            item->setToolTip(0, tag.subject);
-            if (previousKind == NavigationTag && previousValue == tag.name) {
-                itemToSelect = item;
-            }
+    auto *tagsSection = addSection(navigationTree_, tr("Tags"),
+                                   navigationSectionIcon(Icons::Glyph::Tag,
+                                                         sectionIconColor),
+                                   false);
+    for (const GitTagInfo &tag : tags) {
+        auto *item = addNavigationItem(tagsSection, tag.name, NavigationTag, tag.name);
+        item->setToolTip(0, tag.subject);
+        if (previousKind == NavigationTag && previousValue == tag.name) {
+            itemToSelect = item;
+            tagsSection->setExpanded(true);
         }
+    }
+    if (tags.isEmpty()) {
+        addNavigationItem(tagsSection, tr("No tags"), NavigationPlaceholder)->setDisabled(true);
     }
 
     auto *remotesSection = addSection(navigationTree_, tr("Remotes"),
-                                      navigationSectionIcon(Icons::Glyph::Remote, sectionColor));
+                                      navigationSectionIcon(Icons::Glyph::Remote,
+                                                            sectionIconColor),
+                                      false);
     const QList<GitRemoteInfo> remotes = git_.remotes();
     for (const GitRemoteInfo &remote : remotes) {
         auto *remoteItem = addNavigationItem(remotesSection, remote.name, NavigationRemote,
@@ -1097,6 +1317,7 @@ void RepositoryView::refreshNavigation() {
             auto *item = addNavigationItem(remoteItem, branch, NavigationRemoteBranch, reference);
             if (previousKind == NavigationRemoteBranch && previousValue == reference) {
                 itemToSelect = item;
+                remotesSection->setExpanded(true);
                 remoteItem->setExpanded(true);
             }
         }
@@ -1106,25 +1327,35 @@ void RepositoryView::refreshNavigation() {
             ->setDisabled(true);
     }
 
-    if (!stashes_.isEmpty()) {
-        auto *stashSection = addSection(navigationTree_, tr("Stashes"),
-                                        navigationSectionIcon(Icons::Glyph::Stash, sectionColor));
-        for (const GitStashInfo &stash : stashes_) {
-            auto *item = addNavigationItem(
-                stashSection,
-                QStringLiteral("%1 — %2").arg(stash.reference,
-                                              elideMiddle(stash.message, 40)),
-                NavigationStash, QString::number(stash.index));
-            item->setToolTip(0, QStringLiteral("%1\n%2")
-                                    .arg(stash.message, formatTimestamp(stash.createdAt)));
+    auto *stashSection = addSection(navigationTree_, tr("Stashes"),
+                                    navigationSectionIcon(Icons::Glyph::Stash,
+                                                          sectionIconColor),
+                                    false);
+    for (const GitStashInfo &stash : stashes_) {
+        auto *item = addNavigationItem(
+            stashSection,
+            QStringLiteral("%1 — %2").arg(stash.reference,
+                                          elideMiddle(stash.message, 40)),
+            NavigationStash, QString::number(stash.index));
+        item->setToolTip(0, QStringLiteral("%1\n%2")
+                                .arg(stash.message, formatTimestamp(stash.createdAt)));
+        if (previousKind == NavigationStash
+            && previousValue == QString::number(stash.index)) {
+            itemToSelect = item;
+            stashSection->setExpanded(true);
         }
+    }
+    if (stashes_.isEmpty()) {
+        addNavigationItem(stashSection, tr("No stashes"), NavigationPlaceholder)
+            ->setDisabled(true);
     }
 
     const QList<GitSubmoduleInfo> submodules = git_.submodules();
     if (!submodules.isEmpty()) {
         auto *submoduleSection = addSection(navigationTree_, tr("Submodules"),
                                             navigationSectionIcon(Icons::Glyph::Submodule,
-                                                                  sectionColor));
+                                                                  sectionIconColor),
+                                            false);
         for (const GitSubmoduleInfo &submodule : submodules) {
             addNavigationItem(submoduleSection, submodule.path, NavigationSubmodule,
                               submodule.path);
@@ -1314,7 +1545,13 @@ void RepositoryView::refreshWorkingTreeDiff() {
     if (patch.trimmed().isEmpty()) {
         diffView_->setPlaceholderMessage(tr("Git returned no differences for this file."));
     } else {
-        diffView_->setPatch(patch);
+        diffView_->setPatch(
+            patch,
+            [this, path, staged, untracked] {
+                const GitCommandResult fullResult =
+                    git_.diff(path, staged, untracked, FullDiffContextLines);
+                return fullResult.succeeded() ? fullResult.outputText() : QString();
+            });
     }
 }
 
@@ -1364,11 +1601,13 @@ void RepositoryView::refreshHistory() {
     if (showUncommitted) {
         auto *item = new QTreeWidgetItem(historyTree_);
         item->setText(1, tr("Uncommitted changes"));
+        item->setText(2, formatTimestamp(QDateTime::currentDateTime()));
+        item->setText(3, QStringLiteral("*"));
+        item->setText(4, QStringLiteral("*"));
         item->setData(0, CommitRoles::IsUncommitted, true);
         QFont font = item->font(1);
-        font.setItalic(true);
+        font.setBold(true);
         item->setFont(1, font);
-        item->setForeground(1, Theme::instance()->palette().mutedText);
         applyGraphRow(item, rowIndex++);
         itemToSelect = previousHash.isEmpty() ? item : nullptr;
     }
@@ -1377,7 +1616,10 @@ void RepositoryView::refreshHistory() {
         auto *item = new QTreeWidgetItem(historyTree_);
         item->setText(1, commit.subject);
         item->setText(2, formatTimestamp(commit.authoredAt));
-        item->setText(3, commit.author);
+        item->setText(3, commit.authorEmail.isEmpty()
+                             ? commit.author
+                             : QStringLiteral("%1 <%2>").arg(commit.author,
+                                                               commit.authorEmail));
         item->setText(4, commit.shortHash);
         item->setData(0, CommitRoles::Hash, commit.hash);
         // The chips are painted by the delegate for the description column.
@@ -1393,12 +1635,7 @@ void RepositoryView::refreshHistory() {
         }
     }
 
-    int maximumLanes = 1;
-    for (const GraphRow &row : rows) {
-        maximumLanes = qMax(maximumLanes, row.laneCount);
-    }
-    historyTree_->header()->resizeSection(
-        0, qBound(110, CommitGraphDelegate::graphWidthForLanes(maximumLanes), 280));
+    filterHistoryByAuthor(historyFilter_->text());
 
     if (itemToSelect == nullptr && historyTree_->topLevelItemCount() > 0) {
         itemToSelect = historyTree_->topLevelItem(0);
@@ -1416,6 +1653,54 @@ void RepositoryView::refreshHistory() {
     } else {
         refreshCommitDetails();
     }
+}
+
+void RepositoryView::filterHistoryByAuthor(const QString &text) {
+    const QString needle = text.trimmed();
+    for (int index = 0; index < historyTree_->topLevelItemCount(); ++index) {
+        QTreeWidgetItem *item = historyTree_->topLevelItem(index);
+        const bool matches = needle.isEmpty()
+                             || item->text(3).contains(needle, Qt::CaseInsensitive);
+        item->setHidden(!matches);
+    }
+}
+
+void RepositoryView::jumpToRevision(const QString &revision) {
+    const QString query = revision.trimmed();
+    if (query.isEmpty()) {
+        return;
+    }
+    historyFilter_->clear();
+
+    const GitCommandResult resolved = git_.runCustom({
+        QStringLiteral("rev-parse"), QStringLiteral("--verify"), QStringLiteral("--quiet"),
+        QStringLiteral("%1^{commit}").arg(query)
+    });
+    if (!resolved.succeeded()) {
+        Q_EMIT messagePosted(tr("Commit “%1” was not found in the loaded history.")
+                                 .arg(query), 5'000);
+        return;
+    }
+    const QString hash = resolved.outputText().trimmed();
+
+    const auto selectHash = [this, &hash] {
+        for (int index = 0; index < historyTree_->topLevelItemCount(); ++index) {
+            QTreeWidgetItem *item = historyTree_->topLevelItem(index);
+            if (item->data(0, CommitRoles::Hash).toString().startsWith(hash)) {
+                historyTree_->setCurrentItem(item);
+                historyTree_->scrollToItem(item, QAbstractItemView::PositionAtCenter);
+                return true;
+            }
+        }
+        return false;
+    };
+
+    if (selectHash()) {
+        return;
+    }
+    historyRevision_ = hash;
+    refreshHistory();
+    selectHash();
 }
 
 void RepositoryView::refreshCommitDetails() {
@@ -1522,7 +1807,13 @@ void RepositoryView::refreshCommitDetails() {
     if (commitFilesTree_->topLevelItemCount() > 0) {
         commitFilesTree_->setCurrentItem(commitFilesTree_->topLevelItem(0));
     } else {
-        commitDiffView_->setPatch(git_.commitDiff(hash, QString()).outputText());
+        commitDiffView_->setPatch(
+            git_.commitDiff(hash, QString()).outputText(),
+            [this, hash] {
+                const GitCommandResult result =
+                    git_.commitDiff(hash, QString(), FullDiffContextLines);
+                return result.succeeded() ? result.outputText() : QString();
+            });
     }
 }
 
@@ -1590,6 +1881,10 @@ void RepositoryView::activateNavigationItem(QTreeWidgetItem *item) {
             break;
         case NavigationHistory:
             historyRevision_.clear();
+            {
+                const QSignalBlocker blocker(historyScope_);
+                historyScope_->setCurrentIndex(0);
+            }
             showPage(Page::History);
             refreshHistory();
             break;
@@ -1597,6 +1892,14 @@ void RepositoryView::activateNavigationItem(QTreeWidgetItem *item) {
         case NavigationRemoteBranch:
         case NavigationTag:
             historyRevision_ = value;
+            {
+                const QSignalBlocker blocker(historyScope_);
+                const int branchIndex = kind == NavigationBranch
+                                            ? historyScope_->findData(value,
+                                                                      HistoryRevisionRole)
+                                            : -1;
+                historyScope_->setCurrentIndex(branchIndex >= 0 ? branchIndex : 0);
+            }
             showPage(Page::History);
             refreshHistory();
             break;
@@ -1610,7 +1913,13 @@ void RepositoryView::activateNavigationItem(QTreeWidgetItem *item) {
                 fileItem->setIcon(0, statusBadge(file.status));
                 fileItem->setData(0, PathRole, file.path);
             }
-            commitDiffView_->setPatch(git_.stashDiff(index, QString()).outputText());
+            commitDiffView_->setPatch(
+                git_.stashDiff(index, QString()).outputText(),
+                [this, index] {
+                    const GitCommandResult result =
+                        git_.stashDiff(index, QString(), FullDiffContextLines);
+                    return result.succeeded() ? result.outputText() : QString();
+                });
             break;
         }
         default:
@@ -2327,21 +2636,69 @@ void RepositoryView::addRemoteInteractive() {
 }
 
 void RepositoryView::openTerminal() {
-    const QString directory = git_.repositoryRoot();
-    const QStringList candidates{
-        QStringLiteral("x-terminal-emulator"),
-        QStringLiteral("gnome-terminal"),
-        QStringLiteral("konsole"),
-        QStringLiteral("xfce4-terminal"),
-        QStringLiteral("alacritty"),
-        QStringLiteral("kitty"),
-        QStringLiteral("xterm")
+    const QString directory = QDir::toNativeSeparators(git_.repositoryRoot());
+
+#if defined(Q_OS_WIN)
+    // Prefer Windows Terminal, then fall back to cmd.exe.
+    if (QProcess::startDetached(QStringLiteral("wt.exe"),
+                                {QStringLiteral("-d"), directory},
+                                directory)) {
+        return;
+    }
+
+    const QString commandInterpreter =
+        qEnvironmentVariable("COMSPEC", QStringLiteral("cmd.exe"));
+    if (QProcess::startDetached(commandInterpreter,
+                                {QStringLiteral("/D"), QStringLiteral("/K")},
+                                directory)) {
+        return;
+    }
+#elif defined(Q_OS_MACOS)
+    if (QProcess::startDetached(QStringLiteral("/usr/bin/open"),
+                                {QStringLiteral("-a"),
+                                 QStringLiteral("Terminal"),
+                                 directory},
+                                directory)) {
+        return;
+    }
+#else
+    struct TerminalCommand {
+        QString program;
+        QStringList arguments;
     };
-    for (const QString &candidate : candidates) {
-        if (QProcess::startDetached(candidate, {}, directory)) {
+
+    // Pass the path explicitly because single-instance terminals may ignore cwd.
+    const QList<TerminalCommand> candidates{
+        {QStringLiteral("ptyxis"),
+         {QStringLiteral("--new-window"),
+          QStringLiteral("--working-directory"),
+          directory}},
+        {QStringLiteral("gnome-terminal"),
+         {QStringLiteral("--working-directory=%1").arg(directory)}},
+        {QStringLiteral("konsole"),
+         {QStringLiteral("--workdir"), directory}},
+        {QStringLiteral("xfce4-terminal"),
+         {QStringLiteral("--working-directory"), directory}},
+        {QStringLiteral("mate-terminal"),
+         {QStringLiteral("--working-directory=%1").arg(directory)}},
+        {QStringLiteral("tilix"),
+         {QStringLiteral("--working-directory=%1").arg(directory)}},
+        {QStringLiteral("alacritty"),
+         {QStringLiteral("--working-directory"), directory}},
+        {QStringLiteral("kitty"),
+         {QStringLiteral("--directory"), directory}},
+        {QStringLiteral("xterm"), {}},
+        {QStringLiteral("x-terminal-emulator"), {}}
+    };
+    for (const TerminalCommand &candidate : candidates) {
+        if (QProcess::startDetached(candidate.program,
+                                    candidate.arguments,
+                                    directory)) {
             return;
         }
     }
+#endif
+
     Q_EMIT messagePosted(tr("The terminal could not be started."), 5'000);
 }
 

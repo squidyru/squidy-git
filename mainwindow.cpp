@@ -14,12 +14,15 @@
 #include <QApplication>
 #include <QCloseEvent>
 #include <QCursor>
+#include <QDialog>
 #include <QDir>
 #include <QDockWidget>
 #include <QEvent>
 #include <QFileDialog>
 #include <QFileInfo>
+#include <QFont>
 #include <QFontDatabase>
+#include <QFrame>
 #include <QGraphicsDropShadowEffect>
 #include <QHBoxLayout>
 #include <QKeySequence>
@@ -40,6 +43,7 @@
 #include <QStackedWidget>
 #include <QStatusBar>
 #include <QTabBar>
+#include <QTextBrowser>
 #include <QToolBar>
 #include <QToolButton>
 #include <QTimer>
@@ -50,13 +54,26 @@ namespace {
 constexpr int MaximumBookmarks = 40;
 constexpr int MaximumLogLines = 500;
 /// Height of the combined menu/title row.
-constexpr int TitleBarHeight = 30;
+constexpr int TitleBarHeight = Icons::WindowControlButtonHeight;
 /// Transparent space reserved around the custom frame for its compositor-like
 /// drop shadow. It is also a convenient resize target.
 constexpr int WindowShadowMargin = 14;
+constexpr int WindowFrameBorderWidth = 1;
 /// Width of the invisible band along the window edges used for resizing,
 /// which a frameless window has to provide itself.
 constexpr int ResizeMargin = WindowShadowMargin;
+constexpr int AboutFrameWidth = 550;
+constexpr int AboutFrameHeight = 351;
+constexpr int AboutShadowMargin = 10;
+
+QFont topBarFont() {
+    QFont font(QStringLiteral("Arial"));
+    font.setPixelSize(12);
+    font.setWeight(QFont::Normal);
+    font.setHintingPreference(QFont::PreferFullHinting);
+    font.setStyleStrategy(QFont::PreferAntialias);
+    return font;
+}
 
 class RepositoryTabBar final : public QTabBar {
 public:
@@ -78,6 +95,38 @@ public:
 private:
     QList<int> widths_;
 };
+
+class AboutDialogWindow final : public QDialog {
+public:
+    explicit AboutDialogWindow(QWidget *parent)
+        : QDialog(parent, Qt::Dialog | Qt::FramelessWindowHint) {
+        setObjectName(QStringLiteral("aboutDialog"));
+        setAttribute(Qt::WA_TranslucentBackground, true);
+        setModal(true);
+        setFixedSize(AboutFrameWidth + AboutShadowMargin * 2,
+                     AboutFrameHeight + AboutShadowMargin * 2);
+    }
+
+    void setMoveHandle(QWidget *handle) {
+        moveHandle_ = handle;
+        moveHandle_->installEventFilter(this);
+    }
+
+protected:
+    bool eventFilter(QObject *watched, QEvent *event) override {
+        if (watched == moveHandle_ && event->type() == QEvent::MouseButtonPress) {
+            const auto *mouseEvent = static_cast<QMouseEvent *>(event);
+            if (mouseEvent->button() == Qt::LeftButton && windowHandle() != nullptr) {
+                windowHandle()->startSystemMove();
+                return true;
+            }
+        }
+        return QDialog::eventFilter(watched, event);
+    }
+
+private:
+    QWidget *moveHandle_ = nullptr;
+};
 }
 
 MainWindow::MainWindow(QWidget *parent)
@@ -91,8 +140,8 @@ MainWindow::MainWindow(QWidget *parent)
     setWindowFlag(Qt::FramelessWindowHint, true);
     setAttribute(Qt::WA_TranslucentBackground, true);
     setAutoFillBackground(false);
-    setContentsMargins(WindowShadowMargin, WindowShadowMargin,
-                       WindowShadowMargin, WindowShadowMargin);
+    const int framedMargin = WindowShadowMargin + WindowFrameBorderWidth;
+    setContentsMargins(framedMargin, framedMargin, framedMargin, framedMargin);
     setMouseTracking(true);
 
     updateChecker_ = new UpdateChecker(this);
@@ -146,6 +195,7 @@ void MainWindow::buildInterface() {
 
     tabs_ = new RepositoryTabBar;
     tabs_->setObjectName(QStringLiteral("repositoryTabBar"));
+    tabs_->setFont(topBarFont());
     tabs_->setFixedHeight(26);
     tabs_->setDocumentMode(true);
     tabs_->setMovable(true);
@@ -162,6 +212,7 @@ void MainWindow::buildInterface() {
     tabs_->addTab(QString());
     auto *homeTabTitle = new QLabel(tr("Repositories"));
     homeTabTitle->setObjectName(QStringLiteral("repositoryTabTitle"));
+    homeTabTitle->setFont(topBarFont());
     homeTabTitle->setProperty("fullTitle", tr("Repositories"));
     homeTabTitle->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Preferred);
     tabs_->setTabButton(0, QTabBar::LeftSide, homeTabTitle);
@@ -368,9 +419,11 @@ QWidget *MainWindow::buildTitleBar() {
         auto *button = new QToolButton;
         button->setObjectName(danger ? QStringLiteral("windowCloseButton")
                                      : QStringLiteral("windowButton"));
-        button->setIcon(Icons::icon(glyph, QColor()));
-        button->setIconSize(QSize(16, 16));
-        button->setFixedSize(QSize(46, TitleBarHeight));
+        button->setIcon(Icons::icon(glyph, Qt::white));
+        button->setIconSize(QSize(Icons::WindowControlIconSize,
+                                  Icons::WindowControlIconSize));
+        button->setFixedSize(QSize(Icons::WindowControlButtonWidth,
+                                   Icons::WindowControlButtonHeight));
         button->setToolTip(tip);
         layout->addWidget(button);
         return button;
@@ -403,12 +456,14 @@ void MainWindow::updateWindowButtons() {
     if (maximizeButton_ != nullptr) {
         maximizeButton_->setIcon(Icons::icon(maximized ? Icons::Glyph::WindowRestore
                                                        : Icons::Glyph::WindowMaximize,
-                                             QColor()));
+                                             Qt::white));
         maximizeButton_->setToolTip(maximized ? tr("Restore")
                                               : tr("Maximize"));
     }
     // A maximized window has no edges to drag, so the resize band is dropped.
-    const int margin = maximized || isFullScreen() ? 0 : WindowShadowMargin;
+    const int margin = maximized || isFullScreen()
+                           ? 0
+                           : WindowShadowMargin + WindowFrameBorderWidth;
     setContentsMargins(margin, margin, margin, margin);
     updateWindowFrame();
 }
@@ -550,6 +605,7 @@ void MainWindow::buildMenus() {
     menuBar_ = new QMenuBar;
     menuBar_->setNativeMenuBar(false);
     menuBar_->setSizePolicy(QSizePolicy::Maximum, QSizePolicy::Preferred);
+    menuBar_->setFont(topBarFont());
 
     auto *fileMenu = menuBar_->addMenu(tr("&File"));
     openAction_ = fileMenu->addAction(Icons::icon(Icons::Glyph::OpenFolder),
@@ -658,15 +714,154 @@ void MainWindow::buildMenus() {
     connect(automaticUpdatesAction, &QAction::toggled, this, [](const bool checked) {
         QSettings().setValue(QStringLiteral("updates/automaticCheck"), checked);
     });
-    connect(aboutAction, &QAction::triggered, this, [this] {
-        QMessageBox::about(this, tr("About SquidyGit"),
-                           tr("<h3>SquidyGit</h3><p>A desktop Git client: repository tabs, "
-                              "a commit graph, staging by hunks and lines, branches, tags, "
-                              "stashes and work with remote repositories.</p><p>Version "
-                              "%1. Built with Qt %2, uses the system git.</p>")
-                               .arg(QApplication::applicationVersion(),
-                                    QStringLiteral(QT_VERSION_STR)));
-    });
+    connect(aboutAction, &QAction::triggered, this,
+            [this] { showAboutDialog(); });
+}
+
+void MainWindow::showAboutDialog() {
+    AboutDialogWindow dialog(this);
+    dialog.setWindowTitle(tr("About SquidyGit"));
+    dialog.setWindowIcon(Icons::applicationIcon());
+
+    auto *outerLayout = new QVBoxLayout(&dialog);
+    outerLayout->setContentsMargins(AboutShadowMargin, AboutShadowMargin,
+                                    AboutShadowMargin, AboutShadowMargin);
+    outerLayout->setSpacing(0);
+
+    auto *windowFrame = new QFrame;
+    windowFrame->setObjectName(QStringLiteral("aboutWindow"));
+    auto *shadow = new QGraphicsDropShadowEffect(windowFrame);
+    shadow->setBlurRadius(22.0);
+    shadow->setOffset(0.0, 2.0);
+    shadow->setColor(QColor(0, 0, 0, 145));
+    windowFrame->setGraphicsEffect(shadow);
+    outerLayout->addWidget(windowFrame);
+
+    auto *frameLayout = new QVBoxLayout(windowFrame);
+    frameLayout->setContentsMargins(0, 0, 0, 0);
+    frameLayout->setSpacing(0);
+
+    auto *titleBar = new QWidget;
+    titleBar->setObjectName(QStringLiteral("aboutTitleBar"));
+    titleBar->setFixedHeight(TitleBarHeight);
+    dialog.setMoveHandle(titleBar);
+
+    auto *titleBarLayout = new QHBoxLayout(titleBar);
+    titleBarLayout->setContentsMargins(8, 0, 0, 0);
+    titleBarLayout->setSpacing(0);
+
+    auto *smallLogo = new QLabel;
+    smallLogo->setPixmap(Icons::pixmap(Icons::Glyph::Ghost, 16, Qt::white));
+    smallLogo->setFixedWidth(28);
+    smallLogo->setAttribute(Qt::WA_TransparentForMouseEvents, true);
+    titleBarLayout->addWidget(smallLogo);
+
+    auto *windowTitle = new QLabel(tr("About"));
+    windowTitle->setObjectName(QStringLiteral("aboutTitleBarText"));
+    windowTitle->setAttribute(Qt::WA_TransparentForMouseEvents, true);
+    titleBarLayout->addWidget(windowTitle);
+    titleBarLayout->addStretch(1);
+
+    auto *closeButton = new QToolButton;
+    closeButton->setObjectName(QStringLiteral("aboutCloseButton"));
+    closeButton->setIcon(Icons::icon(Icons::Glyph::WindowClose, Qt::white));
+    closeButton->setIconSize(QSize(Icons::WindowControlIconSize,
+                                   Icons::WindowControlIconSize));
+    closeButton->setFixedSize(Icons::WindowControlButtonWidth,
+                              Icons::WindowControlButtonHeight);
+    closeButton->setToolTip(tr("Close"));
+    titleBarLayout->addWidget(closeButton);
+    frameLayout->addWidget(titleBar);
+
+    auto *content = new QWidget;
+    content->setObjectName(QStringLiteral("aboutContent"));
+    auto *contentLayout = new QVBoxLayout(content);
+    contentLayout->setContentsMargins(16, 10, 10, 9);
+    contentLayout->setSpacing(0);
+
+    auto *hero = new QWidget;
+    hero->setObjectName(QStringLiteral("aboutHero"));
+    hero->setFixedHeight(105);
+    auto *heroLayout = new QHBoxLayout(hero);
+    heroLayout->setContentsMargins(0, 0, 0, 0);
+    heroLayout->setSpacing(6);
+
+    auto *logo = new QLabel;
+    logo->setPixmap(Icons::applicationPixmap(64));
+    logo->setFixedSize(64, 64);
+    heroLayout->addWidget(logo, 0, Qt::AlignTop);
+
+    auto *applicationInfo = new QWidget;
+    applicationInfo->setObjectName(QStringLiteral("aboutApplicationInfo"));
+    auto *infoLayout = new QVBoxLayout(applicationInfo);
+    infoLayout->setContentsMargins(0, 0, 0, 0);
+    infoLayout->setSpacing(0);
+    infoLayout->addSpacing(24);
+
+    auto *applicationTitle = new QLabel(tr("About SquidyGit"));
+    applicationTitle->setObjectName(QStringLiteral("aboutTitle"));
+    applicationTitle->setAlignment(Qt::AlignHCenter);
+    infoLayout->addWidget(applicationTitle);
+    infoLayout->addSpacing(20);
+
+    auto *copyright = new QLabel(
+        tr("Copyright © 2026 Sergey Yakunin. All rights reserved."));
+    copyright->setObjectName(QStringLiteral("aboutMeta"));
+    copyright->setAlignment(Qt::AlignHCenter);
+    infoLayout->addWidget(copyright);
+
+    auto *version = new QLabel(
+        tr("Version %1").arg(QApplication::applicationVersion()));
+    version->setObjectName(QStringLiteral("aboutMeta"));
+    version->setAlignment(Qt::AlignHCenter);
+    infoLayout->addWidget(version);
+    infoLayout->addStretch(1);
+    heroLayout->addWidget(applicationInfo, 1);
+    contentLayout->addWidget(hero);
+
+    auto *components = new QTextBrowser;
+    components->setObjectName(QStringLiteral("aboutComponents"));
+    components->setOpenExternalLinks(true);
+    components->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    const ThemePalette &palette = Theme::instance()->palette();
+    components->setHtml(QStringLiteral(R"(
+        <html><head><style>
+        body { margin: 3px 0 0 0; color: %1; font-family: Arial; font-size: 12px; }
+        a { color: %2; text-decoration: underline; }
+        .heading { font-weight: 600; margin-bottom: 2px; }
+        .component { margin: 0; }
+        .license-title { font-weight: 600; margin-top: 12px; }
+        .license { margin: 2px 0 0 0; }
+        </style></head><body>
+        <div class="heading">Open Source Components / Libraries / Code</div>
+        <div class="component"><a href="https://github.com/squidyru/squidy-git">SquidyGit</a>
+        © 2026 Sergey Yakunin (<a href="https://github.com/squidyru/squidy-git/blob/main/LICENSE">MIT</a>)</div>
+        <div class="component"><a href="https://www.qt.io/">Qt %3</a>
+        © The Qt Company and Qt contributors (<a href="https://www.gnu.org/licenses/lgpl-3.0.html">LGPL v3</a>)</div>
+        <div class="component"><a href="https://git-scm.com/">Git</a>
+        by the Git project contributors (<a href="https://www.gnu.org/licenses/old-licenses/gpl-2.0.html">GPL v2</a>)</div>
+        <div class="license-title">SquidyGit — MIT License</div>
+        <div class="license">Permission is hereby granted, free of charge, to any person obtaining a copy
+        of this software and associated documentation files (the “Software”), to deal in the Software
+        without restriction, including without limitation the rights to use, copy, modify, merge,
+        publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to
+        whom the Software is furnished to do so, subject to the following conditions:<br><br>
+        The above copyright notice and this permission notice shall be included in all copies or
+        substantial portions of the Software.<br><br>
+        THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING
+        BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+        NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
+        DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+        OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.</div>
+        </body></html>)")
+                            .arg(palette.text.name(QColor::HexRgb),
+                                 palette.accent.name(QColor::HexRgb),
+                                 QString::fromLatin1(qVersion())));
+    contentLayout->addWidget(components, 1);
+    frameLayout->addWidget(content, 1);
+
+    connect(closeButton, &QToolButton::clicked, &dialog, &QDialog::reject);
+    dialog.exec();
 }
 
 void MainWindow::buildLanguageMenu(QMenu *menu) {
@@ -855,6 +1050,7 @@ bool MainWindow::openRepository(const QString &path, const bool activate) {
 
     auto *tabTitle = new QLabel(view->repositoryName());
     tabTitle->setObjectName(QStringLiteral("repositoryTabTitle"));
+    tabTitle->setFont(topBarFont());
     tabTitle->setProperty("fullTitle", view->repositoryName());
     tabTitle->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Preferred);
     tabs_->setTabButton(index, QTabBar::LeftSide, tabTitle);

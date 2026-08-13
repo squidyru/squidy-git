@@ -83,11 +83,14 @@ private:
 
     // --- Refreshing -------------------------------------------------------
     void refreshHeader();
+    void refreshHistoryScope(const QList<GitBranchInfo> &branches);
     void refreshNavigation();
     void refreshStatus();
     void refreshHistory();
     void refreshWorkingTreeDiff();
     void refreshCommitDetails();
+    void filterHistoryByAuthor(const QString &text);
+    void jumpToRevision(const QString &revision);
     void showPage(Page page);
 
     // --- File status ------------------------------------------------------
@@ -153,7 +156,6 @@ private:
     QComboBox *historyOrder_ = nullptr;
     QCheckBox *showRemoteBranches_ = nullptr;
     QLineEdit *historyFilter_ = nullptr;
-    QLineEdit *jumpToEdit_ = nullptr;
     QTreeWidget *historyTree_ = nullptr;
     QTextBrowser *commitDetails_ = nullptr;
     QTreeWidget *commitFilesTree_ = nullptr;

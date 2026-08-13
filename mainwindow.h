@@ -58,6 +58,7 @@ private:
     bool openRepository(const QString &path, bool activate = true);
     void cloneRepository();
     void createRepository();
+    void showAboutDialog();
     void closeTab(int index);
     void closeCurrentTab();
     void showTabContextMenu(const QPoint &position);

@@ -379,23 +379,20 @@ void paintGlyph(QPainter &painter, const Icons::Glyph glyph, const QColor &color
             painter.drawEllipse(QPointF(17, 6.0), 1.45, 1.45);
             break;
         case Icons::Glyph::WindowMinimize:
-            painter.setPen(QPen(Qt::white, 1.35, Qt::SolidLine, Qt::SquareCap));
+            painter.setRenderHint(QPainter::Antialiasing, false);
+            painter.setPen(QPen(Qt::white, 1.5, Qt::SolidLine, Qt::SquareCap));
             painter.drawLine(QPointF(5, 12), QPointF(19, 12));
             break;
         case Icons::Glyph::WindowMaximize:
-            painter.setPen(QPen(Qt::white, 1.35, Qt::SolidLine,
+            painter.setRenderHint(QPainter::Antialiasing, false);
+            painter.setPen(QPen(Qt::white, 1.5, Qt::SolidLine,
                                 Qt::SquareCap, Qt::MiterJoin));
             painter.setBrush(Qt::NoBrush);
-            path.moveTo(9.0, 7.5);
-            path.lineTo(9.0, 5.0);
-            path.lineTo(19.0, 5.0);
-            path.lineTo(19.0, 15.0);
-            path.lineTo(16.5, 15.0);
-            painter.drawPath(path);
-            painter.drawRect(QRectF(5.0, 9.0, 10.0, 10.0));
+            painter.drawRect(QRectF(5.0, 5.0, 14.0, 14.0));
             break;
         case Icons::Glyph::WindowRestore:
-            painter.setPen(QPen(Qt::white, 1.35, Qt::SolidLine,
+            painter.setRenderHint(QPainter::Antialiasing, false);
+            painter.setPen(QPen(Qt::white, 1.5, Qt::SolidLine,
                                 Qt::SquareCap, Qt::MiterJoin));
             painter.setBrush(Qt::NoBrush);
             path.moveTo(9.0, 7.5);
@@ -407,7 +404,8 @@ void paintGlyph(QPainter &painter, const Icons::Glyph glyph, const QColor &color
             painter.drawRect(QRectF(5.0, 9.0, 10.0, 10.0));
             break;
         case Icons::Glyph::WindowClose:
-            painter.setPen(QPen(Qt::white, 1.35, Qt::SolidLine, Qt::SquareCap));
+            painter.setRenderHint(QPainter::Antialiasing, false);
+            painter.setPen(QPen(Qt::white, 1.5, Qt::SolidLine, Qt::SquareCap));
             painter.drawLine(QPointF(5, 5), QPointF(19, 19));
             painter.drawLine(QPointF(19, 5), QPointF(5, 19));
             break;

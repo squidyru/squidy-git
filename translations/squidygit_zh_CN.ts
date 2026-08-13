@@ -143,6 +143,62 @@ Cloning failed (code %1).</source>
         <source>Discard selected lines</source>
         <translation>放弃选中的行</translation>
     </message>
+    <message>
+        <source>Diff</source>
+        <translation>差异</translation>
+    </message>
+    <message>
+        <source>Diff — %1</source>
+        <translation>差异 — %1</translation>
+    </message>
+    <message>
+        <source>%1 lines hidden</source>
+        <translation>已隐藏 %1 行</translation>
+    </message>
+    <message>
+        <source>Old version</source>
+        <translation>旧版本</translation>
+    </message>
+    <message>
+        <source>New version</source>
+        <translation>新版本</translation>
+    </message>
+    <message>
+        <source>Open Diff Window</source>
+        <translation>打开 Diff 窗口</translation>
+    </message>
+    <message>
+        <source>Minimize</source>
+        <translation>最小化</translation>
+    </message>
+    <message>
+        <source>Maximize</source>
+        <translation>最大化</translation>
+    </message>
+    <message>
+        <source>Restore</source>
+        <translation>还原</translation>
+    </message>
+    <message>
+        <source>Close</source>
+        <translation>关闭</translation>
+    </message>
+    <message>
+        <source>Hide unchanged lines</source>
+        <translation>隐藏未更改的行</translation>
+    </message>
+    <message>
+        <source>Show only the changed fragments or the complete old and new files</source>
+        <translation>仅显示更改片段，或显示完整的新旧文件</translation>
+    </message>
+    <message>
+        <source>Do not add empty rows on the left</source>
+        <translation>不在左侧添加空行</translation>
+    </message>
+    <message>
+        <source>Do not insert empty rows on the left to align added lines</source>
+        <translation>不在左侧插入用于对齐新增内容的空行</translation>
+    </message>
 </context>
 <context>
     <name>GitClient</name>
@@ -511,8 +567,13 @@ Cloning failed (code %1).</source>
     </message>
     <message>
         <location filename="../mainwindow.cpp" line="582" />
-        <source>&lt;h3&gt;SquidyGit&lt;/h3&gt;&lt;p&gt;A desktop Git client: repository tabs, a commit graph, staging by hunks and lines, branches, tags, stashes and work with remote repositories.&lt;/p&gt;&lt;p&gt;Version %1. Built with Qt %2, uses the system git.&lt;/p&gt;</source>
-        <translation>&lt;h3&gt;SquidyGit&lt;/h3&gt;&lt;p&gt;桌面 Git 客户端：仓库标签页、提交图、按代码块和按行暂存、分支、标签、贮藏以及远程仓库操作。&lt;/p&gt;&lt;p&gt;版本 %1。基于 Qt %2 构建，使用系统的 git。&lt;/p&gt;</translation>
+        <source>Copyright © 2026 Sergey Yakunin. All rights reserved.</source>
+        <translation>版权所有 © 2026 Sergey Yakunin。保留所有权利。</translation>
+    </message>
+    <message>
+        <location filename="../mainwindow.cpp" line="582" />
+        <source>Version %1</source>
+        <translation>版本 %1</translation>
     </message>
     <message>
         <location filename="../mainwindow.cpp" line="595" />
@@ -936,13 +997,13 @@ Branch: %2</source>
     </message>
     <message>
         <location filename="../repositoryview.cpp" line="690" />
-        <source>By date</source>
-        <translation>按日期</translation>
+        <source>Sort by date</source>
+        <translation>按日期排序</translation>
     </message>
     <message>
         <location filename="../repositoryview.cpp" line="691" />
-        <source>By topology</source>
-        <translation>按拓扑</translation>
+        <source>Sort by ancestry</source>
+        <translation>按祖先关系排序</translation>
     </message>
     <message>
         <location filename="../repositoryview.cpp" line="693" />
@@ -953,6 +1014,18 @@ Branch: %2</source>
         <location filename="../repositoryview.cpp" line="698" />
         <source>Go to:</source>
         <translation>跳转到：</translation>
+    </message>
+    <message>
+        <source>Commit…</source>
+        <translation>提交…</translation>
+    </message>
+    <message>
+        <source>Go to commit</source>
+        <translation>跳转到提交</translation>
+    </message>
+    <message>
+        <source>Commit SHA:</source>
+        <translation>提交 SHA：</translation>
     </message>
     <message>
         <location filename="../repositoryview.cpp" line="700" />
@@ -1080,6 +1153,10 @@ Branch: %2</source>
         <translation>标签</translation>
     </message>
     <message>
+        <source>No tags</source>
+        <translation>没有标签</translation>
+    </message>
+    <message>
         <location filename="../repositoryview.cpp" line="1047" />
         <source>Remotes</source>
         <translation>远程仓库</translation>
@@ -1093,6 +1170,10 @@ Branch: %2</source>
         <location filename="../repositoryview.cpp" line="1070" />
         <source>Stashes</source>
         <translation>贮藏</translation>
+    </message>
+    <message>
+        <source>No stashes</source>
+        <translation>没有贮藏</translation>
     </message>
     <message>
         <location filename="../repositoryview.cpp" line="1085" />

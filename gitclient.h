@@ -193,8 +193,10 @@ public:
     // --- Diffs ------------------------------------------------------------
     [[nodiscard]] GitCommandResult diff(const QString &path, bool staged, bool untracked,
                                         int contextLines = 3) const;
-    [[nodiscard]] GitCommandResult commitDiff(const QString &hash, const QString &path) const;
-    [[nodiscard]] GitCommandResult stashDiff(int index, const QString &path) const;
+    [[nodiscard]] GitCommandResult commitDiff(const QString &hash, const QString &path,
+                                               int contextLines = 3) const;
+    [[nodiscard]] GitCommandResult stashDiff(int index, const QString &path,
+                                              int contextLines = 3) const;
     [[nodiscard]] GitCommandResult showCommit(const QString &hash) const;
 
     // --- Index and working tree -------------------------------------------

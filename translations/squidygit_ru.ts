@@ -143,6 +143,62 @@ Cloning failed (code %1).</source>
         <source>Discard selected lines</source>
         <translation>Откатить выбранные строки</translation>
     </message>
+    <message>
+        <source>Diff</source>
+        <translation>Diff</translation>
+    </message>
+    <message>
+        <source>Diff — %1</source>
+        <translation>Diff — %1</translation>
+    </message>
+    <message>
+        <source>%1 lines hidden</source>
+        <translation>Скрыто строк: %1</translation>
+    </message>
+    <message>
+        <source>Old version</source>
+        <translation>Старая версия</translation>
+    </message>
+    <message>
+        <source>New version</source>
+        <translation>Новая версия</translation>
+    </message>
+    <message>
+        <source>Open Diff Window</source>
+        <translation>Открыть окно Diff</translation>
+    </message>
+    <message>
+        <source>Minimize</source>
+        <translation>Свернуть</translation>
+    </message>
+    <message>
+        <source>Maximize</source>
+        <translation>Развернуть</translation>
+    </message>
+    <message>
+        <source>Restore</source>
+        <translation>Восстановить</translation>
+    </message>
+    <message>
+        <source>Close</source>
+        <translation>Закрыть</translation>
+    </message>
+    <message>
+        <source>Hide unchanged lines</source>
+        <translation>Скрывать неизменённые строки</translation>
+    </message>
+    <message>
+        <source>Show only the changed fragments or the complete old and new files</source>
+        <translation>Показывать только изменённые фрагменты или полные старую и новую версии файла</translation>
+    </message>
+    <message>
+        <source>Do not add empty rows on the left</source>
+        <translation>Не добавлять пустые строки слева</translation>
+    </message>
+    <message>
+        <source>Do not insert empty rows on the left to align added lines</source>
+        <translation>Не вставлять пустые строки слева для выравнивания добавленных строк</translation>
+    </message>
 </context>
 <context>
     <name>GitClient</name>
@@ -548,12 +604,17 @@ Cloning failed (code %1).</source>
     <message>
         <location filename="../mainwindow.cpp" line="581" />
         <source>About SquidyGit</source>
-        <translation>О SquidyGit</translation>
+        <translation>О программе SquidyGit</translation>
     </message>
     <message>
         <location filename="../mainwindow.cpp" line="582" />
-        <source>&lt;h3&gt;SquidyGit&lt;/h3&gt;&lt;p&gt;A desktop Git client: repository tabs, a commit graph, staging by hunks and lines, branches, tags, stashes and work with remote repositories.&lt;/p&gt;&lt;p&gt;Version %1. Built with Qt %2, uses the system git.&lt;/p&gt;</source>
-        <translation>&lt;h3&gt;SquidyGit&lt;/h3&gt;&lt;p&gt;Настольный Git-клиент: вкладки репозиториев, граф коммитов, индексация по ханкам и строкам, ветки, теги, stash и работа с удалёнными репозиториями.&lt;/p&gt;&lt;p&gt;Версия %1. Собран на Qt %2, использует системный git.&lt;/p&gt;</translation>
+        <source>Copyright © 2026 Sergey Yakunin. All rights reserved.</source>
+        <translation>Copyright © 2026 Sergey Yakunin. Все права защищены.</translation>
+    </message>
+    <message>
+        <location filename="../mainwindow.cpp" line="582" />
+        <source>Version %1</source>
+        <translation>Версия %1</translation>
     </message>
     <message>
         <location filename="../mainwindow.cpp" line="595" />
@@ -973,17 +1034,17 @@ Branch: %2</source>
     <message>
         <location filename="../repositoryview.cpp" line="687" />
         <source>Show remote branches</source>
-        <translation>Показывать удалённые ветки</translation>
+        <translation>Показать внешние ветки</translation>
     </message>
     <message>
         <location filename="../repositoryview.cpp" line="690" />
-        <source>By date</source>
-        <translation>По дате</translation>
+        <source>Sort by date</source>
+        <translation>Сортировать по дате</translation>
     </message>
     <message>
         <location filename="../repositoryview.cpp" line="691" />
-        <source>By topology</source>
-        <translation>По топологии</translation>
+        <source>Sort by ancestry</source>
+        <translation>Сортировать по предкам</translation>
     </message>
     <message>
         <location filename="../repositoryview.cpp" line="693" />
@@ -993,7 +1054,19 @@ Branch: %2</source>
     <message>
         <location filename="../repositoryview.cpp" line="698" />
         <source>Go to:</source>
-        <translation>Перейти к:</translation>
+        <translation>Перейти на:</translation>
+    </message>
+    <message>
+        <source>Commit…</source>
+        <translation>Коммит…</translation>
+    </message>
+    <message>
+        <source>Go to commit</source>
+        <translation>Перейти к коммиту</translation>
+    </message>
+    <message>
+        <source>Commit SHA:</source>
+        <translation>SHA коммита:</translation>
     </message>
     <message>
         <location filename="../repositoryview.cpp" line="700" />
@@ -1118,22 +1191,30 @@ Branch: %2</source>
     <message>
         <location filename="../repositoryview.cpp" line="1036" />
         <source>Tags</source>
-        <translation>Теги</translation>
+        <translation>Метки</translation>
+    </message>
+    <message>
+        <source>No tags</source>
+        <translation>Нет меток</translation>
     </message>
     <message>
         <location filename="../repositoryview.cpp" line="1047" />
         <source>Remotes</source>
-        <translation>Удалённые</translation>
+        <translation>Внешние ветки</translation>
     </message>
     <message>
         <location filename="../repositoryview.cpp" line="1065" />
         <source>No remotes</source>
-        <translation>Нет удалённых</translation>
+        <translation>Нет внешних веток</translation>
     </message>
     <message>
         <location filename="../repositoryview.cpp" line="1070" />
         <source>Stashes</source>
-        <translation>Спрятанное</translation>
+        <translation>Скрытые изменения</translation>
+    </message>
+    <message>
+        <source>No stashes</source>
+        <translation>Нет скрытых изменений</translation>
     </message>
     <message>
         <location filename="../repositoryview.cpp" line="1085" />

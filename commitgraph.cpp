@@ -12,9 +12,9 @@
 
 namespace {
 
-constexpr int LaneWidth = 14;
-constexpr int LaneOffset = 12;
-constexpr qreal NodeRadius = 4.5;
+constexpr int LaneWidth = 12;
+constexpr int LaneOffset = 10;
+constexpr qreal NodeRadius = 4.0;
 
 QColor laneColor(const int lane) {
     const QList<QColor> &colors = Theme::instance()->palette().laneColors;
@@ -23,32 +23,18 @@ QColor laneColor(const int lane) {
 
 struct ReferenceChip {
     QString text;
-    QColor accent;
     Icons::Glyph glyph = Icons::Glyph::Branch;
-    bool current = false;
 };
 
 ReferenceChip chipFor(const QString &reference) {
-    const ThemePalette &palette = Theme::instance()->palette();
     ReferenceChip chip;
     chip.text = reference;
 
     if (reference.startsWith(QStringLiteral("tag: "))) {
         chip.text = reference.mid(5);
-        chip.accent = palette.warning;
         chip.glyph = Icons::Glyph::Tag;
-    } else if (reference == QStringLiteral("HEAD")) {
-        chip.accent = palette.danger;
-        chip.current = true;
     } else if (reference.startsWith(QStringLiteral("HEAD -> "))) {
         chip.text = reference.mid(8);
-        chip.accent = palette.success;
-        chip.current = true;
-    } else if (reference.contains(u'/')) {
-        chip.accent = palette.mutedText;
-        chip.glyph = Icons::Glyph::Remote;
-    } else {
-        chip.accent = palette.accent;
     }
     return chip;
 }
@@ -157,25 +143,35 @@ int CommitGraphDelegate::graphWidthForLanes(const int lanes) {
 QSize CommitGraphDelegate::sizeHint(const QStyleOptionViewItem &option,
                                     const QModelIndex &index) const {
     QSize size = QStyledItemDelegate::sizeHint(option, index);
-    size.setHeight(qMax(size.height(), 19));
+    size.setHeight(19);
     return size;
 }
 
 void CommitGraphDelegate::paint(QPainter *painter, const QStyleOptionViewItem &option,
                                 const QModelIndex &index) const {
     const ThemePalette &palette = Theme::instance()->palette();
+    const QModelIndex graphIndex = index.sibling(index.row(), 0);
+    const bool isHead = graphIndex.data(CommitRoles::IsHead).toBool();
+    const bool uncommitted = graphIndex.data(CommitRoles::IsUncommitted).toBool();
+    const bool selected = option.state.testFlag(QStyle::State_Selected);
 
     if (index.column() != 0) {
+        QStyleOptionViewItem rowOption(option);
+        initStyleOption(&rowOption, index);
+        rowOption.font.setBold(isHead || uncommitted || selected);
+
         const QStringList references = index.data(CommitRoles::References).toStringList();
         if (references.isEmpty()) {
-            QStyledItemDelegate::paint(painter, option, index);
+            QStyle *style = rowOption.widget != nullptr ? rowOption.widget->style()
+                                                        : QApplication::style();
+            style->drawControl(QStyle::CE_ItemViewItem, &rowOption, painter,
+                               rowOption.widget);
             return;
         }
 
         // Draw the row background without its text so the chips can be laid out
         // before the commit subject.
-        QStyleOptionViewItem chipOption(option);
-        initStyleOption(&chipOption, index);
+        QStyleOptionViewItem chipOption(rowOption);
         chipOption.text.clear();
         QStyle *style = chipOption.widget != nullptr ? chipOption.widget->style()
                                                      : QApplication::style();
@@ -186,52 +182,104 @@ void CommitGraphDelegate::paint(QPainter *painter, const QStyleOptionViewItem &o
         painter->setClipRect(option.rect);
 
         QFont chipFont = option.font;
-        chipFont.setPointSizeF(qMax(6.5, option.font.pointSizeF() - 1.0));
-        chipFont.setBold(true);
+        chipFont.setPixelSize(11);
+        chipFont.setBold(false);
         const QFontMetrics chipMetrics(chipFont);
 
         int x = option.rect.left() + 4;
-        const int chipHeight = qMin(option.rect.height() - 6, chipMetrics.height() + 4);
+        const int chipHeight = qMin(15, option.rect.height() - 2);
         const int chipTop = option.rect.top() + (option.rect.height() - chipHeight) / 2;
+        const int iconCellWidth = 18;
+        const int chipGap = 9;
+        const int subjectReserve = 80;
+        const int referencesRight = option.rect.right() - subjectReserve;
+        const QColor referenceBlue = Theme::instance()->mode() == Theme::Mode::Light
+                                         ? QColor(QStringLiteral("#337AB7"))
+                                         : palette.accent;
+        const QColor chipSurface = Theme::instance()->mode() == Theme::Mode::Light
+                                       ? QColor(QStringLiteral("#F7F7F7"))
+                                       : palette.surface;
+        const QColor chipBorder = Theme::instance()->mode() == Theme::Mode::Light
+                                      ? QColor(QStringLiteral("#C5C5C5"))
+                                      : palette.border;
 
-        const int glyphSize = qMax(9, chipHeight - 5);
-        for (const QString &reference : references) {
+        const auto drawChip = [&](const ReferenceChip &chip, const int left,
+                                  const int width) {
+            const QRectF chipRect(left + 0.5, chipTop + 0.5,
+                                  width - 1.0, chipHeight - 1.0);
+            QPainterPath pill;
+            pill.addRoundedRect(chipRect, 2.5, 2.5);
+            painter->fillPath(pill, chipSurface);
+
+            painter->save();
+            painter->setClipPath(pill);
+            painter->fillRect(QRect(left, chipTop, iconCellWidth, chipHeight),
+                              referenceBlue);
+            painter->restore();
+
+            painter->setPen(QPen(chipBorder, 1.0));
+            painter->setBrush(Qt::NoBrush);
+            painter->drawPath(pill);
+
+            const int glyphSize = 14;
+            painter->drawPixmap(QRect(left + (iconCellWidth - glyphSize) / 2,
+                                      chipTop + (chipHeight - glyphSize) / 2,
+                                      glyphSize, glyphSize),
+                                Icons::pixmap(chip.glyph, glyphSize, Qt::white));
+
+            painter->setPen(palette.text);
+            painter->setFont(chipFont);
+            painter->drawText(QRect(left + iconCellWidth + 4, chipTop,
+                                    width - iconCellWidth - 8, chipHeight),
+                              Qt::AlignVCenter | Qt::AlignLeft, chip.text);
+        };
+
+        const auto drawOverflowChip = [&](const int left) {
+            constexpr int width = 18;
+            const QRectF rect(left + 0.5, chipTop + 0.5,
+                              width - 1.0, chipHeight - 1.0);
+            painter->setPen(Qt::NoPen);
+            painter->setBrush(referenceBlue);
+            painter->drawRoundedRect(rect, 2.5, 2.5);
+            painter->setBrush(Qt::white);
+            const qreal dotY = rect.center().y() + 2.0;
+            for (const qreal dotX : {rect.center().x() - 4.0,
+                                     rect.center().x(), rect.center().x() + 4.0}) {
+                painter->drawEllipse(QPointF(dotX, dotY), 1.0, 1.0);
+            }
+        };
+
+        int shown = 0;
+        const int maximumVisible = qMin(2, static_cast<int>(references.size()));
+        for (int referenceIndex = 0; referenceIndex < maximumVisible; ++referenceIndex) {
+            const QString &reference = references.at(referenceIndex);
             const ReferenceChip chip = chipFor(reference);
-            const int width = chipMetrics.horizontalAdvance(chip.text) + glyphSize + 14;
-            if (x + width > option.rect.right() - 40) {
+            const int width = chipMetrics.horizontalAdvance(chip.text) + iconCellWidth + 9;
+            const bool hasMore = referenceIndex + 1 < references.size();
+            const int overflowSpace = hasMore ? 18 + chipGap : 0;
+            if (x + width + overflowSpace > referencesRight) {
                 break;
             }
-
-            // Outlined pill with a leading glyph for reference labels.
-            const QRectF chipRect(x + 0.5, chipTop + 0.5, width - 1.0, chipHeight - 1.0);
-            painter->setPen(QPen(chip.accent, 1.0));
-            painter->setBrush(palette.surface);
-            painter->drawRoundedRect(chipRect, 2.5, 2.5);
-
-            painter->drawPixmap(QRect(x + 4, chipTop + (chipHeight - glyphSize) / 2,
-                                      glyphSize, glyphSize),
-                                Icons::pixmap(chip.glyph, glyphSize, chip.accent));
-
-            painter->setPen(chip.current ? chip.accent : palette.text);
-            painter->setFont(chipFont);
-            painter->drawText(QRect(x + glyphSize + 7, chipTop, width - glyphSize - 10,
-                                    chipHeight),
-                              Qt::AlignVCenter | Qt::AlignLeft, chip.text);
-            x += width + 4;
+            drawChip(chip, x, width);
+            x += width + chipGap;
+            ++shown;
+        }
+        if (shown < references.size() && x + 18 <= referencesRight) {
+            drawOverflowChip(x);
+            x += 18 + chipGap;
         }
 
         const QString subject = index.data(Qt::DisplayRole).toString();
         if (!subject.isEmpty()) {
             QFont subjectFont = option.font;
-            if (option.state.testFlag(QStyle::State_Selected)) {
-                subjectFont.setBold(true);
-            }
+            subjectFont.setBold(isHead || uncommitted || selected);
             painter->setFont(subjectFont);
-            painter->setPen(option.state.testFlag(QStyle::State_Selected)
+            painter->setPen(selected
                                 ? option.palette.color(QPalette::HighlightedText)
                                 : palette.text);
-            const QRect textRect(x + 2, option.rect.top(),
-                                 option.rect.right() - x - 6, option.rect.height());
+            const QRect textRect(x, option.rect.top(),
+                                 qMax(0, option.rect.right() - x - 4),
+                                 option.rect.height());
             painter->drawText(textRect, Qt::AlignVCenter | Qt::AlignLeft,
                               QFontMetrics(subjectFont).elidedText(subject, Qt::ElideRight,
                                                                   textRect.width()));
@@ -246,7 +294,7 @@ void CommitGraphDelegate::paint(QPainter *painter, const QStyleOptionViewItem &o
     const QVariantList passEdges = index.data(CommitRoles::PassEdges).toList();
     const QVariantList parentLanes = index.data(CommitRoles::ParentLanes).toList();
     const bool hasIncoming = index.data(CommitRoles::HasIncoming).toBool();
-    const bool uncommitted = index.data(CommitRoles::IsUncommitted).toBool();
+    const bool graphUncommitted = index.data(CommitRoles::IsUncommitted).toBool();
     const bool isMerge = index.data(CommitRoles::IsMerge).toBool();
 
     const auto laneX = [&option](const int lane) {
@@ -262,7 +310,7 @@ void CommitGraphDelegate::paint(QPainter *painter, const QStyleOptionViewItem &o
 
     const auto drawEdge = [&](const int fromLane, const int fromY,
                               const int toLane, const int toY) {
-        QPen pen(laneColor(qMax(fromLane, toLane)), 1.8);
+        QPen pen(laneColor(qMax(fromLane, toLane)), 1.35);
         pen.setCapStyle(Qt::RoundCap);
         painter->setPen(pen);
         painter->setBrush(Qt::NoBrush);
@@ -290,18 +338,22 @@ void CommitGraphDelegate::paint(QPainter *painter, const QStyleOptionViewItem &o
     }
 
     const QPointF center(laneX(nodeLane), centerY);
-    if (uncommitted) {
+    if (graphUncommitted) {
         QPen pen(palette.mutedText, 1.6);
         pen.setStyle(Qt::DashLine);
         painter->setPen(pen);
         painter->setBrush(palette.surface);
         painter->drawEllipse(center, NodeRadius, NodeRadius);
+    } else if (!hasIncoming || isHead) {
+        painter->setPen(QPen(isHead ? palette.text : laneColor(nodeLane), 1.6));
+        painter->setBrush(palette.surface);
+        painter->drawEllipse(center, NodeRadius, NodeRadius);
     } else {
-        painter->setPen(QPen(palette.graphNodeBorder, 1.6));
+        painter->setPen(Qt::NoPen);
         painter->setBrush(laneColor(nodeLane));
         painter->drawEllipse(center, NodeRadius, NodeRadius);
         if (isMerge) {
-            painter->setBrush(palette.graphNodeBorder);
+            painter->setBrush(palette.surface);
             painter->setPen(Qt::NoPen);
             painter->drawEllipse(center, NodeRadius - 2.4, NodeRadius - 2.4);
         }
