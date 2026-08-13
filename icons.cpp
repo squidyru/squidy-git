@@ -22,9 +22,7 @@ qreal devicePixelRatio() {
     return screen != nullptr ? screen->devicePixelRatio() : 1.0;
 }
 
-/// Toolbar icons are built once and are not repainted when the theme changes,
-/// so these tones are picked to stay legible on both the light and the dark
-/// background rather than to match one palette exactly.
+/// Fixed toolbar colors that remain legible in both themes.
 QColor defaultColor(const Icons::Glyph glyph) {
     switch (glyph) {
         case Icons::Glyph::Trash:
