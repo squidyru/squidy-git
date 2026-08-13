@@ -248,7 +248,19 @@ if (UNIX AND NOT APPLE)
     set(CPACK_DEBIAN_PACKAGE_SECTION "vcs")
     set(CPACK_DEBIAN_PACKAGE_PRIORITY "optional")
     set(CPACK_DEBIAN_PACKAGE_SHLIBDEPS ON)
-    set(CPACK_DEBIAN_PACKAGE_DEPENDS "git")
+
+    # Release builds link against a Qt that is not installed through apt, so
+    # dpkg-shlibdeps cannot map the Qt libraries to packages. Without the
+    # dependencies below the package installs and then fails to start.
+    # libqt6core6 was renamed to libqt6core6t64 in the 64-bit time_t transition.
+    set(SQUIDYGIT_QT_RUNTIME "${Qt6_VERSION_MAJOR}.${Qt6_VERSION_MINOR}")
+    string(CONCAT CPACK_DEBIAN_PACKAGE_DEPENDS
+            "git"
+            ", libqt6core6t64 (>= ${SQUIDYGIT_QT_RUNTIME})"
+            " | libqt6core6 (>= ${SQUIDYGIT_QT_RUNTIME})"
+            ", libqt6gui6 (>= ${SQUIDYGIT_QT_RUNTIME})"
+            ", libqt6network6 (>= ${SQUIDYGIT_QT_RUNTIME})"
+            ", libqt6widgets6 (>= ${SQUIDYGIT_QT_RUNTIME})")
 
     include(CPack)
 
