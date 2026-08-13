@@ -183,10 +183,7 @@ jobs:
           cache: true
 
       - name: Configure
-        run: >-
-          cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
-          -DCMAKE_CXX_COMPILER=g++
-          -DSQUIDYGIT_BUILD_VERSION=${{ needs.validate.outputs.release_version }}
+        run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER=g++ "-DSQUIDYGIT_BUILD_VERSION=${{ needs.validate.outputs.release_version }}"
 
       - name: Build Windows installer
         run: cmake --build build --config Release --target windows_installer --parallel
