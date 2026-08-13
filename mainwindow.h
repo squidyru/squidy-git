@@ -6,6 +6,7 @@
 #include <QStringList>
 
 class RepositoryView;
+class UpdateChecker;
 class QAction;
 class QDockWidget;
 class QGraphicsDropShadowEffect;
@@ -84,6 +85,7 @@ private:
     QLabel *statusLabel_ = nullptr;
     QDockWidget *logDock_ = nullptr;
     QPlainTextEdit *logView_ = nullptr;
+    UpdateChecker *updateChecker_ = nullptr;
 
     QAction *openAction_ = nullptr;
     QAction *cloneAction_ = nullptr;

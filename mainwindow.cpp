@@ -7,6 +7,7 @@
 #include "icons.h"
 #include "repositoryview.h"
 #include "theme.h"
+#include "updatechecker.h"
 
 #include <QAction>
 #include <QApplication>
@@ -38,6 +39,7 @@
 #include <QTabBar>
 #include <QToolBar>
 #include <QToolButton>
+#include <QTimer>
 #include <QVBoxLayout>
 #include <QWindow>
 
@@ -69,6 +71,8 @@ MainWindow::MainWindow(QWidget *parent)
                        WindowShadowMargin, WindowShadowMargin);
     setMouseTracking(true);
 
+    updateChecker_ = new UpdateChecker(this);
+
     windowFrame_ = new QWidget(this);
     windowFrame_->setObjectName(QStringLiteral("windowShadowFrame"));
     windowFrame_->setAttribute(Qt::WA_TransparentForMouseEvents, true);
@@ -88,6 +92,13 @@ MainWindow::MainWindow(QWidget *parent)
     updateWindowButtons();
     updateWindowFrame();
     updateActions();
+
+    QTimer::singleShot(1500, this, [this] {
+        const QSettings settings;
+        if (settings.value(QStringLiteral("updates/automaticCheck"), true).toBool()) {
+            updateChecker_->checkForUpdates(false);
+        }
+    });
 }
 
 void MainWindow::buildInterface() {
@@ -526,6 +537,14 @@ void MainWindow::buildMenus() {
     logAction_->setShortcut(QKeySequence(QStringLiteral("Ctrl+`")));
 
     auto *helpMenu = menuBar_->addMenu(QStringLiteral("&Справка"));
+    QAction *checkUpdatesAction = helpMenu->addAction(
+        QStringLiteral("Проверить обновления…"));
+    QAction *automaticUpdatesAction = helpMenu->addAction(
+        QStringLiteral("Проверять обновления автоматически"));
+    automaticUpdatesAction->setCheckable(true);
+    automaticUpdatesAction->setChecked(
+        QSettings().value(QStringLiteral("updates/automaticCheck"), true).toBool());
+    helpMenu->addSeparator();
     QAction *aboutAction = helpMenu->addAction(QStringLiteral("О программе"));
 
     connect(openAction_, &QAction::triggered, this, [this] { openRepositoryDialog(); });
@@ -549,6 +568,11 @@ void MainWindow::buildMenus() {
     });
     connect(logAction_, &QAction::toggled, this,
             [this](const bool checked) { logDock_->setVisible(checked); });
+    connect(checkUpdatesAction, &QAction::triggered, this,
+            [this] { updateChecker_->checkForUpdates(true); });
+    connect(automaticUpdatesAction, &QAction::toggled, this, [](const bool checked) {
+        QSettings().setValue(QStringLiteral("updates/automaticCheck"), checked);
+    });
     connect(aboutAction, &QAction::triggered, this, [this] {
         QMessageBox::about(this, QStringLiteral("О SquidyGit"),
                            QStringLiteral(
@@ -556,8 +580,9 @@ void MainWindow::buildMenus() {
                                "<p>Настольный Git-клиент: вкладки репозиториев, "
                                "граф коммитов, индексация по ханкам и строкам, ветки, теги, "
                                "stash и работа с удалёнными репозиториями.</p>"
-                               "<p>Собран на Qt %1, использует системный git.</p>")
-                               .arg(QStringLiteral(QT_VERSION_STR)));
+                               "<p>Версия %1. Собран на Qt %2, использует системный git.</p>")
+                               .arg(QApplication::applicationVersion(),
+                                    QStringLiteral(QT_VERSION_STR)));
     });
 }
 

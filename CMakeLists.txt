@@ -4,6 +4,13 @@ cmake_minimum_required(VERSION 3.16)
 
 project(SquidyGit VERSION 0.0.1 LANGUAGES CXX)
 
+set(SQUIDYGIT_BUILD_VERSION "${PROJECT_VERSION}" CACHE STRING
+        "Version displayed by the application and used by the update checker")
+if (NOT SQUIDYGIT_BUILD_VERSION MATCHES
+        "^[0-9]+[.][0-9]+[.][0-9]+(-[0-9A-Za-z.-]+)?$")
+    message(FATAL_ERROR "Invalid SquidyGit build version: ${SQUIDYGIT_BUILD_VERSION}")
+endif ()
+
 include(GNUInstallDirs)
 
 set(CMAKE_INSTALL_DEFAULT_DIRECTORY_PERMISSIONS
@@ -19,7 +26,7 @@ set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)
 
-find_package(Qt6 REQUIRED COMPONENTS Concurrent Core Gui Widgets)
+find_package(Qt6 REQUIRED COMPONENTS Concurrent Core Gui Network Widgets)
 
 add_executable(SquidyGit
         main.cpp
@@ -38,12 +45,18 @@ add_executable(SquidyGit
         icons.cpp
         icons.h
         theme.cpp
-        theme.h)
+        theme.h
+        updatechecker.cpp
+        updatechecker.h)
+
+target_compile_definitions(SquidyGit PRIVATE
+        SQUIDYGIT_VERSION="${SQUIDYGIT_BUILD_VERSION}")
 
 target_link_libraries(SquidyGit PRIVATE
         Qt6::Concurrent
         Qt6::Core
         Qt6::Gui
+        Qt6::Network
         Qt6::Widgets)
 
 if (MSVC)
@@ -218,6 +231,7 @@ if (UNIX AND NOT APPLE)
     set(SQUIDYGIT_DEB_CMAKE_ARGS
             "-DCMAKE_BUILD_TYPE=Release"
             "-DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}"
+            "-DSQUIDYGIT_BUILD_VERSION=${SQUIDYGIT_BUILD_VERSION}"
             "-DSQUIDYGIT_PACKAGE_DIRECTORY=${CMAKE_BINARY_DIR}/dist")
     if (CMAKE_MAKE_PROGRAM)
         list(APPEND SQUIDYGIT_DEB_CMAKE_ARGS

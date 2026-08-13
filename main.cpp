@@ -13,7 +13,7 @@ int main(int argc, char *argv[]) {
 
     QCoreApplication::setOrganizationName(QStringLiteral("SquidyGit"));
     QCoreApplication::setApplicationName(QStringLiteral("SquidyGit"));
-    QCoreApplication::setApplicationVersion(QStringLiteral("0.0.1"));
+    QCoreApplication::setApplicationVersion(QStringLiteral(SQUIDYGIT_VERSION));
 
     QApplication::setWindowIcon(Icons::applicationIcon());
     QApplication::setDesktopFileName(QStringLiteral("squidygit"));
