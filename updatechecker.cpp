@@ -30,6 +30,14 @@
 
 #include <optional>
 
+#if defined(Q_OS_WIN)
+#define WIN32_LEAN_AND_MEAN
+#define NOMINMAX
+#include <windows.h>
+
+#include <shellapi.h>
+#endif
+
 namespace {
 constexpr auto ReleasesApiUrl =
     "https://api.github.com/repos/squidyru/squidy-git/releases?per_page=20";
@@ -525,29 +533,40 @@ void UpdateChecker::downloadAsset(const ReleaseAsset &asset) {
 
 void UpdateChecker::openDownloadedPackage(const QString &path) {
     const QFileInfo fileInfo(path);
-    const bool isAppImage = path.endsWith(QStringLiteral(".AppImage"), Qt::CaseInsensitive);
 #if defined(Q_OS_LINUX)
     if (path.endsWith(QStringLiteral(".deb"), Qt::CaseInsensitive)) {
         installDebPackage(path);
         return;
     }
+#elif defined(Q_OS_WIN)
+    if (path.endsWith(QStringLiteral(".exe"), Qt::CaseInsensitive)) {
+        installWindowsPackage(path);
+        return;
+    }
 #endif
+
+    // The AppImage and the portable archive are unpacked by hand, so the file
+    // manager is opened on the containing directory instead of the file.
+    const bool isAppImage = path.endsWith(QStringLiteral(".AppImage"), Qt::CaseInsensitive);
+    const bool isArchive = path.endsWith(QStringLiteral(".zip"), Qt::CaseInsensitive);
     if (isAppImage) {
         QFile::setPermissions(path, QFile::permissions(path) | QFileDevice::ExeOwner
                                         | QFileDevice::ExeGroup | QFileDevice::ExeOther);
     }
 
-    QMessageBox::information(
-        dialogParent_, QStringLiteral("Обновление загружено"),
-        isAppImage
-            ? QStringLiteral("Пакет проверен и сохранён в:\n%1\n\n"
-                             "Замените текущий AppImage этим файлом и запустите его.")
-                  .arg(path)
-            : QStringLiteral("Пакет проверен и сохранён в:\n%1\n\n"
-                             "Сейчас откроется штатная установка для вашей системы.")
-                  .arg(path));
+    QString hint = QStringLiteral("Сейчас откроется штатная установка для вашей системы.");
+    if (isAppImage) {
+        hint = QStringLiteral("Замените текущий AppImage этим файлом и запустите его.");
+    } else if (isArchive) {
+        hint = QStringLiteral("Распакуйте архив поверх текущей папки с программой.");
+    }
 
-    const QUrl target = QUrl::fromLocalFile(isAppImage ? fileInfo.absolutePath() : path);
+    QMessageBox::information(dialogParent_, QStringLiteral("Обновление загружено"),
+                             QStringLiteral("Пакет проверен и сохранён в:\n%1\n\n%2")
+                                 .arg(path, hint));
+
+    const QUrl target =
+        QUrl::fromLocalFile(isAppImage || isArchive ? fileInfo.absolutePath() : path);
     if (!QDesktopServices::openUrl(target)) {
         QMessageBox::warning(dialogParent_, QStringLiteral("Обновление SquidyGit"),
                              QStringLiteral("Не удалось открыть пакет. Он сохранён в:\n%1")
@@ -555,6 +574,50 @@ void UpdateChecker::openDownloadedPackage(const QString &path) {
     }
 }
 
+#if defined(Q_OS_WIN)
+void UpdateChecker::installWindowsPackage(const QString &path) {
+    const QMessageBox::StandardButton answer = QMessageBox::question(
+        dialogParent_, QStringLiteral("Установить обновление"),
+        QStringLiteral("Пакет проверен и готов к установке:\n%1\n\n"
+                       "Windows запросит права администратора. SquidyGit закроется "
+                       "на время установки и запустится снова. Установить обновление "
+                       "сейчас?")
+            .arg(path),
+        QMessageBox::Yes | QMessageBox::No, QMessageBox::Yes);
+    if (answer != QMessageBox::Yes) {
+        return;
+    }
+
+    // The installer replaces the files of the running application, so it closes
+    // and restarts SquidyGit through the Restart Manager. ShellExecuteEx is used
+    // instead of QProcess because starting an elevated process needs the shell.
+    const QString nativePath = QDir::toNativeSeparators(path);
+    const QString arguments = QStringLiteral("/SILENT /CLOSEAPPLICATIONS");
+
+    SHELLEXECUTEINFOW request{};
+    request.cbSize = sizeof(request);
+    request.fMask = SEE_MASK_NOASYNC | SEE_MASK_FLAG_NO_UI;
+    request.lpVerb = L"runas";
+    request.lpFile = reinterpret_cast<const wchar_t *>(nativePath.utf16());
+    request.lpParameters = reinterpret_cast<const wchar_t *>(arguments.utf16());
+    request.nShow = SW_SHOWNORMAL;
+
+    if (ShellExecuteExW(&request)) {
+        return;
+    }
+
+    const DWORD error = GetLastError();
+    QMessageBox::warning(
+        dialogParent_, QStringLiteral("Обновление SquidyGit"),
+        error == ERROR_CANCELLED
+            ? QStringLiteral("Установка отменена. Пакет сохранён в:\n%1").arg(path)
+            : QStringLiteral("Не удалось запустить установку обновления.\n"
+                             "Пакет сохранён в:\n%1")
+                  .arg(path));
+}
+#endif
+
+#if defined(Q_OS_LINUX)
 void UpdateChecker::installDebPackage(const QString &path) {
     if (packageInstaller_ != nullptr) {
         QMessageBox::information(dialogParent_, QStringLiteral("Обновление SquidyGit"),
@@ -667,6 +730,7 @@ void UpdateChecker::installDebPackage(const QString &path) {
     process->start(pkexec,
                    {aptGet, QStringLiteral("install"), QStringLiteral("--yes"), path});
 }
+#endif
 
 void UpdateChecker::finishWithError(const QString &message, const bool showMessage) {
     busy_ = false;

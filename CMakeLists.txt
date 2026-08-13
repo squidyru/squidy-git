@@ -83,6 +83,9 @@ if (WIN32)
             ${CMAKE_CURRENT_BINARY_DIR}/squidygit.rc @ONLY)
     target_sources(SquidyGit PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/squidygit.rc)
 
+    # ShellExecuteEx starts the downloaded installer with a UAC prompt.
+    target_link_libraries(SquidyGit PRIVATE shell32)
+
     find_program(WINDEPLOYQT_EXECUTABLE windeployqt
             HINTS "${Qt6_DIR}/../../../bin"
             REQUIRED)
@@ -108,15 +111,14 @@ if (WIN32)
             COMMENT "Building SquidyGit ${PROJECT_VERSION} Windows portable archive"
             VERBATIM)
 
-    find_program(BINARYCREATOR_EXECUTABLE binarycreator
+    find_program(ISCC_EXECUTABLE
+            NAMES iscc ISCC
             HINTS
-                "C:/Qt/Tools/QtInstallerFramework/4.11/bin"
-                "C:/Qt/Tools/QtInstallerFramework/4.10/bin")
+                "C:/Program Files (x86)/Inno Setup 6"
+                "C:/Program Files/Inno Setup 6")
 
-    if (BINARYCREATOR_EXECUTABLE)
+    if (ISCC_EXECUTABLE)
         set(INSTALLER_STAGING_DIR "${CMAKE_BINARY_DIR}/installer")
-        set(INSTALLER_PACKAGE_DATA
-                "${INSTALLER_STAGING_DIR}/packages/ru.squidy.squidygit/data")
 
         add_custom_target(windows_installer
                 COMMAND "${CMAKE_COMMAND}"
@@ -125,13 +127,15 @@ if (WIN32)
                         "-DRUNTIME_DIR=$<TARGET_FILE_DIR:SquidyGit>"
                         "-DSTAGING_DIR=${INSTALLER_STAGING_DIR}"
                         "-DAPP_VERSION=${PROJECT_VERSION}"
-                        "-DBINARYCREATOR=${BINARYCREATOR_EXECUTABLE}"
+                        "-DBUILD_VERSION=${SQUIDYGIT_BUILD_VERSION}"
+                        "-DFILE_VERSION=${PROJECT_VERSION}.0"
+                        "-DISCC=${ISCC_EXECUTABLE}"
                         -P "${CMAKE_SOURCE_DIR}/installer/windows/build-installer.cmake"
                 DEPENDS SquidyGit
-                COMMENT "Building SquidyGit ${PROJECT_VERSION} Windows installer"
+                COMMENT "Building SquidyGit ${SQUIDYGIT_BUILD_VERSION} Windows installer"
                 VERBATIM)
     else ()
-        message(STATUS "Qt Installer Framework not found; windows_installer target disabled")
+        message(STATUS "Inno Setup not found; windows_installer target disabled")
     endif ()
 endif ()
 

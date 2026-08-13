@@ -174,13 +174,19 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Install Qt and Qt Installer Framework
+      - name: Install Qt
         uses: jurplel/install-qt-action@v4
         with:
           version: ${{ env.QT_VERSION }}
           arch: win64_mingw
-          tools: tools_mingw1310,qt.tools.win64_mingw1310 tools_ifw
+          tools: tools_mingw1310,qt.tools.win64_mingw1310
           cache: true
+
+      - name: Install Inno Setup
+        shell: pwsh
+        # The runner image ships no Inno Setup, and the installer script needs
+        # at least 6.3, so upgrade instead of install.
+        run: choco upgrade innosetup --yes --no-progress
 
       - name: Configure
         run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER=g++ "-DSQUIDYGIT_BUILD_VERSION=${{ needs.validate.outputs.release_version }}"

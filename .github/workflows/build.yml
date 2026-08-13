@@ -47,6 +47,11 @@ jobs:
           version: ${{ env.QT_VERSION }}
           cache: true
 
+      - name: Install Inno Setup
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: choco upgrade innosetup --yes --no-progress
+
       - name: Configure
         run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX="${{ github.workspace }}/install"
 
@@ -55,3 +60,7 @@ jobs:
 
       - name: Verify installation
         run: cmake --install build --config Release
+
+      - name: Verify Windows installer
+        if: runner.os == 'Windows'
+        run: cmake --build build --config Release --target windows_installer

@@ -123,7 +123,7 @@ cmake --build build --parallel
 The Windows build automatically runs `windeployqt` and copies the required Qt runtime
 files next to the executable.
 
-To build the offline Windows installer, install Qt Installer Framework and run:
+To build the Windows installer, install Inno Setup 6.3 or newer and run:
 
 ```powershell
 cmake --build build --target windows_installer
@@ -131,7 +131,9 @@ cmake --build build --target windows_installer
 
 The installer is written to `build/dist/SquidyGit-0.0.1-windows-x64.exe`. It installs
 SquidyGit into `Program Files`, creates Start menu and desktop shortcuts, and includes
-an uninstaller. Administrator permission is requested during installation.
+an uninstaller. Administrator permission is requested during installation. A newer
+installer upgrades the existing installation in place, which is what the built-in
+update check uses.
 
 ## Safety
 

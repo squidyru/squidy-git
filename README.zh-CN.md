@@ -120,7 +120,7 @@ cmake --build build --parallel
 
 Windows 构建会自动运行 `windeployqt`，并将所需的 Qt 运行时文件复制到可执行文件旁边。
 
-要构建离线 Windows 安装程序，请安装 Qt Installer Framework，然后运行：
+要构建 Windows 安装程序，请安装 Inno Setup 6.3 或更高版本，然后运行：
 
 ```powershell
 cmake --build build --target windows_installer
@@ -128,7 +128,8 @@ cmake --build build --target windows_installer
 
 安装程序将生成在 `build/dist/SquidyGit-0.0.1-windows-x64.exe`。它会将 SquidyGit
 安装到 `Program Files`，创建开始菜单和桌面快捷方式，并包含卸载程序。安装过程中
-会请求管理员权限。
+会请求管理员权限。较新的安装程序会就地升级已安装的版本，内置的更新检查正是基于
+这一点。
 
 ## 安全性
 

@@ -22,7 +22,11 @@ private:
     void requestChecksums(const ReleaseAsset &asset, const QString &checksumsUrl);
     void downloadAsset(const ReleaseAsset &asset);
     void openDownloadedPackage(const QString &path);
+#if defined(Q_OS_LINUX)
     void installDebPackage(const QString &path);
+#elif defined(Q_OS_WIN)
+    void installWindowsPackage(const QString &path);
+#endif
     void finishWithError(const QString &message, bool showMessage);
 
     QWidget *dialogParent_ = nullptr;
