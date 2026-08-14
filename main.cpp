@@ -1,8 +1,8 @@
 // Copyright (c) 2026 Sergey Yakunin <sergey@squidy.ru>
 
-#include "icons.h"
-#include "mainwindow.h"
-#include "theme.h"
+#include "ui/icons.h"
+#include "ui/mainwindow.h"
+#include "ui/theme.h"
 
 #include <QApplication>
 #include <QCoreApplication>

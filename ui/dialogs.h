@@ -2,7 +2,7 @@
 
 #pragma once
 
-#include "gitclient.h"
+#include "core/gitclient.h"
 
 #include <QDialog>
 #include <QString>

@@ -1,0 +1,37 @@
+# Copyright (c) 2026 Sergey Yakunin <sergey@squidy.ru>
+
+# Unit tests
+foreach (suite IN ITEMS diffdocument gitparse graphlayout)
+    add_executable(tst_${suite} tst_${suite}.cpp)
+    target_link_libraries(tst_${suite} PRIVATE squidygit_core Qt6::Test)
+    if (MSVC)
+        target_compile_options(tst_${suite} PRIVATE /W4 /utf-8)
+    else ()
+        target_compile_options(tst_${suite} PRIVATE -Wall -Wextra -Wpedantic)
+    endif ()
+    add_test(NAME ${suite} COMMAND tst_${suite})
+endforeach ()
+
+# Git integration tests
+add_executable(tst_gitclient tst_gitclient.cpp)
+target_link_libraries(tst_gitclient PRIVATE squidygit_core Qt6::Test)
+if (MSVC)
+    target_compile_options(tst_gitclient PRIVATE /W4 /utf-8)
+else ()
+    target_compile_options(tst_gitclient PRIVATE -Wall -Wextra -Wpedantic)
+endif ()
+add_test(NAME gitclient COMMAND tst_gitclient)
+set_tests_properties(gitclient PROPERTIES LABELS integration)
+
+# Widget integration tests
+add_executable(tst_repositoryview tst_repositoryview.cpp)
+target_link_libraries(tst_repositoryview PRIVATE squidygit_ui Qt6::Test)
+if (MSVC)
+    target_compile_options(tst_repositoryview PRIVATE /W4 /utf-8)
+else ()
+    target_compile_options(tst_repositoryview PRIVATE -Wall -Wextra -Wpedantic)
+endif ()
+add_test(NAME repositoryview COMMAND tst_repositoryview)
+set_tests_properties(repositoryview PROPERTIES
+        LABELS integration
+        ENVIRONMENT "QT_QPA_PLATFORM=offscreen")

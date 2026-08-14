@@ -2,162 +2,24 @@
 
 #pragma once
 
-#include <QByteArray>
+#include "gitprocess.h"
+#include "gittypes.h"
+
 #include <QCoreApplication>
-#include <QDateTime>
 #include <QList>
-#include <QObject>
 #include <QString>
 #include <QStringList>
 
-struct GitCommandResult {
-    int exitCode = -1;
-    QByteArray output;
-    QByteArray errorOutput;
-    QString processError;
-
-    [[nodiscard]] bool succeeded() const;
-    [[nodiscard]] QString outputText() const;
-    [[nodiscard]] QString errorText() const;
-    [[nodiscard]] QString reportText() const;
-};
-
-struct GitFileStatus {
-    QString path;
-    QString originalPath;
-    QChar indexStatus = u' ';
-    QChar workTreeStatus = u' ';
-
-    [[nodiscard]] bool isUntracked() const;
-    [[nodiscard]] bool isConflicted() const;
-    [[nodiscard]] bool hasStagedChanges() const;
-    [[nodiscard]] bool hasWorkingTreeChanges() const;
-};
-
-struct GitBranchInfo {
-    QString name;
-    QString upstream;
-    QString hash;
-    QString subject;
-    QDateTime committedAt;
-    int ahead = 0;
-    int behind = 0;
-    bool current = false;
-};
-
-struct GitRemoteInfo {
-    QString name;
-    QString url;
-    QStringList branches;
-};
-
-struct GitTagInfo {
-    QString name;
-    QString hash;
-    QString subject;
-    QDateTime taggedAt;
-};
-
-struct GitStashInfo {
-    int index = 0;
-    QString reference;
-    QString branch;
-    QString message;
-    QDateTime createdAt;
-};
-
-struct GitSubmoduleInfo {
-    QString path;
-    QString hash;
-    QString describe;
-};
-
-struct GitCommitInfo {
-    QString hash;
-    QString shortHash;
-    QStringList parents;
-    QString author;
-    QString authorEmail;
-    QString committer;
-    QString committerEmail;
-    QDateTime authoredAt;
-    QDateTime committedAt;
-    QString references;
-    QString subject;
-    QString body;
-};
-
-struct GitChangedFile {
-    QString path;
-    QString originalPath;
-    QChar status = u'M';
-    int additions = 0;
-    int deletions = 0;
-    bool binary = false;
-};
-
-struct GitRepositoryState {
-    bool merging = false;
-    bool rebasing = false;
-    bool cherryPicking = false;
-    bool reverting = false;
-    bool bisecting = false;
-    bool detachedHead = false;
-
-    [[nodiscard]] bool isBusy() const;
-    [[nodiscard]] QString description() const;
-};
-
-enum class GitResetMode {
-    Soft,
-    Mixed,
-    Hard
-};
-
-enum class GitHistoryScope {
-    CurrentBranch,
-    AllBranches
-};
-
-struct GitHistoryOptions {
-    GitHistoryScope scope = GitHistoryScope::AllBranches;
-    int maximumCount = 500;
-    QString revision;
-    bool includeRemotes = true;
-    bool dateOrder = true;
-};
-
-enum class GitSearchMode {
-    Message,
-    Author,
-    FileContents,
-    FilePath,
-    Hash
-};
-
-/// Broadcasts every git invocation for display in the command log.
-class GitLog final : public QObject {
-    Q_OBJECT
-
-public:
-    static GitLog *instance();
-    void record(const QString &workingDirectory, const QStringList &arguments,
-                const GitCommandResult &result);
-
-Q_SIGNALS:
-    void commandRecorded(const QString &workingDirectory, const QString &command,
-                         const QString &output, bool succeeded);
-
-private:
-    explicit GitLog(QObject *parent = nullptr);
-};
-
+/// Git command facade for a single repository.
 class GitClient {
-    // Messages of the plain result structures above are translated in this
-    // context as well, so the whole Git layer shares one catalog section.
     Q_DECLARE_TR_FUNCTIONS(GitClient)
 
 public:
+    GitClient();
+
+    /// Allows command tests to inject a runner.
+    explicit GitClient(GitProcessRunner *runner);
+
     [[nodiscard]] GitCommandResult openRepository(const QString &directory);
     [[nodiscard]] bool hasRepository() const;
     [[nodiscard]] const QString &repositoryRoot() const;
@@ -172,6 +34,8 @@ public:
     [[nodiscard]] QString currentBranch(QString *errorMessage = nullptr) const;
     [[nodiscard]] QString headHash() const;
     [[nodiscard]] bool hasCommits() const;
+    /// Returns the absolute Git directory, including for worktrees and submodules.
+    [[nodiscard]] QString gitDirectory() const;
     [[nodiscard]] GitRepositoryState repositoryState() const;
     [[nodiscard]] QList<GitBranchInfo> branches(QString *errorMessage = nullptr) const;
     [[nodiscard]] QList<GitRemoteInfo> remotes(QString *errorMessage = nullptr) const;
@@ -265,5 +129,6 @@ private:
                                                 const QByteArray *input = nullptr);
     [[nodiscard]] QString configValue(const QString &key) const;
 
+    GitProcessRunner *runner_ = nullptr;
     QString repositoryRoot_;
 };

@@ -3,9 +3,11 @@
 #include "repositoryview.h"
 
 #include "commitgraph.h"
+#include "commitmodel.h"
 #include "dialogs.h"
 #include "diffview.h"
 #include "icons.h"
+#include "repositorywatcher.h"
 #include "theme.h"
 
 #include <QAbstractItemView>
@@ -36,6 +38,7 @@
 #include <QPushButton>
 #include <QFrame>
 #include <QSettings>
+#include <QSortFilterProxyModel>
 #include <QSignalBlocker>
 #include <QLocale>
 #include <QSplitter>
@@ -45,6 +48,7 @@
 #include <QTextBrowser>
 #include <QTextDocument>
 #include <QTimer>
+#include <QTreeView>
 #include <QToolButton>
 #include <QTreeWidget>
 #include <QUrl>
@@ -384,19 +388,13 @@ QTreeWidgetItem *firstLeaf(QTreeWidgetItem *item) {
     return nullptr;
 }
 
-QString formatTimestamp(const QDateTime &moment) {
-    if (!moment.isValid()) {
-        return {};
-    }
-    return QLocale::system().toString(moment.toLocalTime(),
-                                      QStringLiteral("d MMM yyyy H:mm"));
-}
-
 }
 
 RepositoryView::RepositoryView(const QString &path, QWidget *parent)
     : QWidget(parent),
-      operationWatcher_(new QFutureWatcher<GitCommandResult>(this)) {
+      operationWatcher_(new QFutureWatcher<GitCommandResult>(this)),
+      diskWatcher_(new RepositoryWatcher(this)),
+      snapshotWatcher_(new QFutureWatcher<RepositorySnapshot>(this)) {
     valid_ = git_.openRepository(path).succeeded();
 
     auto *layout = new QVBoxLayout(this);
@@ -428,6 +426,10 @@ RepositoryView::RepositoryView(const QString &path, QWidget *parent)
 
     connect(operationWatcher_, &QFutureWatcher<GitCommandResult>::finished, this,
             [this] { finishRemoteOperation(); });
+    connect(snapshotWatcher_, &QFutureWatcher<RepositorySnapshot>::finished, this,
+            [this] { applySnapshot(snapshotWatcher_->result()); });
+    connect(diskWatcher_, &RepositoryWatcher::repositoryChangedOnDisk, this,
+            [this] { refreshAll(); });
     connect(Theme::instance(), &Theme::changed, this, [this] {
         if (valid_) {
             refreshNavigation();
@@ -440,6 +442,7 @@ RepositoryView::RepositoryView(const QString &path, QWidget *parent)
                                    .value(pageSettingsKey(git_.repositoryRoot()), 0)
                                    .toInt();
         currentPage_ = static_cast<Page>(qBound(0, storedPage, 2));
+        diskWatcher_->setRepository(git_.gitDirectory());
         refreshAll();
         showPage(currentPage_);
     }
@@ -895,32 +898,30 @@ QWidget *RepositoryView::buildHistoryPage() {
     auto *verticalSplitter = new QSplitter(Qt::Vertical);
     verticalSplitter->setHandleWidth(RepositorySplitterWidth);
 
-    historyTree_ = new QTreeWidget;
-    historyTree_->setObjectName(QStringLiteral("historyTree"));
-    historyTree_->setHeaderLabels({
-        tr("Graph"),
-        tr("Message"),
-        tr("Date"),
-        tr("Author"),
-        tr("Commit", "noun")
-    });
-    historyTree_->setRootIsDecorated(false);
-    historyTree_->setUniformRowHeights(true);
-    historyTree_->setAlternatingRowColors(false);
-    historyTree_->setSelectionMode(QAbstractItemView::SingleSelection);
-    historyTree_->setContextMenuPolicy(Qt::CustomContextMenu);
-    historyTree_->setItemDelegate(new CommitGraphDelegate(historyTree_));
-    historyTree_->header()->setSectionsMovable(false);
-    historyTree_->header()->setStretchLastSection(true);
-    historyTree_->header()->setMinimumSectionSize(36);
-    historyTree_->header()->setSectionResizeMode(QHeaderView::Interactive);
-    for (int column = 0; column < historyTree_->columnCount(); ++column) {
-        historyTree_->headerItem()->setTextAlignment(column, Qt::AlignCenter);
-    }
+    commitModel_ = new CommitModel(this);
+    historyProxy_ = new QSortFilterProxyModel(this);
+    historyProxy_->setSourceModel(commitModel_);
+    historyProxy_->setFilterKeyColumn(CommitModel::Author);
+    historyProxy_->setFilterCaseSensitivity(Qt::CaseInsensitive);
+
+    historyView_ = new QTreeView;
+    historyView_->setObjectName(QStringLiteral("historyTree"));
+    historyView_->setModel(historyProxy_);
+    historyView_->setRootIsDecorated(false);
+    historyView_->setUniformRowHeights(true);
+    historyView_->setAlternatingRowColors(false);
+    historyView_->setSelectionBehavior(QAbstractItemView::SelectRows);
+    historyView_->setSelectionMode(QAbstractItemView::SingleSelection);
+    historyView_->setContextMenuPolicy(Qt::CustomContextMenu);
+    historyView_->setItemDelegate(new CommitGraphDelegate(historyView_));
+    historyView_->header()->setSectionsMovable(false);
+    historyView_->header()->setStretchLastSection(true);
+    historyView_->header()->setMinimumSectionSize(36);
+    historyView_->header()->setSectionResizeMode(QHeaderView::Interactive);
 
     // Restore interactive history column widths after the first layout pass.
-    QTimer::singleShot(0, historyTree_, [this] {
-        QHeaderView *header = historyTree_->header();
+    QTimer::singleShot(0, historyView_, [this] {
+        QHeaderView *header = historyView_->header();
         {
             const QSignalBlocker blocker(header);
             const QByteArray savedState =
@@ -931,7 +932,7 @@ QWidget *RepositoryView::buildHistoryPage() {
                 const int authorWidth = 114;
                 const int commitWidth = 60;
                 const int descriptionWidth = qMax(
-                    240, historyTree_->viewport()->width() - graphWidth - dateWidth
+                    240, historyView_->viewport()->width() - graphWidth - dateWidth
                              - authorWidth - commitWidth);
                 header->resizeSection(0, graphWidth);
                 header->resizeSection(1, descriptionWidth);
@@ -942,12 +943,12 @@ QWidget *RepositoryView::buildHistoryPage() {
             // Keep the Commit section anchored to the viewport edge.
             header->setStretchLastSection(true);
         }
-        connect(header, &QHeaderView::sectionResized, historyTree_, [this] {
+        connect(header, &QHeaderView::sectionResized, historyView_, [this] {
             QSettings().setValue(historyHeaderSettingsKey(git_.repositoryRoot()),
-                                 historyTree_->header()->saveState());
+                                 historyView_->header()->saveState());
         });
     });
-    verticalSplitter->addWidget(historyTree_);
+    verticalSplitter->addWidget(historyView_);
 
     auto *detailsSplitter = new QSplitter(Qt::Horizontal);
     detailsSplitter->setHandleWidth(RepositorySplitterWidth);
@@ -1029,9 +1030,9 @@ QWidget *RepositoryView::buildHistoryPage() {
             addReference(tag.name);
         }
     });
-    connect(historyTree_, &QTreeWidget::currentItemChanged, this,
+    connect(historyView_->selectionModel(), &QItemSelectionModel::currentRowChanged, this,
             [this] { refreshCommitDetails(); });
-    connect(historyTree_, &QTreeWidget::customContextMenuRequested, this,
+    connect(historyView_, &QTreeView::customContextMenuRequested, this,
             [this](const QPoint &position) { showHistoryContextMenu(position); });
     connect(commitFilesTree_, &QTreeWidget::currentItemChanged, this, [this] {
         QTreeWidgetItem *fileItem = commitFilesTree_->currentItem();
@@ -1040,11 +1041,11 @@ QWidget *RepositoryView::buildHistoryPage() {
             return;
         }
         const QString path = fileItem->data(0, PathRole).toString();
-        QTreeWidgetItem *commitItem = historyTree_->currentItem();
-        if (commitItem == nullptr) {
+        const QModelIndex commitIndex = currentCommitIndex();
+        if (!commitIndex.isValid()) {
             return;
         }
-        if (commitItem->data(0, CommitRoles::IsUncommitted).toBool()) {
+        if (commitIndex.data(CommitRoles::IsUncommitted).toBool()) {
             const bool untracked = fileItem->data(0, IsUntrackedRole).toBool();
             const bool staged = fileItem->data(0, IndexStatusRole).toBool();
             commitDiffView_->setPatch(
@@ -1055,7 +1056,7 @@ QWidget *RepositoryView::buildHistoryPage() {
                     return result.succeeded() ? result.outputText() : QString();
                 });
         } else {
-            const QString hash = commitItem->data(0, CommitRoles::Hash).toString();
+            const QString hash = commitIndex.data(CommitRoles::Hash).toString();
             commitDiffView_->setPatch(
                 git_.commitDiff(hash, path).outputText(),
                 [this, hash, path] {
@@ -1123,13 +1124,10 @@ QWidget *RepositoryView::buildSearchPage() {
                 }
                 const QString hash = item->data(0, CommitRoles::Hash).toString();
                 showPage(Page::History);
-                for (int index = 0; index < historyTree_->topLevelItemCount(); ++index) {
-                    QTreeWidgetItem *candidate = historyTree_->topLevelItem(index);
-                    if (candidate->data(0, CommitRoles::Hash).toString() == hash) {
-                        historyTree_->setCurrentItem(candidate);
-                        historyTree_->scrollToItem(candidate);
-                        return;
-                    }
+                const int row = commitModel_->rowForHash(hash);
+                if (row >= 0) {
+                    selectCommitRow(row);
+                    return;
                 }
                 historyRevision_ = hash;
                 refreshHistory();
@@ -1138,33 +1136,79 @@ QWidget *RepositoryView::buildSearchPage() {
     return page;
 }
 
+GitHistoryOptions RepositoryView::currentHistoryOptions() const {
+    GitHistoryOptions options;
+    options.scope = static_cast<GitHistoryScope>(historyScope_->currentData().toInt());
+    options.maximumCount = QSettings().value(QStringLiteral("historyLimit"), 500).toInt();
+    options.revision = historyRevision_;
+    options.includeRemotes = showRemoteBranches_->isChecked();
+    options.dateOrder = historyOrder_->currentData().toBool();
+    return options;
+}
+
 void RepositoryView::refreshAll() {
     if (!valid_ || operationInProgress_) {
         return;
     }
 
-    headHash_ = git_.headHash();
-    currentBranch_ = git_.currentBranch();
-    state_ = git_.repositoryState();
-    stashes_ = git_.stashes();
-
-    ahead_ = 0;
-    behind_ = 0;
-    const QList<GitBranchInfo> branches = git_.branches();
-    for (const GitBranchInfo &branch : branches) {
-        if (branch.current) {
-            ahead_ = branch.ahead;
-            behind_ = branch.behind;
-            break;
-        }
+    // Repository reads run off the UI thread.
+    if (snapshotWatcher_->isRunning()) {
+        snapshotQueued_ = true;
+        return;
     }
 
-    refreshHistoryScope(branches);
+    ++snapshotGeneration_;
+    snapshotWatcher_->setFuture(QtConcurrent::run(collectRepositorySnapshot, git_,
+                                                  currentHistoryOptions(),
+                                                  snapshotGeneration_));
+}
+
+void RepositoryView::applySnapshot(const RepositorySnapshot &snapshot) {
+    if (snapshot.generation != snapshotGeneration_) {
+        return;
+    }
+
+    headHash_ = snapshot.headHash;
+    currentBranch_ = snapshot.currentBranch;
+    state_ = snapshot.state;
+    stashes_ = snapshot.stashes;
+    branches_ = snapshot.branches;
+    tags_ = snapshot.tags;
+    remotes_ = snapshot.remotes;
+    submodules_ = snapshot.submodules;
+    files_ = snapshot.files;
+    commits_ = snapshot.commits;
+    userName_ = snapshot.userName;
+    userEmail_ = snapshot.userEmail;
+    historyError_ = snapshot.historyError;
+    ahead_ = snapshot.ahead;
+    behind_ = snapshot.behind;
+
+    if (!snapshot.statusError.isEmpty()) {
+        Q_EMIT messagePosted(snapshot.statusError, 8'000);
+    }
+
+    refreshHistoryScope(branches_);
     refreshHeader();
     refreshNavigation();
     refreshStatus();
     refreshHistory();
     Q_EMIT repositoryChanged();
+
+    if (snapshotQueued_) {
+        snapshotQueued_ = false;
+        correctingHistoryScope_ = false;
+        refreshAll();
+        return;
+    }
+
+    // Refresh once more if rebuilding the scope changed the requested revision.
+    if (!correctingHistoryScope_ && currentHistoryOptions() != snapshot.historyOptions) {
+        correctingHistoryScope_ = true;
+        refreshAll();
+        return;
+    }
+    correctingHistoryScope_ = false;
 }
 
 void RepositoryView::refreshHistoryScope(const QList<GitBranchInfo> &branches) {
@@ -1208,8 +1252,8 @@ void RepositoryView::refreshHeader() {
                                    .arg(stateText)
                              : stateText);
 
-    const QString author = git_.userName();
-    const QString email = git_.userEmail();
+    const QString &author = userName_;
+    const QString &email = userEmail_;
     if (authorLabel_ != nullptr) {
         authorLabel_->setText(author.isEmpty()
                                   ? tr("The author is not configured — set it in the "
@@ -1243,7 +1287,7 @@ void RepositoryView::refreshNavigation() {
                                        navigationSectionIcon(Icons::Glyph::Branch,
                                                              sectionIconColor),
                                        true);
-    const QList<GitBranchInfo> branches = git_.branches();
+    const QList<GitBranchInfo> &branches = branches_;
     QHash<QString, QTreeWidgetItem *> folders;
 
     for (const GitBranchInfo &branch : branches) {
@@ -1287,7 +1331,7 @@ void RepositoryView::refreshNavigation() {
             ->setDisabled(true);
     }
 
-    const QList<GitTagInfo> tags = git_.tags();
+    const QList<GitTagInfo> &tags = tags_;
     auto *tagsSection = addSection(navigationTree_, tr("Tags"),
                                    navigationSectionIcon(Icons::Glyph::Tag,
                                                          sectionIconColor),
@@ -1308,7 +1352,7 @@ void RepositoryView::refreshNavigation() {
                                       navigationSectionIcon(Icons::Glyph::Remote,
                                                             sectionIconColor),
                                       false);
-    const QList<GitRemoteInfo> remotes = git_.remotes();
+    const QList<GitRemoteInfo> &remotes = remotes_;
     for (const GitRemoteInfo &remote : remotes) {
         auto *remoteItem = addNavigationItem(remotesSection, remote.name, NavigationRemote,
                                              remote.name);
@@ -1340,7 +1384,7 @@ void RepositoryView::refreshNavigation() {
                                           elideMiddle(stash.message, 40)),
             NavigationStash, QString::number(stash.index));
         item->setToolTip(0, QStringLiteral("%1\n%2")
-                                .arg(stash.message, formatTimestamp(stash.createdAt)));
+                                .arg(stash.message, formatCommitTimestamp(stash.createdAt)));
         if (previousKind == NavigationStash
             && previousValue == QString::number(stash.index)) {
             itemToSelect = item;
@@ -1352,7 +1396,7 @@ void RepositoryView::refreshNavigation() {
             ->setDisabled(true);
     }
 
-    const QList<GitSubmoduleInfo> submodules = git_.submodules();
+    const QList<GitSubmoduleInfo> &submodules = submodules_;
     if (!submodules.isEmpty()) {
         auto *submoduleSection = addSection(navigationTree_, tr("Submodules"),
                                             navigationSectionIcon(Icons::Glyph::Submodule,
@@ -1368,12 +1412,6 @@ void RepositoryView::refreshNavigation() {
 }
 
 void RepositoryView::refreshStatus() {
-    QString errorMessage;
-    files_ = git_.status(&errorMessage);
-    if (!errorMessage.isEmpty()) {
-        Q_EMIT messagePosted(errorMessage, 8'000);
-    }
-
     const QString filter = fileFilter_->text().trimmed();
     QList<GitFileStatus> unstaged;
     QList<GitFileStatus> staged;
@@ -1558,96 +1596,25 @@ void RepositoryView::refreshWorkingTreeDiff() {
 }
 
 void RepositoryView::refreshHistory() {
-    const QString previousHash = historyTree_->currentItem() != nullptr
-                                     ? historyTree_->currentItem()->data(0, CommitRoles::Hash).toString()
+    const QModelIndex previous = currentCommitIndex();
+    const QString previousHash = previous.isValid()
+                                     ? previous.data(CommitRoles::Hash).toString()
                                      : QString();
-    GitHistoryOptions options;
-    options.scope = static_cast<GitHistoryScope>(historyScope_->currentData().toInt());
-    options.maximumCount = QSettings().value(QStringLiteral("historyLimit"), 500).toInt();
-    options.revision = historyRevision_;
-    options.includeRemotes = showRemoteBranches_->isChecked();
-    options.dateOrder = historyOrder_->currentData().toBool();
-
-    QString errorMessage;
-    commits_ = git_.history(options, &errorMessage);
-
     const bool showUncommitted = !files_.isEmpty();
-    const QList<GraphRow> rows = computeCommitGraph(commits_, showUncommitted, headHash_);
 
-    const QSignalBlocker blocker(historyTree_);
-    historyTree_->clear();
-    QTreeWidgetItem *itemToSelect = nullptr;
-    int rowIndex = 0;
+    {
+        // A model reset drops the selection, which would otherwise reload the
+        // commit details once for the empty state and once for the new row.
+        const QSignalBlocker blocker(historyView_->selectionModel());
+        commitModel_->setHistory(commits_, showUncommitted, headHash_);
+        filterHistoryByAuthor(historyFilter_->text());
 
-    const auto applyGraphRow = [&rows](QTreeWidgetItem *item, const int index) {
-        if (index >= rows.size()) {
-            return;
-        }
-        const GraphRow &row = rows.at(index);
-        QVariantList passEdges;
-        for (const QPoint &edge : row.passEdges) {
-            passEdges.append(edge);
-        }
-        QVariantList parentLanes;
-        for (const int lane : row.parentLanes) {
-            parentLanes.append(lane);
-        }
-        item->setData(0, CommitRoles::Lane, row.lane);
-        item->setData(0, CommitRoles::PassEdges, passEdges);
-        item->setData(0, CommitRoles::ParentLanes, parentLanes);
-        item->setData(0, CommitRoles::HasIncoming, row.hasIncoming);
-        item->setData(0, CommitRoles::LaneCount, row.laneCount);
-        item->setData(0, CommitRoles::IsMerge, row.isMerge);
-    };
-
-    if (showUncommitted) {
-        auto *item = new QTreeWidgetItem(historyTree_);
-        item->setText(1, tr("Uncommitted changes"));
-        item->setText(2, formatTimestamp(QDateTime::currentDateTime()));
-        item->setText(3, QStringLiteral("*"));
-        item->setText(4, QStringLiteral("*"));
-        item->setData(0, CommitRoles::IsUncommitted, true);
-        QFont font = item->font(1);
-        font.setBold(true);
-        item->setFont(1, font);
-        applyGraphRow(item, rowIndex++);
-        itemToSelect = previousHash.isEmpty() ? item : nullptr;
+        const int row = commitModel_->rowForHash(previousHash);
+        selectCommitRow(row >= 0 ? row : 0);
     }
 
-    for (const GitCommitInfo &commit : commits_) {
-        auto *item = new QTreeWidgetItem(historyTree_);
-        item->setText(1, commit.subject);
-        item->setText(2, formatTimestamp(commit.authoredAt));
-        item->setText(3, commit.authorEmail.isEmpty()
-                             ? commit.author
-                             : QStringLiteral("%1 <%2>").arg(commit.author,
-                                                               commit.authorEmail));
-        item->setText(4, commit.shortHash);
-        item->setData(0, CommitRoles::Hash, commit.hash);
-        // The chips are painted by the delegate for the description column.
-        item->setData(1, CommitRoles::References, splitReferences(commit.references));
-        item->setData(0, CommitRoles::IsHead, commit.hash == headHash_);
-        item->setForeground(4, Theme::instance()->palette().mutedText);
-        item->setToolTip(1, commit.body.isEmpty() ? commit.subject
-                                                  : QStringLiteral("%1\n\n%2")
-                                                        .arg(commit.subject, commit.body));
-        applyGraphRow(item, rowIndex++);
-        if (commit.hash == previousHash) {
-            itemToSelect = item;
-        }
-    }
-
-    filterHistoryByAuthor(historyFilter_->text());
-
-    if (itemToSelect == nullptr && historyTree_->topLevelItemCount() > 0) {
-        itemToSelect = historyTree_->topLevelItem(0);
-    }
-    if (itemToSelect != nullptr) {
-        historyTree_->setCurrentItem(itemToSelect);
-    }
-
-    if (!errorMessage.isEmpty()) {
-        commitDetails_->setPlainText(errorMessage);
+    if (!historyError_.isEmpty()) {
+        commitDetails_->setPlainText(historyError_);
     } else if (commits_.isEmpty() && !showUncommitted) {
         commitDetails_->setPlainText(tr("The repository has no commits yet."));
         commitFilesTree_->clear();
@@ -1657,14 +1624,27 @@ void RepositoryView::refreshHistory() {
     }
 }
 
-void RepositoryView::filterHistoryByAuthor(const QString &text) {
-    const QString needle = text.trimmed();
-    for (int index = 0; index < historyTree_->topLevelItemCount(); ++index) {
-        QTreeWidgetItem *item = historyTree_->topLevelItem(index);
-        const bool matches = needle.isEmpty()
-                             || item->text(3).contains(needle, Qt::CaseInsensitive);
-        item->setHidden(!matches);
+QModelIndex RepositoryView::currentCommitIndex() const {
+    const QModelIndex proxyIndex = historyView_->currentIndex();
+    return proxyIndex.isValid() ? historyProxy_->mapToSource(proxyIndex) : QModelIndex();
+}
+
+void RepositoryView::selectCommitRow(const int row) {
+    if (row < 0 || row >= commitModel_->rowCount()) {
+        return;
     }
+    const QModelIndex proxyIndex = historyProxy_->mapFromSource(
+        commitModel_->index(row, CommitModel::Message));
+    if (!proxyIndex.isValid()) {
+        // The row exists but the author filter is hiding it.
+        return;
+    }
+    historyView_->setCurrentIndex(proxyIndex);
+    historyView_->scrollTo(proxyIndex, QAbstractItemView::PositionAtCenter);
+}
+
+void RepositoryView::filterHistoryByAuthor(const QString &text) {
+    historyProxy_->setFilterFixedString(text.trimmed());
 }
 
 void RepositoryView::jumpToRevision(const QString &revision) {
@@ -1686,15 +1666,12 @@ void RepositoryView::jumpToRevision(const QString &revision) {
     const QString hash = resolved.outputText().trimmed();
 
     const auto selectHash = [this, &hash] {
-        for (int index = 0; index < historyTree_->topLevelItemCount(); ++index) {
-            QTreeWidgetItem *item = historyTree_->topLevelItem(index);
-            if (item->data(0, CommitRoles::Hash).toString().startsWith(hash)) {
-                historyTree_->setCurrentItem(item);
-                historyTree_->scrollToItem(item, QAbstractItemView::PositionAtCenter);
-                return true;
-            }
+        const int row = commitModel_->rowForHash(hash);
+        if (row < 0) {
+            return false;
         }
-        return false;
+        selectCommitRow(row);
+        return true;
     };
 
     if (selectHash()) {
@@ -1706,16 +1683,16 @@ void RepositoryView::jumpToRevision(const QString &revision) {
 }
 
 void RepositoryView::refreshCommitDetails() {
-    QTreeWidgetItem *item = historyTree_->currentItem();
+    const QModelIndex index = currentCommitIndex();
     commitFilesTree_->clear();
     commitDiffView_->setPlaceholderMessage(tr("Select a file"));
 
-    if (item == nullptr) {
+    if (!index.isValid()) {
         commitDetails_->clear();
         return;
     }
 
-    if (item->data(0, CommitRoles::IsUncommitted).toBool()) {
+    if (index.data(CommitRoles::IsUncommitted).toBool()) {
         commitDetails_->setHtml(
             tr("<p><b>Uncommitted changes</b></p><table cellspacing='0' "
                "cellpadding='2'><tr><td><b>Files:&nbsp;&nbsp;</b></td><td>%1</td></tr><tr><td><b>Branch:&nbsp;&nbsp;</b></td><td>%2</td></tr></table>")
@@ -1735,7 +1712,7 @@ void RepositoryView::refreshCommitDetails() {
         return;
     }
 
-    const QString hash = item->data(0, CommitRoles::Hash).toString();
+    const QString hash = index.data(CommitRoles::Hash).toString();
     if (hash.isEmpty()) {
         commitDetails_->clear();
         return;
@@ -1772,7 +1749,7 @@ void RepositoryView::refreshCommitDetails() {
                        QStringLiteral("%1 &lt;%2&gt;")
                            .arg(commit->author.toHtmlEscaped(),
                                 commit->authorEmail.toHtmlEscaped()));
-        details += row(tr("Date:"), formatTimestamp(commit->authoredAt));
+        details += row(tr("Date:"), formatCommitTimestamp(commit->authoredAt));
         if (commit->committer != commit->author) {
             details += row(tr("Committer:"), commit->committer.toHtmlEscaped());
         }
@@ -2292,27 +2269,29 @@ void RepositoryView::applyPatchAction(const QByteArray &patch, const int action)
 }
 
 void RepositoryView::showHistoryContextMenu(const QPoint &position) {
-    QTreeWidgetItem *item = historyTree_->itemAt(position);
-    if (item == nullptr) {
+    const QModelIndex clicked = historyView_->indexAt(position);
+    if (!clicked.isValid()) {
         return;
     }
-    historyTree_->setCurrentItem(item);
+    historyView_->setCurrentIndex(clicked);
+    const QModelIndex index = historyProxy_->mapToSource(clicked);
 
-    if (item->data(0, CommitRoles::IsUncommitted).toBool()) {
+    if (index.data(CommitRoles::IsUncommitted).toBool()) {
         QMenu menu(this);
         menu.addAction(Icons::icon(Icons::Glyph::Commit), tr("Go to the commit"),
                        this, [this] { focusCommitMessage(); });
         menu.addAction(Icons::icon(Icons::Glyph::Stash), tr("Stash the changes…"),
                        this, [this] { createStash(); });
-        menu.exec(historyTree_->viewport()->mapToGlobal(position));
+        menu.exec(historyView_->viewport()->mapToGlobal(position));
         return;
     }
 
-    const QString hash = item->data(0, CommitRoles::Hash).toString();
+    const QString hash = index.data(CommitRoles::Hash).toString();
     if (hash.isEmpty()) {
         return;
     }
-    const QString shortHash = item->text(4);
+    const QString shortHash =
+        index.sibling(index.row(), CommitModel::Commit).data().toString();
 
     QMenu menu(this);
     menu.addAction(Icons::icon(Icons::Glyph::Checkout), tr("Go to this commit"),
@@ -2379,16 +2358,16 @@ void RepositoryView::showHistoryContextMenu(const QPoint &position) {
     menu.addAction(tr("Copy the SHA"), this, [hash] {
         QGuiApplication::clipboard()->setText(hash);
     });
-    menu.addAction(tr("Copy the message"), this, [item] {
-        QGuiApplication::clipboard()->setText(item->text(1));
+    const QString subject = index.sibling(index.row(), CommitModel::Message).data().toString();
+    menu.addAction(tr("Copy the message"), this, [subject] {
+        QGuiApplication::clipboard()->setText(subject);
     });
 
-    menu.exec(historyTree_->viewport()->mapToGlobal(position));
+    menu.exec(historyView_->viewport()->mapToGlobal(position));
 }
 
 QString RepositoryView::selectedCommitHash() const {
-    QTreeWidgetItem *item = historyTree_->currentItem();
-    return item != nullptr ? item->data(0, CommitRoles::Hash).toString() : QString();
+    return currentCommitIndex().data(CommitRoles::Hash).toString();
 }
 
 void RepositoryView::runSearch() {
@@ -2411,7 +2390,7 @@ void RepositoryView::runSearch() {
     for (const GitCommitInfo &commit : results) {
         auto *item = new QTreeWidgetItem(searchResults_);
         item->setText(0, commit.subject);
-        item->setText(1, formatTimestamp(commit.authoredAt));
+        item->setText(1, formatCommitTimestamp(commit.authoredAt));
         item->setText(2, commit.author);
         item->setText(3, commit.shortHash);
         item->setData(0, CommitRoles::Hash, commit.hash);
@@ -2734,9 +2713,12 @@ bool RepositoryView::runOperation(const QString &title,
         return false;
     }
 
+    // The explicit refresh below covers metadata written by this operation.
+    diskWatcher_->setSuspended(true);
     QApplication::setOverrideCursor(Qt::WaitCursor);
     const GitCommandResult result = operation();
     QApplication::restoreOverrideCursor();
+    diskWatcher_->setSuspended(false);
 
     if (!result.succeeded()) {
         reportError(title, result);
@@ -2765,6 +2747,7 @@ void RepositoryView::runRemoteOperation(const QString &title,
 
     operationInProgress_ = true;
     operationTitle_ = title;
+    diskWatcher_->setSuspended(true);
     Q_EMIT busyChanged(true);
     Q_EMIT messagePosted(tr("%1 is running…").arg(title), 0);
     operationWatcher_->setFuture(QtConcurrent::run(operation));
@@ -2773,6 +2756,7 @@ void RepositoryView::runRemoteOperation(const QString &title,
 void RepositoryView::finishRemoteOperation() {
     const GitCommandResult result = operationWatcher_->result();
     operationInProgress_ = false;
+    diskWatcher_->setSuspended(false);
     Q_EMIT busyChanged(false);
 
     if (!result.succeeded()) {

@@ -3,7 +3,8 @@
 #include "mainwindow.h"
 
 #include "dialogs.h"
-#include "gitclient.h"
+#include "core/gitclient.h"
+#include "core/gitprocess.h"
 #include "icons.h"
 #include "repositoryview.h"
 #include "theme.h"

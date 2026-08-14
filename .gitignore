@@ -52,5 +52,4 @@ Thumbs.db
 
 # Runtime diagnostics
 *.log
-core
 core.*

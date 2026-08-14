@@ -28,49 +28,82 @@ set(CMAKE_AUTOUIC ON)
 
 find_package(Qt6 REQUIRED COMPONENTS Concurrent Core Gui LinguistTools Network Widgets)
 
-add_executable(SquidyGit
-        main.cpp
-        mainwindow.cpp
-        mainwindow.h
-        repositoryview.cpp
-        repositoryview.h
-        gitclient.cpp
-        gitclient.h
-        diffview.cpp
-        diffview.h
-        commitgraph.cpp
-        commitgraph.h
-        dialogs.cpp
-        dialogs.h
-        icons.cpp
-        icons.h
-        theme.cpp
-        theme.h
-        updatechecker.cpp
-        updatechecker.h)
+# Core code must remain independent of Qt Widgets.
+add_library(squidygit_core STATIC
+        core/gitclient.cpp
+        core/gitclient.h
+        core/gitparse.cpp
+        core/gitparse.h
+        core/gitprocess.cpp
+        core/gitprocess.h
+        core/gittypes.h
+        core/diffdocument.cpp
+        core/diffdocument.h
+        core/graphlayout.cpp
+        core/graphlayout.h
+        core/repositorysnapshot.cpp
+        core/repositorysnapshot.h)
 
-target_compile_definitions(SquidyGit PRIVATE
-        SQUIDYGIT_VERSION="${SQUIDYGIT_BUILD_VERSION}")
+target_include_directories(squidygit_core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+target_link_libraries(squidygit_core PUBLIC Qt6::Core)
+
+add_library(squidygit_ui STATIC
+        ui/mainwindow.cpp
+        ui/mainwindow.h
+        ui/repositoryview.cpp
+        ui/repositoryview.h
+        ui/repositorywatcher.cpp
+        ui/repositorywatcher.h
+        ui/commitmodel.cpp
+        ui/commitmodel.h
+        ui/diffview.cpp
+        ui/diffview.h
+        ui/commitgraph.cpp
+        ui/commitgraph.h
+        ui/dialogs.cpp
+        ui/dialogs.h
+        ui/icons.cpp
+        ui/icons.h
+        ui/theme.cpp
+        ui/theme.h
+        ui/updatechecker.cpp
+        ui/updatechecker.h)
+
+target_link_libraries(squidygit_ui PUBLIC
+        squidygit_core
+        Qt6::Concurrent
+        Qt6::Gui
+        Qt6::Network
+        Qt6::Widgets)
+
+add_executable(SquidyGit main.cpp)
+target_link_libraries(SquidyGit PRIVATE squidygit_ui)
+
+foreach (squidygit_target IN ITEMS squidygit_core squidygit_ui SquidyGit)
+    target_compile_definitions(${squidygit_target} PRIVATE
+            SQUIDYGIT_VERSION="${SQUIDYGIT_BUILD_VERSION}")
+    if (MSVC)
+        target_compile_options(${squidygit_target} PRIVATE /W4 /utf-8)
+    else ()
+        target_compile_options(${squidygit_target} PRIVATE -Wall -Wextra -Wpedantic)
+    endif ()
+endforeach ()
 
 # The English strings live in the sources, the other languages are compiled into
 # the executable so that a translation is always available next to the binary.
-qt_add_translations(SquidyGit
+# Scan all source targets for translatable strings.
+qt_add_translations(
+        TARGETS SquidyGit squidygit_ui squidygit_core
         TS_FILES
             translations/squidygit_ru.ts
             translations/squidygit_zh_CN.ts
         RESOURCE_PREFIX "/i18n")
 
-target_link_libraries(SquidyGit PRIVATE
-        Qt6::Concurrent
-        Qt6::Core
-        Qt6::Gui
-        Qt6::Network
-        Qt6::Widgets)
-
-if (MSVC)
-    target_compile_options(SquidyGit PRIVATE /W4 /utf-8)
-else ()
-    target_compile_options(SquidyGit PRIVATE -Wall -Wextra -Wpedantic)
+option(SQUIDYGIT_BUILD_TESTS "Build the test suites" ON)
+if (SQUIDYGIT_BUILD_TESTS)
+    find_package(Qt6 REQUIRED COMPONENTS Test)
+    enable_testing()
+    add_subdirectory(tests)
 endif ()
 
 set_target_properties(SquidyGit PROPERTIES
@@ -284,7 +317,8 @@ if (UNIX AND NOT APPLE)
             "-DCMAKE_BUILD_TYPE=Release"
             "-DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}"
             "-DSQUIDYGIT_BUILD_VERSION=${SQUIDYGIT_BUILD_VERSION}"
-            "-DSQUIDYGIT_PACKAGE_DIRECTORY=${CMAKE_BINARY_DIR}/dist")
+            "-DSQUIDYGIT_PACKAGE_DIRECTORY=${CMAKE_BINARY_DIR}/dist"
+            "-DSQUIDYGIT_BUILD_TESTS=OFF")
     if (CMAKE_MAKE_PROGRAM)
         list(APPEND SQUIDYGIT_DEB_CMAKE_ARGS
                 "-DCMAKE_MAKE_PROGRAM=${CMAKE_MAKE_PROGRAM}")

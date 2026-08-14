@@ -2,7 +2,7 @@
 
 #pragma once
 
-#include "gitclient.h"
+#include "core/graphlayout.h"
 
 #include <QList>
 #include <QPoint>
@@ -21,23 +21,6 @@ inline constexpr int Subject = Qt::UserRole + 9;
 inline constexpr int IsMerge = Qt::UserRole + 10;
 inline constexpr int IsHead = Qt::UserRole + 11;
 }
-
-struct GraphRow {
-    int lane = 0;
-    int laneCount = 1;
-    bool hasIncoming = false;
-    bool isMerge = false;
-    QList<QPoint> passEdges;
-    QList<int> parentLanes;
-};
-
-/// Computes the lane layout drawn next to every commit.
-[[nodiscard]] QList<GraphRow> computeCommitGraph(const QList<GitCommitInfo> &commits,
-                                                 bool leadingUncommittedRow,
-                                                 const QString &headHash);
-
-/// Splits the raw "%D" decoration into individual refs.
-[[nodiscard]] QStringList splitReferences(const QString &decoration);
 
 class CommitGraphDelegate final : public QStyledItemDelegate {
     Q_OBJECT

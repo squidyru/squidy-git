@@ -2,15 +2,21 @@
 
 #pragma once
 
-#include "gitclient.h"
+#include "core/gitclient.h"
+#include "core/repositorysnapshot.h"
 
 #include <QFutureWatcher>
+#include <QModelIndex>
 #include <QWidget>
 
 #include <functional>
 
+class CommitModel;
 class DiffView;
+class RepositoryWatcher;
 class QCheckBox;
+class QSortFilterProxyModel;
+class QTreeView;
 class QComboBox;
 class QLabel;
 class QLineEdit;
@@ -82,6 +88,9 @@ private:
     QWidget *buildSearchPage();
 
     // --- Refreshing -------------------------------------------------------
+    /// Copies history controls into a value safe to pass to a worker.
+    [[nodiscard]] GitHistoryOptions currentHistoryOptions() const;
+    void applySnapshot(const RepositorySnapshot &snapshot);
     void refreshHeader();
     void refreshHistoryScope(const QList<GitBranchInfo> &branches);
     void refreshNavigation();
@@ -106,6 +115,9 @@ private:
     void openSelectedFile(QTreeWidget *tree);
 
     // --- History ----------------------------------------------------------
+    /// Returns the current row mapped to the source model.
+    [[nodiscard]] QModelIndex currentCommitIndex() const;
+    void selectCommitRow(int row);
     void showHistoryContextMenu(const QPoint &position);
     void showNavigationContextMenu(const QPoint &position);
     void activateNavigationItem(QTreeWidgetItem *item);
@@ -156,7 +168,9 @@ private:
     QComboBox *historyOrder_ = nullptr;
     QCheckBox *showRemoteBranches_ = nullptr;
     QLineEdit *historyFilter_ = nullptr;
-    QTreeWidget *historyTree_ = nullptr;
+    QTreeView *historyView_ = nullptr;
+    CommitModel *commitModel_ = nullptr;
+    QSortFilterProxyModel *historyProxy_ = nullptr;
     QTextBrowser *commitDetails_ = nullptr;
     QTreeWidget *commitFilesTree_ = nullptr;
     DiffView *commitDiffView_ = nullptr;
@@ -165,12 +179,20 @@ private:
     QComboBox *searchMode_ = nullptr;
     QTreeWidget *searchResults_ = nullptr;
 
+    // Values from the latest completed refresh.
     QList<GitFileStatus> files_;
     QList<GitCommitInfo> commits_;
     QList<GitStashInfo> stashes_;
+    QList<GitBranchInfo> branches_;
+    QList<GitTagInfo> tags_;
+    QList<GitRemoteInfo> remotes_;
+    QList<GitSubmoduleInfo> submodules_;
     QString currentBranch_;
     QString headHash_;
     QString historyRevision_;
+    QString userName_;
+    QString userEmail_;
+    QString historyError_;
     GitRepositoryState state_;
     Page currentPage_ = Page::FileStatus;
     int ahead_ = 0;
@@ -181,4 +203,12 @@ private:
     bool pushAfterCommitPending_ = false;
     QString operationTitle_;
     QFutureWatcher<GitCommandResult> *operationWatcher_ = nullptr;
+
+    RepositoryWatcher *diskWatcher_ = nullptr;
+    QFutureWatcher<RepositorySnapshot> *snapshotWatcher_ = nullptr;
+    quint64 snapshotGeneration_ = 0;
+    /// Coalesces refresh requests received while a refresh is running.
+    bool snapshotQueued_ = false;
+    /// Prevents repeated correction when history controls change during refresh.
+    bool correctingHistoryScope_ = false;
 };
