@@ -10,6 +10,8 @@
 #include <QString>
 #include <QStringList>
 
+inline constexpr int GitNetworkTimeoutMs = 10 * 60'000;
+
 /// Git command facade for a single repository.
 class GitClient {
     Q_DECLARE_TR_FUNCTIONS(GitClient)
@@ -107,7 +109,9 @@ public:
     [[nodiscard]] GitCommandResult stashDrop(int index) const;
 
     // --- Remote operations ------------------------------------------------
-    [[nodiscard]] GitCommandResult fetch(const QString &remote, bool prune, bool fetchTags) const;
+    /// A shorter timeout can be supplied for periodic background fetches.
+    [[nodiscard]] GitCommandResult fetch(const QString &remote, bool prune, bool fetchTags,
+                                         int timeoutMs = GitNetworkTimeoutMs) const;
     [[nodiscard]] GitCommandResult pull(const QString &remote, const QString &branch,
                                         bool rebase) const;
     [[nodiscard]] GitCommandResult push(const QString &remote, const QStringList &branches,

@@ -66,6 +66,12 @@ constexpr int ResizeMargin = WindowShadowMargin;
 constexpr int AboutFrameWidth = 550;
 constexpr int AboutFrameHeight = 351;
 constexpr int AboutShadowMargin = 10;
+constexpr int BadgeHeight = 14;
+constexpr int BadgePadding = 12;
+constexpr int BadgeMargin = 2;
+constexpr int TabBadgeHeight = 14;
+constexpr int TabBadgeSpacing = 4;
+constexpr int TabTitleLeftMargin = 9;
 
 QFont topBarFont() {
     QFont font(QStringLiteral("Arial"));
@@ -96,6 +102,38 @@ public:
 private:
     QList<int> widths_;
 };
+
+const QStringList &tabBadgeNames() {
+    static const QStringList names{QStringLiteral("tabCommitBadge"),
+                                   QStringLiteral("tabPushBadge"),
+                                   QStringLiteral("tabPullBadge")};
+    return names;
+}
+
+QLabel *tabTitleLabel(QWidget *tabButton) {
+    if (tabButton == nullptr) {
+        return nullptr;
+    }
+    if (auto *label = qobject_cast<QLabel *>(tabButton)) {
+        return label;
+    }
+    return tabButton->findChild<QLabel *>(QStringLiteral("repositoryTabTitle"));
+}
+
+int tabBadgeWidth(QWidget *tabButton) {
+    if (tabButton == nullptr || qobject_cast<QLabel *>(tabButton) != nullptr) {
+        return 0;
+    }
+
+    int width = 0;
+    for (const QString &name : tabBadgeNames()) {
+        const auto *badge = tabButton->findChild<QLabel *>(name);
+        if (badge != nullptr && !badge->text().isEmpty()) {
+            width += badge->sizeHint().width() + TabBadgeSpacing;
+        }
+    }
+    return width;
+}
 
 class AboutDialogWindow final : public QDialog {
 public:
@@ -310,20 +348,14 @@ void MainWindow::buildToolbar() {
     // Keep the frequent commands in this exact order.
     commitAction_ = addAction(Icons::Glyph::Commit, tr("Commit"),
                               tr("Commit the staged changes"));
-    if (auto *commitButton = qobject_cast<QToolButton *>(
-            mainToolbar_->widgetForAction(commitAction_))) {
-        commitBadge_ = new QLabel(commitButton);
-        commitBadge_->setObjectName(QStringLiteral("commitBadge"));
-        commitBadge_->setAlignment(Qt::AlignCenter);
-        commitBadge_->setGeometry(34, 1, 18, 13);
-        commitBadge_->raise();
-        commitBadge_->hide();
-    }
+    commitBadge_ = addToolbarBadge(commitAction_, QStringLiteral("commitBadge"));
     mainToolbar_->addSeparator();
     pushAction_ = addAction(Icons::Glyph::Push, tr("Push"),
                             tr("Push the changes"));
+    pushBadge_ = addToolbarBadge(pushAction_, QStringLiteral("pushBadge"));
     pullAction_ = addAction(Icons::Glyph::Pull, tr("Pull"),
                             tr("Pull and merge the changes"));
+    pullBadge_ = addToolbarBadge(pullAction_, QStringLiteral("pullBadge"));
     fetchAction_ = addAction(Icons::Glyph::Fetch, tr("Fetch"),
                              tr("Fetch from all remote repositories"));
     mainToolbar_->addSeparator();
@@ -402,12 +434,12 @@ QWidget *MainWindow::buildTitleBar() {
     titleBar_->setFixedHeight(TitleBarHeight);
 
     auto *layout = new QHBoxLayout(titleBar_);
-    layout->setContentsMargins(8, 0, 0, 0);
+    layout->setContentsMargins(4, 0, 0, 0);
     layout->setSpacing(0);
 
     auto *logo = new QLabel;
     logo->setPixmap(Icons::pixmap(Icons::Glyph::Ghost, 20, Qt::white));
-    logo->setFixedWidth(34);
+    logo->setFixedWidth(24);
     layout->addWidget(logo);
 
     // Keep the menu at its natural height and centre it in the taller title
@@ -555,6 +587,14 @@ bool MainWindow::eventFilter(QObject *watched, QEvent *event) {
         } else if (event->type() == QEvent::MouseButtonDblClick) {
             toggleMaximized();
             return true;
+        }
+    }
+
+    if (event->type() == QEvent::Resize) {
+        for (QLabel *badge : {commitBadge_, pushBadge_, pullBadge_}) {
+            if (badge != nullptr && watched == badge->parentWidget()) {
+                positionToolbarBadge(badge);
+            }
         }
     }
 
@@ -1050,16 +1090,32 @@ bool MainWindow::openRepository(const QString &path, const bool activate) {
     tabPages_->insertWidget(index, view);
     tabs_->setTabToolTip(index, QDir::toNativeSeparators(view->repositoryRoot()));
 
+    auto *titleArea = new QWidget;
+    titleArea->setObjectName(QStringLiteral("tabTitleArea"));
+    titleArea->setAttribute(Qt::WA_TransparentForMouseEvents);
+    auto *titleLayout = new QHBoxLayout(titleArea);
+    titleLayout->setContentsMargins(TabTitleLeftMargin, 0, 0, 0);
+    titleLayout->setSpacing(TabBadgeSpacing);
+
+    for (const QString &name : tabBadgeNames()) {
+        auto *badge = new QLabel;
+        badge->setObjectName(name);
+        badge->setAlignment(Qt::AlignCenter);
+        badge->setAttribute(Qt::WA_TransparentForMouseEvents);
+        badge->setFixedHeight(TabBadgeHeight);
+        badge->hide();
+        titleLayout->addWidget(badge);
+    }
+
     auto *tabTitle = new QLabel(view->repositoryName());
     tabTitle->setObjectName(QStringLiteral("repositoryTabTitle"));
     tabTitle->setFont(topBarFont());
     tabTitle->setProperty("fullTitle", view->repositoryName());
     tabTitle->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Preferred);
-    tabs_->setTabButton(index, QTabBar::LeftSide, tabTitle);
+    titleLayout->addWidget(tabTitle, 1);
+    tabs_->setTabButton(index, QTabBar::LeftSide, titleArea);
 
-    // QTabBar anchors its right-side button directly to the tab edge. A small
-    // The wrapper reserves visual breathing room without enlarging the
-    // square hover target itself.
+    // Reserve space at the tab edge without enlarging the close button.
     auto *closeArea = new QWidget;
     closeArea->setObjectName(QStringLiteral("tabCloseArea"));
     closeArea->setFixedSize(QSize(24, 20));
@@ -1211,20 +1267,17 @@ void MainWindow::updateTabTitle(RepositoryView *view) {
         return;
     }
 
-    QString indicators;
-    if (view->changeCount() > 0) {
-        indicators += QStringLiteral("↑");
-    }
-    if (view->behindCount() > 0) {
-        indicators += QStringLiteral("↓");
-    }
-    const QString title = indicators.isEmpty()
-                              ? view->repositoryName()
-                              : QStringLiteral("%1 %2").arg(indicators,
-                                                             view->repositoryName());
-    if (auto *label = qobject_cast<QLabel *>(
-            tabs_->tabButton(index, QTabBar::LeftSide))) {
-        label->setProperty("fullTitle", title);
+    QWidget *button = tabs_->tabButton(index, QTabBar::LeftSide);
+    const auto badge = [button](const QString &name) {
+        return button != nullptr ? button->findChild<QLabel *>(name) : nullptr;
+    };
+    setTabBadge(badge(QStringLiteral("tabCommitBadge")), view->changeCount(), QString());
+    setTabBadge(badge(QStringLiteral("tabPushBadge")), view->aheadCount(),
+                QStringLiteral("↑"));
+    setTabBadge(badge(QStringLiteral("tabPullBadge")), view->behindCount(),
+                QStringLiteral("↓"));
+    if (QLabel *label = tabTitleLabel(button)) {
+        label->setProperty("fullTitle", view->repositoryName());
     }
     tabs_->setTabToolTip(index, tr("%1\nBranch: %2")
                                     .arg(QDir::toNativeSeparators(view->repositoryRoot()),
@@ -1253,7 +1306,8 @@ void MainWindow::updateTabMetrics() {
     tabWidths.reserve(tabs_->count());
     int desiredTotal = 0;
     for (int index = 0; index < tabs_->count(); ++index) {
-        const auto *label = qobject_cast<QLabel *>(tabs_->tabButton(index, QTabBar::LeftSide));
+        QWidget *button = tabs_->tabButton(index, QTabBar::LeftSide);
+        const QLabel *label = tabTitleLabel(button);
         const QString title = label != nullptr ? label->property("fullTitle").toString()
                                                : QString();
         // Leave a small reserve beyond the measured text. QTabBar applies its
@@ -1262,7 +1316,7 @@ void MainWindow::updateTabMetrics() {
         const int desired = qBound(index == 0 ? 128 : 112,
                                    (label != nullptr
                                         ? label->fontMetrics().horizontalAdvance(title)
-                                        : 70) + controls,
+                                        : 70) + controls + tabBadgeWidth(button),
                                    260);
         tabWidths.append(desired);
         desiredTotal += desired;
@@ -1290,7 +1344,8 @@ void MainWindow::updateTabMetrics() {
     tabs_->setFixedWidth(qMin(available, effectiveTotal));
 
     for (int index = 0; index < tabs_->count(); ++index) {
-        auto *label = qobject_cast<QLabel *>(tabs_->tabButton(index, QTabBar::LeftSide));
+        QWidget *button = tabs_->tabButton(index, QTabBar::LeftSide);
+        QLabel *label = tabTitleLabel(button);
         if (label == nullptr) {
             continue;
         }
@@ -1299,15 +1354,16 @@ void MainWindow::updateTabMetrics() {
         const int tabWidth = index == 0
                                  ? homeWidth
                                  : qMin(tabWidths.at(index), repositoryWidthLimit);
-        const int labelWidth = qMax(0, tabWidth - (index == 0 ? 22 : 38));
-        label->setFixedWidth(labelWidth);
-        const int textWidth = qMax(0, labelWidth - 2);
+        const int buttonWidth = qMax(0, tabWidth - (index == 0 ? 22 : 38));
+        button->setFixedWidth(buttonWidth);
+        const int titleMargin = index == 0 ? 0 : TabTitleLeftMargin;
+        const int textWidth = qMax(0, buttonWidth - titleMargin
+                                          - tabBadgeWidth(button) - 2);
         const QString visibleTitle = textWidth == 0
                                          ? QString()
                                          : label->fontMetrics().elidedText(
                                                fullTitle, Qt::ElideRight, textWidth);
         label->setText(visibleTitle);
-
     }
     updateTabCloseButtons();
     tabs_->updateGeometry();
@@ -1337,11 +1393,9 @@ void MainWindow::updateActions() {
 
     const ThemePalette &palette = Theme::instance()->palette();
     commitAction_->setIcon(Icons::icon(Icons::Glyph::Commit));
-    if (commitBadge_ != nullptr) {
-        const int count = hasRepository ? view->changeCount() : 0;
-        commitBadge_->setText(count > 99 ? QStringLiteral("99+") : QString::number(count));
-        commitBadge_->setVisible(count > 0);
-    }
+    updateToolbarBadge(commitBadge_, hasRepository ? view->changeCount() : 0);
+    updateToolbarBadge(pushBadge_, hasRepository ? view->aheadCount() : 0);
+    updateToolbarBadge(pullBadge_, hasRepository ? view->behindCount() : 0);
     for (int index = 1; index < tabs_->count(); ++index) {
         QWidget *area = tabs_->tabButton(index, QTabBar::RightSide);
         if (auto *button = area != nullptr ? area->findChild<QToolButton *>() : nullptr) {
@@ -1349,12 +1403,8 @@ void MainWindow::updateActions() {
         }
     }
     updateTabCloseButtons();
-    pullAction_->setIcon(Icons::badgedIcon(Icons::Glyph::Pull, QColor(),
-                                           hasRepository ? view->behindCount() : 0,
-                                           palette.danger));
-    pushAction_->setIcon(Icons::badgedIcon(Icons::Glyph::Push, QColor(),
-                                           hasRepository ? view->aheadCount() : 0,
-                                           palette.success));
+    pullAction_->setIcon(Icons::icon(Icons::Glyph::Pull));
+    pushAction_->setIcon(Icons::icon(Icons::Glyph::Push));
 
     if (hasRepository) {
         setWindowTitle(QStringLiteral("%1 — %2 — SquidyGit")
@@ -1369,6 +1419,53 @@ void MainWindow::updateActions() {
         setWindowTitle(QStringLiteral("SquidyGit"));
         statusLabel_->setText(tr("Open or clone a repository"));
     }
+}
+
+QLabel *MainWindow::addToolbarBadge(QAction *action, const QString &name) {
+    auto *button = qobject_cast<QToolButton *>(mainToolbar_->widgetForAction(action));
+    if (button == nullptr) {
+        return nullptr;
+    }
+
+    auto *badge = new QLabel(button);
+    badge->setObjectName(name);
+    badge->setAlignment(Qt::AlignCenter);
+    badge->setAttribute(Qt::WA_TransparentForMouseEvents);
+    badge->raise();
+    badge->hide();
+    button->installEventFilter(this);
+    return badge;
+}
+
+void MainWindow::setTabBadge(QLabel *badge, const int count, const QString &arrow) {
+    if (badge == nullptr) {
+        return;
+    }
+    badge->setText(count > 0
+                       ? (count > 99 ? QStringLiteral("99+") : QString::number(count)) + arrow
+                       : QString());
+    badge->setVisible(count > 0);
+}
+
+void MainWindow::updateToolbarBadge(QLabel *badge, const int count) {
+    if (badge == nullptr) {
+        return;
+    }
+    badge->setText(count > 99 ? QStringLiteral("99+") : QString::number(count));
+    badge->setVisible(count > 0);
+    positionToolbarBadge(badge);
+}
+
+void MainWindow::positionToolbarBadge(QLabel *badge) {
+    QWidget *button = badge != nullptr ? badge->parentWidget() : nullptr;
+    if (button == nullptr) {
+        return;
+    }
+    const int width = qMax(BadgeHeight, badge->fontMetrics()
+                                                .horizontalAdvance(badge->text())
+                                            + BadgePadding);
+    badge->setGeometry(button->width() - width - BadgeMargin, BadgeMargin,
+                       width, BadgeHeight);
 }
 
 void MainWindow::addBookmark(const QString &path) {

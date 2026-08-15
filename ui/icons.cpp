@@ -2,7 +2,6 @@
 
 #include "icons.h"
 
-#include <QFont>
 #include <QGuiApplication>
 #include <QPainter>
 #include <QPainterPath>
@@ -436,39 +435,6 @@ QIcon Icons::applicationIcon() {
     QIcon result;
     for (const int size : {16, 24, 32, 48, 64, 128, 256, 512}) {
         result.addPixmap(applicationPixmap(size));
-    }
-    return result;
-}
-
-QIcon Icons::badgedIcon(const Glyph glyph, const QColor &color, const int count,
-                        const QColor &badgeColor) {
-    if (count <= 0) {
-        return icon(glyph, color);
-    }
-
-    QIcon result;
-    for (const int size : {24, 32, 48}) {
-        QPixmap canvas = pixmap(glyph, size, color);
-        QPainter painter(&canvas);
-        painter.setRenderHint(QPainter::Antialiasing, true);
-
-        const QString text = count > 99 ? QStringLiteral("99+") : QString::number(count);
-        QFont font = painter.font();
-        font.setPixelSize(qMax(7, size * 7 / 16));
-        font.setBold(true);
-        painter.setFont(font);
-
-        const int textWidth = painter.fontMetrics().horizontalAdvance(text);
-        const int badgeHeight = qMax(10, size * 9 / 16);
-        const QRectF badge(canvas.width() / canvas.devicePixelRatio() - textWidth - 7,
-                           0.0, textWidth + 6.0, badgeHeight);
-        painter.setPen(Qt::NoPen);
-        painter.setBrush(badgeColor);
-        painter.drawRoundedRect(badge, badgeHeight / 2.0, badgeHeight / 2.0);
-        painter.setPen(Qt::white);
-        painter.drawText(badge, Qt::AlignCenter, text);
-        painter.end();
-        result.addPixmap(canvas);
     }
     return result;
 }

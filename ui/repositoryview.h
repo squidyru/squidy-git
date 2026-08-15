@@ -25,6 +25,7 @@ class QPushButton;
 class QSplitter;
 class QStackedWidget;
 class QTextBrowser;
+class QTimer;
 class QToolButton;
 class QTreeWidget;
 class QTreeWidgetItem;
@@ -130,6 +131,14 @@ private:
     void runRemoteOperation(const QString &title,
                             const std::function<GitCommandResult()> &operation);
     void finishRemoteOperation();
+
+    // --- Periodic remote check --------------------------------------------
+    [[nodiscard]] QString currentUpstream() const;
+    void scheduleAutoFetch();
+    void runAutoFetch();
+    void finishAutoFetch();
+    void updateWatcherSuspension();
+
     void reportError(const QString &title, const GitCommandResult &result);
     [[nodiscard]] QString selectedCommitHash() const;
     void checkoutBranch(const QString &name);
@@ -200,9 +209,17 @@ private:
     bool hasStagedChanges_ = false;
     bool treeMode_ = false;
     bool operationInProgress_ = false;
+    bool blockingOperation_ = false;
     bool pushAfterCommitPending_ = false;
     QString operationTitle_;
     QFutureWatcher<GitCommandResult> *operationWatcher_ = nullptr;
+
+    QTimer *autoFetchTimer_ = nullptr;
+    QFutureWatcher<GitCommandResult> *autoFetchWatcher_ = nullptr;
+    bool autoFetchRunning_ = false;
+    bool autoFetchReporting_ = false;
+    quint64 autoFetchReportGeneration_ = 0;
+    int autoFetchBehind_ = 0;
 
     RepositoryWatcher *diskWatcher_ = nullptr;
     QFutureWatcher<RepositorySnapshot> *snapshotWatcher_ = nullptr;

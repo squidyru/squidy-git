@@ -9,7 +9,6 @@
 #include <QFileInfo>
 
 namespace {
-constexpr int GitNetworkTimeoutMs = 10 * 60'000;
 constexpr qint64 MaximumPreviewSize = 2 * 1024 * 1024;
 }
 
@@ -1017,7 +1016,7 @@ GitCommandResult GitClient::stashDrop(const int index) const {
 }
 
 GitCommandResult GitClient::fetch(const QString &remote, const bool prune,
-                                  const bool fetchTags) const {
+                                  const bool fetchTags, const int timeoutMs) const {
     QStringList arguments{QStringLiteral("fetch")};
     if (remote.isEmpty()) {
         arguments.append(QStringLiteral("--all"));
@@ -1030,7 +1029,7 @@ GitCommandResult GitClient::fetch(const QString &remote, const bool prune,
     if (fetchTags) {
         arguments.append(QStringLiteral("--tags"));
     }
-    return run(arguments, GitNetworkTimeoutMs);
+    return run(arguments, timeoutMs);
 }
 
 GitCommandResult GitClient::pull(const QString &remote, const QString &branch,

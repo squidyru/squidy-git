@@ -537,16 +537,33 @@ PreferencesDialog::PreferencesDialog(const QString &userName, const QString &use
     for (const int limit : {200, 500, 1000, 5000}) {
         historyCombo_->addItem(tr("%1 commits").arg(limit), limit);
     }
+    autoFetchCheck_ = new QCheckBox(tr("Check remote repositories in the background"));
+    autoFetchCombo_ = new QComboBox;
+    for (const int minutes : {1, 5, 10, 30, 60}) {
+        autoFetchCombo_->addItem(tr("%n minute(s)", "", minutes), minutes);
+    }
+    const QSettings settings;
     themeCombo_->setCurrentIndex(Theme::instance()->mode() == Theme::Mode::Dark ? 1 : 0);
     historyCombo_->setCurrentIndex(qMax(0, historyCombo_->findData(
-        QSettings().value(QStringLiteral("historyLimit"), 500).toInt())));
+        settings.value(QStringLiteral("historyLimit"), 500).toInt())));
+    autoFetchCheck_->setChecked(
+        settings.value(QStringLiteral("autoFetch/enabled"), true).toBool());
+    autoFetchCombo_->setCurrentIndex(qMax(0, autoFetchCombo_->findData(
+        settings.value(QStringLiteral("autoFetch/intervalMinutes"), 10).toInt())));
+    autoFetchCombo_->setEnabled(autoFetchCheck_->isChecked());
+    connect(autoFetchCheck_, &QCheckBox::toggled, autoFetchCombo_, &QComboBox::setEnabled);
+
     form->addRow(tr("Author name:"), nameEdit_);
     form->addRow(QStringLiteral("E-mail:"), emailEdit_);
     form->addRow(tr("Theme:"), themeCombo_);
     form->addRow(tr("History depth:"), historyCombo_);
+    form->addRow(QString(), autoFetchCheck_);
+    form->addRow(tr("Check interval:"), autoFetchCombo_);
     layout->addLayout(form);
     layout->addWidget(hint(tr("The name and e-mail are written to the local repository "
                               "configuration.")));
+    layout->addWidget(hint(tr("The background check runs \"git fetch\" and only updates the "
+                              "incoming counters. It never changes the working tree.")));
 
     auto *buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel);
     buttons->button(QDialogButtonBox::Ok)->setProperty("accent", true);
@@ -569,4 +586,12 @@ bool PreferencesDialog::darkTheme() const {
 
 int PreferencesDialog::historyLimit() const {
     return historyCombo_->currentData().toInt();
+}
+
+bool PreferencesDialog::autoFetchEnabled() const {
+    return autoFetchCheck_->isChecked();
+}
+
+int PreferencesDialog::autoFetchIntervalMinutes() const {
+    return autoFetchCombo_->currentData().toInt();
 }

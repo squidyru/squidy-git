@@ -106,9 +106,8 @@ void CommitGraphDelegate::paint(QPainter *painter, const QStyleOptionViewItem &o
         const int chipGap = 9;
         const int subjectReserve = 80;
         const int referencesRight = option.rect.right() - subjectReserve;
-        const QColor referenceBlue = Theme::instance()->mode() == Theme::Mode::Light
-                                         ? QColor(QStringLiteral("#337AB7"))
-                                         : palette.accent;
+        const QColor referenceColor =
+            laneColor(graphIndex.data(CommitRoles::ColorIndex).toInt());
         const QColor chipSurface = Theme::instance()->mode() == Theme::Mode::Light
                                        ? QColor(QStringLiteral("#F7F7F7"))
                                        : palette.surface;
@@ -127,7 +126,7 @@ void CommitGraphDelegate::paint(QPainter *painter, const QStyleOptionViewItem &o
             painter->save();
             painter->setClipPath(pill);
             painter->fillRect(QRect(left, chipTop, iconCellWidth, chipHeight),
-                              referenceBlue);
+                              referenceColor);
             painter->restore();
 
             painter->setPen(QPen(chipBorder, 1.0));
@@ -152,7 +151,7 @@ void CommitGraphDelegate::paint(QPainter *painter, const QStyleOptionViewItem &o
             const QRectF rect(left + 0.5, chipTop + 0.5,
                               width - 1.0, chipHeight - 1.0);
             painter->setPen(Qt::NoPen);
-            painter->setBrush(referenceBlue);
+            painter->setBrush(referenceColor);
             painter->drawRoundedRect(rect, 2.5, 2.5);
             painter->setBrush(Qt::white);
             const qreal dotY = rect.center().y() + 2.0;
@@ -204,8 +203,11 @@ void CommitGraphDelegate::paint(QPainter *painter, const QStyleOptionViewItem &o
     QStyledItemDelegate::paint(painter, option, index);
 
     const int nodeLane = index.data(CommitRoles::Lane).toInt();
+    const int nodeColor = index.data(CommitRoles::ColorIndex).toInt();
     const QVariantList passEdges = index.data(CommitRoles::PassEdges).toList();
+    const QVariantList passColors = index.data(CommitRoles::PassColors).toList();
     const QVariantList parentLanes = index.data(CommitRoles::ParentLanes).toList();
+    const QVariantList parentColors = index.data(CommitRoles::ParentColors).toList();
     const bool hasIncoming = index.data(CommitRoles::HasIncoming).toBool();
     const bool graphUncommitted = index.data(CommitRoles::IsUncommitted).toBool();
     const bool isMerge = index.data(CommitRoles::IsMerge).toBool();
@@ -222,8 +224,8 @@ void CommitGraphDelegate::paint(QPainter *painter, const QStyleOptionViewItem &o
     painter->setClipRect(option.rect);
 
     const auto drawEdge = [&](const int fromLane, const int fromY,
-                              const int toLane, const int toY) {
-        QPen pen(laneColor(qMax(fromLane, toLane)), 1.35);
+                              const int toLane, const int toY, const int color) {
+        QPen pen(laneColor(color), 1.35);
         pen.setCapStyle(Qt::RoundCap);
         painter->setPen(pen);
         painter->setBrush(Qt::NoBrush);
@@ -239,15 +241,18 @@ void CommitGraphDelegate::paint(QPainter *painter, const QStyleOptionViewItem &o
         painter->drawPath(path);
     };
 
-    for (const QVariant &edgeValue : passEdges) {
-        const QPoint edge = edgeValue.toPoint();
-        drawEdge(edge.x(), topY, edge.y(), bottomY);
+    for (int position = 0; position < passEdges.size(); ++position) {
+        const QPoint edge = passEdges.at(position).toPoint();
+        drawEdge(edge.x(), topY, edge.y(), bottomY,
+                 position < passColors.size() ? passColors.at(position).toInt() : nodeColor);
     }
     if (hasIncoming) {
-        drawEdge(nodeLane, topY, nodeLane, centerY);
+        drawEdge(nodeLane, topY, nodeLane, centerY, nodeColor);
     }
-    for (const QVariant &laneValue : parentLanes) {
-        drawEdge(nodeLane, centerY, laneValue.toInt(), bottomY);
+    for (int position = 0; position < parentLanes.size(); ++position) {
+        drawEdge(nodeLane, centerY, parentLanes.at(position).toInt(), bottomY,
+                 position < parentColors.size() ? parentColors.at(position).toInt()
+                                                : nodeColor);
     }
 
     const QPointF center(laneX(nodeLane), centerY);
@@ -258,12 +263,12 @@ void CommitGraphDelegate::paint(QPainter *painter, const QStyleOptionViewItem &o
         painter->setBrush(palette.surface);
         painter->drawEllipse(center, NodeRadius, NodeRadius);
     } else if (!hasIncoming || isHead) {
-        painter->setPen(QPen(isHead ? palette.text : laneColor(nodeLane), 1.6));
+        painter->setPen(QPen(isHead ? palette.text : laneColor(nodeColor), 1.6));
         painter->setBrush(palette.surface);
         painter->drawEllipse(center, NodeRadius, NodeRadius);
     } else {
         painter->setPen(Qt::NoPen);
-        painter->setBrush(laneColor(nodeLane));
+        painter->setBrush(laneColor(nodeColor));
         painter->drawEllipse(center, NodeRadius, NodeRadius);
         if (isMerge) {
             painter->setBrush(palette.surface);

@@ -28,6 +28,7 @@
 #include <QInputDialog>
 #include <QLabel>
 #include <QLineEdit>
+#include <QListWidget>
 #include <QMenu>
 #include <QMessageBox>
 #include <QPainter>
@@ -47,12 +48,14 @@
 #include <QStyle>
 #include <QTextBrowser>
 #include <QTextDocument>
+#include <QThreadPool>
 #include <QTimer>
 #include <QTreeView>
 #include <QToolButton>
 #include <QTreeWidget>
 #include <QUrl>
 #include <QVBoxLayout>
+#include <QWidgetAction>
 #include <QtConcurrentRun>
 
 #if defined(Q_OS_WIN)
@@ -84,6 +87,18 @@ constexpr int NavigationBehindRole = Qt::UserRole + 34;
 constexpr int HistoryRevisionRole = Qt::UserRole + 35;
 constexpr int FullDiffContextLines = 1'000'000;
 constexpr int RepositorySplitterWidth = 0;
+constexpr int SeparatorHeight = 1;
+constexpr int JumpListVisibleRows = 12;
+constexpr int CounterHeight = 16;
+constexpr int CounterPadding = 4;
+constexpr qreal CounterRadius = 4.0;
+constexpr int AutoFetchDefaultMinutes = 10;
+constexpr int AutoFetchMinimumMinutes = 1;
+constexpr int AutoFetchMaximumMinutes = 24 * 60;
+constexpr int AutoFetchStartupDelayMs = 5'000;
+constexpr int AutoFetchTimeoutMs = 90'000;
+// Limit concurrent checks when several tabs are restored together.
+constexpr int AutoFetchParallelChecks = 2;
 
 enum NavigationKind {
     NavigationSection,
@@ -214,25 +229,28 @@ public:
 
         QRect badgeRect;
         if (!counters.isEmpty()) {
-            QFont badgeFont = option.font;
+            // Match the arrow glyph used by the tab counters.
+            QFont badgeFont = QApplication::font();
             badgeFont.setPixelSize(10);
             badgeFont.setBold(true);
+
             const QString badgeText = counters.join(u' ');
-            const int badgeWidth = QFontMetrics(badgeFont).horizontalAdvance(badgeText) + 8;
+            const int badgeWidth = QFontMetrics(badgeFont).horizontalAdvance(badgeText)
+                                   + CounterPadding * 2;
             badgeRect = QRect(option.rect.right() - badgeWidth,
-                              option.rect.center().y() - 8, badgeWidth, 16);
+                              option.rect.center().y() - CounterHeight / 2,
+                              badgeWidth, CounterHeight);
+
+            const ThemePalette &palette = Theme::instance()->palette();
+            const bool light = Theme::instance()->mode() == Theme::Mode::Light;
 
             painter->save();
             painter->setRenderHint(QPainter::Antialiasing, true);
             painter->setPen(Qt::NoPen);
-            painter->setBrush(Theme::instance()->mode() == Theme::Mode::Light
-                                  ? QColor(QStringLiteral("#151515"))
-                                  : Theme::instance()->palette().text);
-            painter->drawRoundedRect(QRectF(badgeRect), 4.0, 4.0);
+            painter->setBrush(light ? QColor(QStringLiteral("#151515")) : palette.text);
+            painter->drawRoundedRect(QRectF(badgeRect), CounterRadius, CounterRadius);
             painter->setFont(badgeFont);
-            painter->setPen(Theme::instance()->mode() == Theme::Mode::Light
-                                ? Qt::white
-                                : Theme::instance()->palette().surface);
+            painter->setPen(light ? QColor(Qt::white) : palette.surface);
             painter->drawText(badgeRect, Qt::AlignCenter, badgeText);
             painter->restore();
         }
@@ -373,10 +391,45 @@ QString elideMiddle(const QString &text, const int maximum) {
 }
 
 /// Settings keys must not contain path separators, which QSettings reads as groups.
+QString detailsRow(const QString &label, const QString &value) {
+    return QStringLiteral("<tr><td valign='top'><b>%1&nbsp;&nbsp;</b></td>"
+                          "<td valign='top'>%2</td></tr>")
+        .arg(label, value);
+}
+
+QString detailsTable(const QString &rows) {
+    return QStringLiteral("<table cellspacing='0' cellpadding='0'>%1</table>").arg(rows);
+}
+
 QString pageSettingsKey(const QString &repositoryRoot) {
     const QByteArray digest = QCryptographicHash::hash(repositoryRoot.toUtf8(),
                                                        QCryptographicHash::Md5);
     return QStringLiteral("pages/%1").arg(QString::fromLatin1(digest.toHex()));
+}
+
+// Keep slow remotes out of the snapshot worker pool.
+class AutoFetchPool final : public QThreadPool {
+public:
+    AutoFetchPool() {
+        setMaxThreadCount(AutoFetchParallelChecks);
+    }
+};
+
+QThreadPool *autoFetchPool() {
+    static AutoFetchPool pool;
+    return &pool;
+}
+
+bool autoFetchEnabled() {
+    return QSettings().value(QStringLiteral("autoFetch/enabled"), true).toBool();
+}
+
+int autoFetchIntervalMinutes() {
+    const int minutes = QSettings()
+                            .value(QStringLiteral("autoFetch/intervalMinutes"),
+                                   AutoFetchDefaultMinutes)
+                            .toInt();
+    return qBound(AutoFetchMinimumMinutes, minutes, AutoFetchMaximumMinutes);
 }
 
 QString historyHeaderSettingsKey(const QString &repositoryRoot) {
@@ -405,6 +458,8 @@ QTreeWidgetItem *firstLeaf(QTreeWidgetItem *item) {
 RepositoryView::RepositoryView(const QString &path, QWidget *parent)
     : QWidget(parent),
       operationWatcher_(new QFutureWatcher<GitCommandResult>(this)),
+      autoFetchTimer_(new QTimer(this)),
+      autoFetchWatcher_(new QFutureWatcher<GitCommandResult>(this)),
       diskWatcher_(new RepositoryWatcher(this)),
       snapshotWatcher_(new QFutureWatcher<RepositorySnapshot>(this)) {
     valid_ = git_.openRepository(path).succeeded();
@@ -438,6 +493,10 @@ RepositoryView::RepositoryView(const QString &path, QWidget *parent)
 
     connect(operationWatcher_, &QFutureWatcher<GitCommandResult>::finished, this,
             [this] { finishRemoteOperation(); });
+    autoFetchTimer_->setSingleShot(true);
+    connect(autoFetchTimer_, &QTimer::timeout, this, [this] { runAutoFetch(); });
+    connect(autoFetchWatcher_, &QFutureWatcher<GitCommandResult>::finished, this,
+            [this] { finishAutoFetch(); });
     connect(snapshotWatcher_, &QFutureWatcher<RepositorySnapshot>::finished, this,
             [this] { applySnapshot(snapshotWatcher_->result()); });
     connect(diskWatcher_, &RepositoryWatcher::repositoryChangedOnDisk, this,
@@ -457,6 +516,7 @@ RepositoryView::RepositoryView(const QString &path, QWidget *parent)
         diskWatcher_->setRepository(git_.gitDirectory());
         refreshAll();
         showPage(currentPage_);
+        QTimer::singleShot(AutoFetchStartupDelayMs, this, [this] { runAutoFetch(); });
     }
 }
 
@@ -601,8 +661,10 @@ QWidget *RepositoryView::buildSidebar() {
     auto *topSeparator = new QFrame;
     topSeparator->setObjectName(QStringLiteral("sidebarTopSeparator"));
     topSeparator->setFrameShape(QFrame::HLine);
+    topSeparator->setFixedHeight(SeparatorHeight);
     topSeparator->setMaximumWidth(184);
     layout->addWidget(topSeparator);
+    layout->addSpacing(9);
 
     auto *navigationFilter = new QLineEdit;
     navigationFilter->setObjectName(QStringLiteral("navigationFilter"));
@@ -614,11 +676,7 @@ QWidget *RepositoryView::buildSidebar() {
         QLineEdit::TrailingPosition);
     layout->addWidget(navigationFilter);
 
-    auto *separator = new QFrame;
-    separator->setObjectName(QStringLiteral("sidebarSeparator"));
-    separator->setFrameShape(QFrame::HLine);
-    separator->setMaximumWidth(184);
-    layout->addWidget(separator);
+    layout->addSpacing(8);
 
     navigationTree_ = new NavigationTree;
     navigationTree_->setObjectName(QStringLiteral("navigationTree"));
@@ -1024,23 +1082,45 @@ QWidget *RepositoryView::buildHistoryPage() {
         });
         jumpMenu->addSeparator();
 
-        const auto addReference = [this, jumpMenu](const QString &reference) {
-            QAction *action = jumpMenu->addAction(reference);
-            connect(action, &QAction::triggered, this,
-                    [this, reference] { jumpToRevision(reference); });
-        };
+        QStringList references;
         for (const GitBranchInfo &branch : git_.branches()) {
-            addReference(branch.name);
+            references.append(branch.name);
         }
         for (const GitRemoteInfo &remote : git_.remotes()) {
-            addReference(QStringLiteral("%1/HEAD").arg(remote.name));
+            references.append(QStringLiteral("%1/HEAD").arg(remote.name));
             for (const QString &branch : remote.branches) {
-                addReference(QStringLiteral("%1/%2").arg(remote.name, branch));
+                references.append(QStringLiteral("%1/%2").arg(remote.name, branch));
             }
         }
         for (const GitTagInfo &tag : git_.tags()) {
-            addReference(tag.name);
+            references.append(tag.name);
         }
+        if (references.isEmpty()) {
+            return;
+        }
+
+        // Keep large reference sets scrollable.
+        auto *list = new QListWidget;
+        list->setObjectName(QStringLiteral("historyJumpList"));
+        list->setFrameShape(QFrame::NoFrame);
+        list->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+        list->addItems(references);
+
+        const int rowHeight = qMax(1, list->sizeHintForRow(0));
+        const int visibleRows = qMin(static_cast<int>(references.size()),
+                                     JumpListVisibleRows);
+        list->setFixedHeight(visibleRows * rowHeight + 2);
+
+        auto *listAction = new QWidgetAction(jumpMenu);
+        listAction->setDefaultWidget(list);
+        jumpMenu->addAction(listAction);
+
+        connect(list, &QListWidget::itemClicked, this,
+                [this, jumpMenu](const QListWidgetItem *item) {
+                    const QString reference = item->text();
+                    jumpMenu->close();
+                    jumpToRevision(reference);
+                });
     });
     connect(historyView_->selectionModel(), &QItemSelectionModel::currentRowChanged, this,
             [this] { refreshCommitDetails(); });
@@ -1195,6 +1275,15 @@ void RepositoryView::applySnapshot(const RepositorySnapshot &snapshot) {
     historyError_ = snapshot.historyError;
     ahead_ = snapshot.ahead;
     behind_ = snapshot.behind;
+
+    if (autoFetchReporting_ && snapshot.generation >= autoFetchReportGeneration_) {
+        autoFetchReporting_ = false;
+        if (behind_ > autoFetchBehind_) {
+            Q_EMIT messagePosted(tr("%n new commit(s) on %1", "", behind_ - autoFetchBehind_)
+                                     .arg(currentUpstream()),
+                                 15'000);
+        }
+    }
 
     if (!snapshot.statusError.isEmpty()) {
         Q_EMIT messagePosted(snapshot.statusError, 8'000);
@@ -1705,11 +1794,11 @@ void RepositoryView::refreshCommitDetails() {
     }
 
     if (index.data(CommitRoles::IsUncommitted).toBool()) {
+        // Translate labels separately from the HTML layout.
         commitDetails_->setHtml(
-            tr("<p><b>Uncommitted changes</b></p><table cellspacing='0' "
-               "cellpadding='2'><tr><td><b>Files:&nbsp;&nbsp;</b></td><td>%1</td></tr><tr><td><b>Branch:&nbsp;&nbsp;</b></td><td>%2</td></tr></table>")
-                .arg(files_.size())
-                .arg(currentBranch_.toHtmlEscaped()));
+            QStringLiteral("<p><b>%1</b></p>").arg(tr("Uncommitted changes"))
+            + detailsTable(detailsRow(tr("Files:"), QString::number(files_.size()))
+                           + detailsRow(tr("Branch:"), currentBranch_.toHtmlEscaped())));
         for (const GitFileStatus &file : files_) {
             const QChar status = file.hasStagedChanges() ? file.indexStatus : file.workTreeStatus;
             auto *fileItem = new QTreeWidgetItem(commitFilesTree_, {file.path});
@@ -1740,35 +1829,31 @@ void RepositoryView::refreshCommitDetails() {
 
     if (commit != nullptr) {
         // List metadata as a label/value block above the message.
-        const auto row = [](const QString &label, const QString &value) {
-            return QStringLiteral("<tr><td valign='top'><b>%1&nbsp;&nbsp;</b></td>"
-                                  "<td valign='top'>%2</td></tr>")
-                .arg(label, value);
-        };
-
         QStringList parents;
         for (const QString &parent : commit->parents) {
             parents.append(parent.left(10));
         }
 
-        QString details = QStringLiteral("<table cellspacing='0' cellpadding='2'>");
-        details += row(QStringLiteral("Commit:"),
-                       QStringLiteral("%1 [%2]").arg(commit->hash, commit->shortHash));
+        QString details;
+        details += detailsRow(tr("Commit:"),
+                              QStringLiteral("%1 [%2]").arg(commit->hash,
+                                                            commit->shortHash));
         if (!parents.isEmpty()) {
-            details += row(tr("Parents:"), parents.join(QStringLiteral("&nbsp; ")));
+            details += detailsRow(tr("Parents:"),
+                                  parents.join(QStringLiteral("&nbsp; ")));
         }
-        details += row(tr("Author:"),
-                       QStringLiteral("%1 &lt;%2&gt;")
-                           .arg(commit->author.toHtmlEscaped(),
-                                commit->authorEmail.toHtmlEscaped()));
-        details += row(tr("Date:"), formatCommitTimestamp(commit->authoredAt));
+        details += detailsRow(tr("Author:"),
+                              QStringLiteral("%1 &lt;%2&gt;")
+                                  .arg(commit->author.toHtmlEscaped(),
+                                       commit->authorEmail.toHtmlEscaped()));
+        details += detailsRow(tr("Date:"), formatCommitTimestamp(commit->authoredAt));
         if (commit->committer != commit->author) {
-            details += row(tr("Committer:"), commit->committer.toHtmlEscaped());
+            details += detailsRow(tr("Committer:"), commit->committer.toHtmlEscaped());
         }
         if (!commit->references.isEmpty()) {
-            details += row(tr("Refs:"), commit->references.toHtmlEscaped());
+            details += detailsRow(tr("Refs:"), commit->references.toHtmlEscaped());
         }
-        details += QStringLiteral("</table>");
+        details = detailsTable(details);
 
         QString message = commit->subject.toHtmlEscaped();
         if (!commit->body.isEmpty()) {
@@ -2725,8 +2810,13 @@ void RepositoryView::showPreferences() {
         static_cast<void>(git_.runCustom({QStringLiteral("config"), QStringLiteral("user.email"),
                                           dialog.userEmail()}));
     }
-    QSettings().setValue(QStringLiteral("historyLimit"), dialog.historyLimit());
+    QSettings settings;
+    settings.setValue(QStringLiteral("historyLimit"), dialog.historyLimit());
+    settings.setValue(QStringLiteral("autoFetch/enabled"), dialog.autoFetchEnabled());
+    settings.setValue(QStringLiteral("autoFetch/intervalMinutes"),
+                      dialog.autoFetchIntervalMinutes());
     Theme::instance()->setMode(dialog.darkTheme() ? Theme::Mode::Dark : Theme::Mode::Light);
+    scheduleAutoFetch();
     refreshAll();
 }
 
@@ -2738,11 +2828,13 @@ bool RepositoryView::runOperation(const QString &title,
     }
 
     // The explicit refresh below covers metadata written by this operation.
-    diskWatcher_->setSuspended(true);
+    blockingOperation_ = true;
+    updateWatcherSuspension();
     QApplication::setOverrideCursor(Qt::WaitCursor);
     const GitCommandResult result = operation();
     QApplication::restoreOverrideCursor();
-    diskWatcher_->setSuspended(false);
+    blockingOperation_ = false;
+    updateWatcherSuspension();
 
     if (!result.succeeded()) {
         reportError(title, result);
@@ -2771,7 +2863,7 @@ void RepositoryView::runRemoteOperation(const QString &title,
 
     operationInProgress_ = true;
     operationTitle_ = title;
-    diskWatcher_->setSuspended(true);
+    updateWatcherSuspension();
     Q_EMIT busyChanged(true);
     Q_EMIT messagePosted(tr("%1 is running…").arg(title), 0);
     operationWatcher_->setFuture(QtConcurrent::run(operation));
@@ -2780,7 +2872,7 @@ void RepositoryView::runRemoteOperation(const QString &title,
 void RepositoryView::finishRemoteOperation() {
     const GitCommandResult result = operationWatcher_->result();
     operationInProgress_ = false;
-    diskWatcher_->setSuspended(false);
+    updateWatcherSuspension();
     Q_EMIT busyChanged(false);
 
     if (!result.succeeded()) {
@@ -2795,6 +2887,54 @@ void RepositoryView::finishRemoteOperation() {
     }
 
     refreshAll();
+}
+
+QString RepositoryView::currentUpstream() const {
+    for (const GitBranchInfo &branch : branches_) {
+        if (branch.current && !branch.upstream.isEmpty()) {
+            return branch.upstream;
+        }
+    }
+    return currentBranch_;
+}
+
+void RepositoryView::scheduleAutoFetch() {
+    if (!valid_) {
+        return;
+    }
+    // Poll settings even while disabled so changes made in another tab apply.
+    autoFetchTimer_->start(autoFetchIntervalMinutes() * 60'000);
+}
+
+void RepositoryView::runAutoFetch() {
+    scheduleAutoFetch();
+
+    if (!valid_ || !autoFetchEnabled() || autoFetchRunning_ || operationInProgress_
+        || blockingOperation_) {
+        return;
+    }
+
+    autoFetchRunning_ = true;
+    autoFetchBehind_ = behind_;
+    updateWatcherSuspension();
+
+    GitClient git = git_;
+    autoFetchWatcher_->setFuture(QtConcurrent::run(autoFetchPool(), [git] {
+        return git.fetch({}, true, true, AutoFetchTimeoutMs);
+    }));
+}
+
+void RepositoryView::finishAutoFetch() {
+    autoFetchReporting_ = autoFetchWatcher_->result().succeeded();
+    autoFetchReportGeneration_ = snapshotGeneration_ + 1;
+    autoFetchRunning_ = false;
+    updateWatcherSuspension();
+    refreshAll();
+}
+
+void RepositoryView::updateWatcherSuspension() {
+    diskWatcher_->setSuspended(operationInProgress_ || blockingOperation_
+                               || autoFetchRunning_);
 }
 
 void RepositoryView::reportError(const QString &title, const GitCommandResult &result) {

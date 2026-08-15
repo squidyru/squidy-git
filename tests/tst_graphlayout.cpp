@@ -41,6 +41,9 @@ private Q_SLOTS:
     void keepsDanglingParentsOfTruncatedHistory();
     void handlesEmptyHistory();
     void splitsReferences();
+    void keepsOneColourAlongALine();
+    void givesADisconnectedHistoryItsOwnColour();
+    void givesTheSecondParentOfAMergeItsOwnColour();
 };
 
 void TestGraphLayout::laysOutStraightChainInOneLane() {
@@ -72,6 +75,8 @@ void TestGraphLayout::reportsUniformLaneCount() {
     QVERIFY(width >= 2);
     for (const GraphRow &row : rows) {
         QCOMPARE(row.laneCount, width);
+        QCOMPARE(row.passColors.size(), row.passEdges.size());
+        QCOMPARE(row.parentColors.size(), row.parentLanes.size());
     }
 }
 
@@ -162,6 +167,50 @@ void TestGraphLayout::splitsReferences() {
     QVERIFY(splitReferences(QString()).isEmpty());
     QCOMPARE(splitReferences(QStringLiteral("  main  ")),
              QStringList{QStringLiteral("main")});
+}
+
+void TestGraphLayout::keepsOneColourAlongALine() {
+    const QList<GraphRow> rows = computeCommitGraph(
+        chain({QStringLiteral("a"), QStringLiteral("b"), QStringLiteral("c")}), false, {});
+
+    QCOMPARE(rows.size(), 3);
+    for (const GraphRow &row : rows) {
+        QCOMPARE(row.colorIndex, rows.constFirst().colorIndex);
+    }
+}
+
+void TestGraphLayout::givesADisconnectedHistoryItsOwnColour() {
+    QList<GitCommitInfo> commits =
+        chain({QStringLiteral("a"), QStringLiteral("root1")});
+    commits += chain({QStringLiteral("x"), QStringLiteral("root2")});
+
+    const QList<GraphRow> rows = computeCommitGraph(commits, false, {});
+    QCOMPARE(rows.size(), 4);
+
+    QCOMPARE(rows.at(0).lane, 0);
+    QCOMPARE(rows.at(2).lane, 0);
+    QCOMPARE(rows.at(0).colorIndex, rows.at(1).colorIndex);
+    QCOMPARE(rows.at(2).colorIndex, rows.at(3).colorIndex);
+    QVERIFY(rows.at(0).colorIndex != rows.at(2).colorIndex);
+}
+
+void TestGraphLayout::givesTheSecondParentOfAMergeItsOwnColour() {
+    QList<GitCommitInfo> commits{
+        commit(QStringLiteral("m"), {QStringLiteral("a"), QStringLiteral("b")}),
+        commit(QStringLiteral("a"), {QStringLiteral("base")}),
+        commit(QStringLiteral("b"), {QStringLiteral("base")}),
+        commit(QStringLiteral("base"), {})
+    };
+
+    const QList<GraphRow> rows = computeCommitGraph(commits, false, {});
+    QCOMPARE(rows.size(), 4);
+
+    const GraphRow &merge = rows.constFirst();
+    QCOMPARE(merge.parentColors.size(), 2);
+    QCOMPARE(merge.parentColors.at(0), merge.colorIndex);
+    QVERIFY(merge.parentColors.at(1) != merge.colorIndex);
+    QCOMPARE(rows.at(1).colorIndex, merge.colorIndex);
+    QCOMPARE(rows.at(2).colorIndex, merge.parentColors.at(1));
 }
 
 QTEST_APPLESS_MAIN(TestGraphLayout)

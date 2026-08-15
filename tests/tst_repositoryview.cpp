@@ -26,11 +26,16 @@ private Q_SLOTS:
     void appliesFirstSnapshot();
     void refreshesAfterExternalIndexChange();
     void feedsTheHistoryViewFromTheModel();
+    void countsIncomingCommitsWithoutUserAction();
+    void checksEveryOpenTabAndNotJustTheActiveOne();
 
 private:
     void writeFile(const QString &name, const QString &contents) const;
     [[nodiscard]] GitClient repository() const;
     [[nodiscard]] static QAbstractItemModel *historyModel(const RepositoryView &view);
+    static void createRepository(const QString &directory);
+    /// Leaves the remote one commit ahead without updating its tracking ref.
+    static void putRemoteAhead(const QString &directory, const QString &remoteDirectory);
 
     QTemporaryDir *directory_ = nullptr;
 };
@@ -68,11 +73,58 @@ GitClient TestRepositoryView::repository() const {
     return git;
 }
 
-void TestRepositoryView::writeFile(const QString &name, const QString &contents) const {
-    QFile file(QDir(directory_->path()).filePath(name));
+namespace {
+
+void writeFileAt(const QString &directory, const QString &name, const QString &contents) {
+    QFile file(QDir(directory).filePath(name));
     QVERIFY(file.open(QIODevice::WriteOnly | QIODevice::Text));
     QTextStream stream(&file);
     stream << contents;
+}
+
+}
+
+void TestRepositoryView::writeFile(const QString &name, const QString &contents) const {
+    writeFileAt(directory_->path(), name, contents);
+}
+
+void TestRepositoryView::createRepository(const QString &directory) {
+    QVERIFY(GitClient::initRepository(directory, false).succeeded());
+
+    GitClient git;
+    QVERIFY(git.openRepository(directory).succeeded());
+    QVERIFY(git.runCustom({QStringLiteral("config"), QStringLiteral("user.name"),
+                           QStringLiteral("Test")}).succeeded());
+    QVERIFY(git.runCustom({QStringLiteral("config"), QStringLiteral("user.email"),
+                           QStringLiteral("test@example.com")}).succeeded());
+
+    writeFileAt(directory, QStringLiteral("first.txt"), QStringLiteral("one\n"));
+    QVERIFY(git.stage({QStringLiteral("first.txt")}).succeeded());
+    QVERIFY(git.commit(QStringLiteral("First commit"), false).succeeded());
+}
+
+void TestRepositoryView::putRemoteAhead(const QString &directory,
+                                        const QString &remoteDirectory) {
+    QVERIFY(GitClient::initRepository(remoteDirectory, true).succeeded());
+
+    GitClient git;
+    QVERIFY(git.openRepository(directory).succeeded());
+    const QString branch = git.currentBranch();
+    QVERIFY(!branch.isEmpty());
+    QVERIFY(git.addRemote(QStringLiteral("origin"), remoteDirectory).succeeded());
+    QVERIFY(git.push(QStringLiteral("origin"), {branch}, true, false, false).succeeded());
+
+    const QString shared = git.headHash();
+    QVERIFY(!shared.isEmpty());
+
+    writeFileAt(directory, QStringLiteral("second.txt"), QStringLiteral("two\n"));
+    QVERIFY(git.stage({QStringLiteral("second.txt")}).succeeded());
+    QVERIFY(git.commit(QStringLiteral("Second commit"), false).succeeded());
+    QVERIFY(git.push(QStringLiteral("origin"), {branch}, false, false, false).succeeded());
+    QVERIFY(git.reset(shared, GitResetMode::Hard).succeeded());
+    QVERIFY(git.runCustom({QStringLiteral("update-ref"),
+                           QStringLiteral("refs/remotes/origin/%1").arg(branch),
+                           shared}).succeeded());
 }
 
 void TestRepositoryView::appliesFirstSnapshot() {
@@ -141,6 +193,43 @@ void TestRepositoryView::feedsTheHistoryViewFromTheModel() {
     QVERIFY(model->index(0, CommitModel::Graph).data(CommitRoles::IsUncommitted).toBool());
     QCOMPARE(model->index(1, CommitModel::Message).data().toString(),
              QStringLiteral("First commit"));
+}
+
+void TestRepositoryView::countsIncomingCommitsWithoutUserAction() {
+    QTemporaryDir remote;
+    QVERIFY(remote.isValid());
+    putRemoteAhead(directory_->path(), remote.path());
+    QVERIFY(!QTest::currentTestFailed());
+
+    RepositoryView view(directory_->path());
+    QVERIFY(view.isValid());
+
+    QSignalSpy refreshed(&view, &RepositoryView::repositoryChanged);
+    QVERIFY(refreshed.wait(10'000));
+    QCOMPARE(view.behindCount(), 0);
+
+    QTRY_VERIFY_WITH_TIMEOUT(view.behindCount() == 1, 30'000);
+}
+
+void TestRepositoryView::checksEveryOpenTabAndNotJustTheActiveOne() {
+    QTemporaryDir secondWork;
+    QTemporaryDir firstRemote;
+    QTemporaryDir secondRemote;
+    QVERIFY(secondWork.isValid() && firstRemote.isValid() && secondRemote.isValid());
+
+    createRepository(secondWork.path());
+    QVERIFY(!QTest::currentTestFailed());
+    putRemoteAhead(directory_->path(), firstRemote.path());
+    QVERIFY(!QTest::currentTestFailed());
+    putRemoteAhead(secondWork.path(), secondRemote.path());
+    QVERIFY(!QTest::currentTestFailed());
+
+    RepositoryView first(directory_->path());
+    RepositoryView second(secondWork.path());
+    QVERIFY(first.isValid());
+    QVERIFY(second.isValid());
+
+    QTRY_VERIFY_WITH_TIMEOUT(first.behindCount() == 1 && second.behindCount() == 1, 60'000);
 }
 
 QTEST_MAIN(TestRepositoryView)

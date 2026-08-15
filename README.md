@@ -102,6 +102,8 @@ Open an existing repository, clone a remote project or initialize a new one.
 ### Application
 
 - Repository tabs, bookmarks and automatic session restoration
+- Background remote checks keep incoming commit counters current without pressing
+  Fetch
 - Light and dark themes
 - English, Russian and Simplified Chinese, with a manual language selector
 - Quick access to a terminal and to the repository folder

@@ -10,12 +10,18 @@
 
 namespace {
 
-// Preserve the existing RepositoryView translation context.
-QString historyText(const char *source, const char *disambiguation = nullptr) {
-    return QCoreApplication::translate("RepositoryView", source, disambiguation);
+QVariantList toVariantList(const QList<int> &values) {
+    QVariantList result;
+    result.reserve(values.size());
+    for (const int value : values) {
+        result.append(value);
+    }
+    return result;
 }
 
 }
+
+// lupdate requires literal translate calls, so keep the history labels explicit.
 
 QString formatCommitTimestamp(const QDateTime &moment) {
     if (!moment.isValid()) {
@@ -133,6 +139,12 @@ QVariant CommitModel::data(const QModelIndex &index, const int role) const {
                 }
                 return lanes;
             }
+            case CommitRoles::ColorIndex:
+                return graph.colorIndex;
+            case CommitRoles::PassColors:
+                return toVariantList(graph.passColors);
+            case CommitRoles::ParentColors:
+                return toVariantList(graph.parentColors);
             default:
                 break;
         }
@@ -154,8 +166,9 @@ QVariant CommitModel::data(const QModelIndex &index, const int role) const {
 
     switch (index.column()) {
         case Message:
-            return uncommitted ? historyText("Uncommitted changes")
-                               : (commit != nullptr ? commit->subject : QString());
+            return uncommitted
+                       ? QCoreApplication::translate("RepositoryView", "Uncommitted changes")
+                       : (commit != nullptr ? commit->subject : QString());
         case Date:
             return uncommitted ? formatCommitTimestamp(QDateTime::currentDateTime())
                                : (commit != nullptr ? formatCommitTimestamp(commit->authoredAt)
@@ -192,15 +205,15 @@ QVariant CommitModel::headerData(const int section, const Qt::Orientation orient
 
     switch (section) {
         case Graph:
-            return historyText("Graph");
+            return QCoreApplication::translate("RepositoryView", "Graph");
         case Message:
-            return historyText("Message");
+            return QCoreApplication::translate("RepositoryView", "Message");
         case Date:
-            return historyText("Date");
+            return QCoreApplication::translate("RepositoryView", "Date");
         case Author:
-            return historyText("Author");
+            return QCoreApplication::translate("RepositoryView", "Author");
         case Commit:
-            return historyText("Commit", "noun");
+            return QCoreApplication::translate("RepositoryView", "Commit", "noun");
         default:
             return {};
     }

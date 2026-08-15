@@ -168,10 +168,14 @@ public:
     [[nodiscard]] QString userEmail() const;
     [[nodiscard]] bool darkTheme() const;
     [[nodiscard]] int historyLimit() const;
+    [[nodiscard]] bool autoFetchEnabled() const;
+    [[nodiscard]] int autoFetchIntervalMinutes() const;
 
 private:
     QLineEdit *nameEdit_ = nullptr;
     QLineEdit *emailEdit_ = nullptr;
     QComboBox *themeCombo_ = nullptr;
     QComboBox *historyCombo_ = nullptr;
+    QCheckBox *autoFetchCheck_ = nullptr;
+    QComboBox *autoFetchCombo_ = nullptr;
 };

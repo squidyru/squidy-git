@@ -66,6 +66,10 @@ private:
     [[nodiscard]] RepositoryView *currentRepository() const;
     [[nodiscard]] RepositoryView *repositoryAt(int index) const;
     void updateActions();
+    [[nodiscard]] QLabel *addToolbarBadge(QAction *action, const QString &name);
+    static void updateToolbarBadge(QLabel *badge, int count);
+    static void positionToolbarBadge(QLabel *badge);
+    static void setTabBadge(QLabel *badge, int count, const QString &arrow);
     void updateTabTitle(RepositoryView *view);
     void updateTabMetrics();
     void updateTabCloseButtons(int hoveredTab = -1);
@@ -91,6 +95,8 @@ private:
     QProgressBar *busyIndicator_ = nullptr;
     QLabel *statusLabel_ = nullptr;
     QLabel *commitBadge_ = nullptr;
+    QLabel *pushBadge_ = nullptr;
+    QLabel *pullBadge_ = nullptr;
     QDockWidget *logDock_ = nullptr;
     QPlainTextEdit *logView_ = nullptr;
     UpdateChecker *updateChecker_ = nullptr;

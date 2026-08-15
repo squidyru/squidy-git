@@ -212,13 +212,26 @@ QString Theme::styleSheet() const {
         }
         QToolBar#mainToolbar QToolButton:pressed { background: %(selection); color: %(selectionText); }
         QToolBar#mainToolbar QToolButton:disabled { color: %(mutedText); }
-        QLabel#commitBadge {
+        QLabel#commitBadge, QLabel#pushBadge, QLabel#pullBadge,
+        QLabel#tabCommitBadge, QLabel#tabPushBadge, QLabel#tabPullBadge {
+            border-radius: 4px;
+            font-size: 10px;
+            font-weight: 700;
+        }
+        QLabel#tabCommitBadge, QLabel#tabPushBadge, QLabel#tabPullBadge {
+            padding: 0 6px;
+        }
+        QLabel#commitBadge, QLabel#tabCommitBadge {
             background: %(accent);
             color: %(accentText);
-            border-radius: 6px;
-            font-size: 9px;
-            font-weight: 700;
-            padding: 0 2px;
+        }
+        QLabel#pushBadge, QLabel#tabPushBadge {
+            background: %(selection);
+            color: %(selectionText);
+        }
+        QLabel#pullBadge, QLabel#tabPullBadge {
+            background: %(success);
+            color: %(surface);
         }
         QToolBar#mainToolbar::separator {
             background: transparent;
@@ -259,12 +272,13 @@ QString Theme::styleSheet() const {
             background: transparent;
             color: %(chromeText);
             border: none;
-            padding: 0 2px;
+            padding: 0;
+            spacing: 3px;
             font-family: "Arial";
             font-size: 12px;
             font-weight: 400;
         }
-        QMenuBar::item { padding: 4px 8px; background: transparent; color: %(chromeText); }
+        QMenuBar::item { padding: 4px 6px; background: transparent; color: %(chromeText); }
         QMenuBar::item:selected { background: rgba(255, 255, 255, 40); border-radius: 3px; }
         QMenuBar::item:pressed { background: rgba(255, 255, 255, 70); border-radius: 3px; }
 
@@ -307,6 +321,7 @@ QString Theme::styleSheet() const {
             font-weight: 400;
             padding: 0 2px 0 11px;
         }
+        QWidget#tabTitleArea QLabel#repositoryTabTitle { padding-left: 2px; }
         QToolButton#addTabButton {
             background: transparent;
             border: none;
@@ -316,8 +331,8 @@ QString Theme::styleSheet() const {
             padding: 0;
             margin: 0;
         }
-        QToolButton#addTabButton:hover { background: rgba(0, 0, 0, 32); border-radius: 0; }
-        QToolButton#addTabButton:pressed { background: rgba(0, 0, 0, 55); }
+        QToolButton#addTabButton:hover { background: rgba(255, 255, 255, 40); border-radius: 0; }
+        QToolButton#addTabButton:pressed { background: rgba(255, 255, 255, 70); }
 
         QPushButton#viewSwitchButton {
             background: transparent;
@@ -346,8 +361,11 @@ QString Theme::styleSheet() const {
         QWidget#viewSwitcher { background: %(window); border: none; }
         QWidget#workspaceHeader { min-height: 30px; background: transparent; }
         QLabel#workspaceTitle { min-height: 30px; color: %(sectionText); font-size: 12px; font-weight: 600; }
-        QFrame#sidebarTopSeparator { color: %(border); margin: 5px 0 10px 0; }
-        QFrame#sidebarSeparator { color: %(border); margin: 7px 0 0 0; }
+        QFrame#sidebarTopSeparator {
+            border: none;
+            border-top: 1px solid %(border);
+            margin: 0;
+        }
         QLabel#mutedText { color: %(mutedText); }
         QLabel#pageTitle { font-size: 17px; font-weight: 700; }
         QLabel#sectionCaption {
@@ -452,7 +470,11 @@ QString Theme::styleSheet() const {
         QLineEdit:focus, QComboBox:focus, QPlainTextEdit:focus, QTextEdit:focus {
             border-color: %(accent);
         }
-        QTextBrowser#commitDetails { padding: 0; }
+        QTextBrowser#commitDetails {
+            padding: 0;
+            font-family: "Arial";
+            font-size: 12px;
+        }
         QPlainTextEdit#diffView { padding: 0; }
         QDialog#sideBySideDiffDialog { background: transparent; }
         QFrame#sideDiffWindowFrame {
@@ -535,19 +557,19 @@ QString Theme::styleSheet() const {
             background: %(selection);
             color: %(selectionText);
         }
-        QTreeWidget#historyTree {
+        QTreeView#historyTree {
             background: %(surface);
             alternate-background-color: %(surface);
             color: %(text);
             font-family: "Arial";
             font-size: 12px;
         }
-        QTreeWidget#historyTree::item {
+        QTreeView#historyTree::item {
             min-height: 19px;
             max-height: 19px;
             padding: 0 3px;
         }
-        QTreeWidget#historyTree QHeaderView::section {
+        QTreeView#historyTree QHeaderView::section {
             background: %(surface);
             color: %(historyHeaderText);
             border: none;
@@ -560,18 +582,18 @@ QString Theme::styleSheet() const {
             font-size: 12px;
             font-weight: 400;
         }
-        QTreeWidget#historyTree QScrollBar:vertical {
+        QTreeView#historyTree QScrollBar:vertical {
             background: %(historyScrollTrack);
             border-left: 1px solid %(border);
             width: 16px;
         }
-        QTreeWidget#historyTree QScrollBar:horizontal {
+        QTreeView#historyTree QScrollBar:horizontal {
             background: %(historyScrollTrack);
             border-top: 1px solid %(border);
             height: 16px;
         }
-        QTreeWidget#historyTree QScrollBar::handle:vertical,
-        QTreeWidget#historyTree QScrollBar::handle:horizontal {
+        QTreeView#historyTree QScrollBar::handle:vertical,
+        QTreeView#historyTree QScrollBar::handle:horizontal {
             background: %(border);
             border-radius: 0;
         }
@@ -757,6 +779,7 @@ QString Theme::styleSheet() const {
         .replace(QStringLiteral("%(selectionText)"), name(p.selectionText))
         .replace(QStringLiteral("%(selection)"), name(p.selection))
         .replace(QStringLiteral("%(hover)"), name(p.hover))
+        .replace(QStringLiteral("%(success)"), name(p.success))
         .replace(QStringLiteral("%(danger)"), name(p.danger))
         .replace(QStringLiteral("%(removedBackground)"), name(p.removedBackground))
         .replace(QStringLiteral("%(removedText)"), name(p.removedText))

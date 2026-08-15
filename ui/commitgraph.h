@@ -20,6 +20,9 @@ inline constexpr int References = Qt::UserRole + 8;
 inline constexpr int Subject = Qt::UserRole + 9;
 inline constexpr int IsMerge = Qt::UserRole + 10;
 inline constexpr int IsHead = Qt::UserRole + 11;
+inline constexpr int ColorIndex = Qt::UserRole + 12;
+inline constexpr int PassColors = Qt::UserRole + 13;
+inline constexpr int ParentColors = Qt::UserRole + 14;
 }
 
 class CommitGraphDelegate final : public QStyledItemDelegate {

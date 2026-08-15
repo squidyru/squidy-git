@@ -55,8 +55,6 @@ enum class Glyph {
 
 [[nodiscard]] QPixmap pixmap(Glyph glyph, int size, const QColor &color);
 [[nodiscard]] QIcon icon(Glyph glyph, const QColor &color = QColor());
-[[nodiscard]] QIcon badgedIcon(Glyph glyph, const QColor &color, int count,
-                               const QColor &badgeColor);
 
 /// The application mark: a squid-ghost on a round red gradient.
 [[nodiscard]] QPixmap applicationPixmap(int size);
