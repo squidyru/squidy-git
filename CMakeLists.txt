@@ -26,7 +26,7 @@ set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)
 
-find_package(Qt6 REQUIRED COMPONENTS Concurrent Core Gui LinguistTools Network Widgets)
+find_package(Qt6 REQUIRED COMPONENTS Concurrent Core Gui LinguistTools Network Svg Widgets)
 
 # Core code must remain independent of Qt Widgets.
 add_library(squidygit_core STATIC
@@ -74,7 +74,15 @@ target_link_libraries(squidygit_ui PUBLIC
         Qt6::Concurrent
         Qt6::Gui
         Qt6::Network
+        Qt6::Svg
         Qt6::Widgets)
+
+qt_add_resources(squidygit_ui "branding"
+        PREFIX "/branding"
+        BASE resources
+        FILES
+            resources/logo/logo.svg
+            resources/logo/logo_ghost.svg)
 
 add_executable(SquidyGit main.cpp)
 target_link_libraries(SquidyGit PRIVATE squidygit_ui)
@@ -122,6 +130,8 @@ if (WIN32)
     string(REPLACE "." "," SQUIDYGIT_RC_VERSION "${PROJECT_VERSION},0")
     configure_file(resources/squidygit.rc.in
             ${CMAKE_CURRENT_BINARY_DIR}/squidygit.rc @ONLY)
+    set_property(SOURCE ${CMAKE_CURRENT_BINARY_DIR}/squidygit.rc
+            APPEND PROPERTY OBJECT_DEPENDS ${SQUIDYGIT_ICON_FILE})
     target_sources(SquidyGit PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/squidygit.rc)
 
     # ShellExecuteEx starts the downloaded installer with a UAC prompt.

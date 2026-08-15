@@ -4,11 +4,11 @@
 
 #include <QFont>
 #include <QGuiApplication>
-#include <QLinearGradient>
 #include <QPainter>
 #include <QPainterPath>
 #include <QPixmap>
 #include <QScreen>
+#include <QSvgRenderer>
 
 #include <cmath>
 
@@ -48,40 +48,6 @@ QColor defaultColor(const Icons::Glyph glyph) {
         default:
             return QColor(QStringLiteral("#5A6FBE"));
     }
-}
-
-/// The squid-ghost silhouette. @p box bounds the dome and flanks; the tentacled
-/// hem bulges half a tentacle below it.
-QPainterPath ghostShape(const QRectF &box, const bool punchEyes) {
-    constexpr int Tentacles = 4;
-    const qreal width = box.width();
-    const qreal radius = width / 2.0;
-    const qreal domeCenterY = box.top() + radius;
-    const qreal tentacleWidth = width / Tentacles;
-
-    QPainterPath ghost;
-    ghost.moveTo(box.left(), domeCenterY);
-    ghost.arcTo(QRectF(box.left(), box.top(), width, width), 180.0, -180.0);
-    ghost.lineTo(box.right(), box.bottom());
-    for (int index = 0; index < Tentacles; ++index) {
-        const qreal lobeLeft = box.right() - (index + 1) * tentacleWidth;
-        ghost.arcTo(QRectF(lobeLeft, box.bottom() - tentacleWidth / 2.0,
-                           tentacleWidth, tentacleWidth),
-                    0.0, -180.0);
-    }
-    ghost.closeSubpath();
-
-    if (punchEyes) {
-        const qreal eyeRadius = width * 0.075;
-        const qreal eyeOffset = width * 0.17;
-        QPainterPath eyes;
-        eyes.addEllipse(QPointF(box.center().x() - eyeOffset, domeCenterY),
-                        eyeRadius, eyeRadius);
-        eyes.addEllipse(QPointF(box.center().x() + eyeOffset, domeCenterY),
-                        eyeRadius, eyeRadius);
-        ghost = ghost.subtracted(eyes);
-    }
-    return ghost;
 }
 
 void addArrowHead(QPainterPath &path, const QPointF &tip, const QPointF &direction,
@@ -360,24 +326,8 @@ void paintGlyph(QPainter &painter, const Icons::Glyph glyph, const QColor &color
             painter.drawLine(QPointF(11.5, 12.0), QPointF(16.5, 12.0));
             break;
         case Icons::Glyph::Ghost:
-            // Compact repository tree mark for the title bar. A large outer
-            // ring and edge-to-edge branches remain legible at 24-32 px.
-            painter.setPen(QPen(color, 1.5, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
-            painter.setBrush(Qt::NoBrush);
-            painter.drawEllipse(QPointF(12, 12), 10.2, 10.2);
-            path.moveTo(12, 18.5);
-            path.lineTo(12, 9.0);
-            path.moveTo(12, 13.5);
-            path.cubicTo(10.5, 11.0, 7.0, 12.0, 7.0, 8.0);
-            path.moveTo(12, 11.5);
-            path.cubicTo(13.5, 9.0, 17.0, 10.0, 17.0, 6.5);
-            painter.drawPath(path);
-            painter.setPen(Qt::NoPen);
-            painter.setBrush(color);
-            painter.drawEllipse(QPointF(12, 19.0), 1.45, 1.45);
-            painter.drawEllipse(QPointF(12, 8.5), 1.45, 1.45);
-            painter.drawEllipse(QPointF(7, 7.5), 1.45, 1.45);
-            painter.drawEllipse(QPointF(17, 6.0), 1.45, 1.45);
+            QSvgRenderer(QStringLiteral(":/branding/logo/logo_ghost.svg"))
+                .render(&painter, QRectF(2.0, 2.0, 20.0, 20.0));
             break;
         case Icons::Glyph::WindowMinimize:
             painter.setRenderHint(QPainter::Antialiasing, false);
@@ -470,33 +420,13 @@ QIcon Icons::icon(const Glyph glyph, const QColor &color) {
 }
 
 QPixmap Icons::applicationPixmap(const int size) {
-    const qreal s = size;
     QPixmap canvas(size, size);
     canvas.fill(Qt::transparent);
 
     QPainter painter(&canvas);
     painter.setRenderHint(QPainter::Antialiasing, true);
-
-    QLinearGradient background(0.0, 0.0, s, s);
-    background.setColorAt(0.0, QColor(QStringLiteral("#FF6A5B")));
-    background.setColorAt(0.55, QColor(QStringLiteral("#EE2A4B")));
-    background.setColorAt(1.0, QColor(QStringLiteral("#A3061F")));
-    painter.setPen(Qt::NoPen);
-    painter.setBrush(background);
-    painter.drawEllipse(QRectF(0.0, 0.0, s, s));
-
-    const qreal width = 0.39 * s;
-    const QRectF body(0.5 * s - width / 2.0, 0.26 * s, width, 0.43 * s);
-    const qreal domeCenterY = body.top() + width / 2.0;
-
-    painter.setBrush(Qt::white);
-    painter.drawPath(ghostShape(body, false));
-
-    painter.setBrush(QColor(QStringLiteral("#3B6BE8")));
-    const qreal eyeRadius = 0.029 * s;
-    const qreal eyeOffset = 0.067 * s;
-    painter.drawEllipse(QPointF(0.5 * s - eyeOffset, domeCenterY), eyeRadius, eyeRadius);
-    painter.drawEllipse(QPointF(0.5 * s + eyeOffset, domeCenterY), eyeRadius, eyeRadius);
+    QSvgRenderer(QStringLiteral(":/branding/logo/logo.svg"))
+        .render(&painter, QRectF(0.0, 0.0, size, size));
     painter.end();
 
     return canvas;
