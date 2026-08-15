@@ -55,6 +55,18 @@
 #include <QVBoxLayout>
 #include <QtConcurrentRun>
 
+#if defined(Q_OS_WIN)
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+#include <windows.h>
+
+#include <shellapi.h>
+#endif
+
 namespace {
 
 constexpr int PathRole = Qt::UserRole + 20;
@@ -2620,18 +2632,30 @@ void RepositoryView::openTerminal() {
     const QString directory = QDir::toNativeSeparators(git_.repositoryRoot());
 
 #if defined(Q_OS_WIN)
-    // Prefer Windows Terminal, then fall back to cmd.exe.
-    if (QProcess::startDetached(QStringLiteral("wt.exe"),
-                                {QStringLiteral("-d"), directory},
-                                directory)) {
+    const auto launchTerminal = [&directory](const QString &program,
+                                              const QString &arguments) {
+        SHELLEXECUTEINFOW request{};
+        request.cbSize = sizeof(request);
+        request.fMask = SEE_MASK_NOASYNC | SEE_MASK_FLAG_NO_UI;
+        request.lpVerb = L"open";
+        request.lpFile = reinterpret_cast<const wchar_t *>(program.utf16());
+        request.lpParameters = arguments.isEmpty()
+                                   ? nullptr
+                                   : reinterpret_cast<const wchar_t *>(arguments.utf16());
+        request.lpDirectory = reinterpret_cast<const wchar_t *>(directory.utf16());
+        request.nShow = SW_SHOWNORMAL;
+        return ShellExecuteExW(&request) != FALSE;
+    };
+
+    // Prefer Windows Terminal, then fall back to Windows PowerShell.
+    const QString powerShell = QStringLiteral("powershell.exe");
+    const QString terminalArguments =
+        QStringLiteral("-d \"%1\" %2 -NoExit").arg(directory, powerShell);
+    if (launchTerminal(QStringLiteral("wt.exe"), terminalArguments)) {
         return;
     }
 
-    const QString commandInterpreter =
-        qEnvironmentVariable("COMSPEC", QStringLiteral("cmd.exe"));
-    if (QProcess::startDetached(commandInterpreter,
-                                {QStringLiteral("/D"), QStringLiteral("/K")},
-                                directory)) {
+    if (launchTerminal(powerShell, QStringLiteral("-NoExit"))) {
         return;
     }
 #elif defined(Q_OS_MACOS)
