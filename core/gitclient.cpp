@@ -838,6 +838,10 @@ GitCommandResult GitClient::diff(const QString &path, const bool staged, const b
 
         // Render untracked files through git so the viewer receives a real patch.
         // "diff --no-index" reports differences with exit code 1, which is not a failure here.
+        // The empty side is spelled "/dev/null" on every platform: git matches that
+        // name before it ever looks at the filesystem. Handing it the device the
+        // system calls its own instead sends git off resolving a path that looks
+        // remote, which on Windows costs tens of seconds.
         GitCommandResult patch = run({
             QStringLiteral("diff"),
             QStringLiteral("--no-ext-diff"),
@@ -845,7 +849,7 @@ GitCommandResult GitClient::diff(const QString &path, const bool staged, const b
             QStringLiteral("--no-index"),
             QStringLiteral("--unified=%1").arg(qMax(0, contextLines)),
             QStringLiteral("--"),
-            PlatformServices::instance().nullDevicePath(),
+            QStringLiteral("/dev/null"),
             path
         });
         if (patch.exitCode == 1 && patch.processError.isEmpty() && !patch.output.isEmpty()) {

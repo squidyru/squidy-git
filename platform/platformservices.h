@@ -56,7 +56,6 @@ public:
     virtual void configureApplication() const;
     [[nodiscard]] bool openPath(const QString &path) const;
     [[nodiscard]] QString downloadDirectory() const;
-    [[nodiscard]] QString nullDevicePath() const;
     [[nodiscard]] virtual bool restartApplication() const;
 
     [[nodiscard]] virtual QString updateAssetSuffix() const = 0;

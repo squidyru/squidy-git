@@ -29,10 +29,6 @@ QString PlatformServices::downloadDirectory() const {
     return downloads.isEmpty() ? QDir::tempPath() : downloads;
 }
 
-QString PlatformServices::nullDevicePath() const {
-    return QProcess::nullDevice();
-}
-
 bool PlatformServices::restartApplication() const {
     QStringList arguments = QCoreApplication::arguments();
     if (!arguments.isEmpty()) {

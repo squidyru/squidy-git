@@ -8,6 +8,7 @@
 #include "core/gitprocess.h"
 
 #include <QDir>
+#include <QElapsedTimer>
 #include <QFile>
 #include <QTemporaryDir>
 #include <QTest>
@@ -68,6 +69,7 @@ private Q_SLOTS:
     void readsAwkwardFileNames_data();
     void readsAwkwardFileNames();
     void reportsRenamesWithTheOriginalPath();
+    void rendersAnUntrackedFileAsAPatch();
     void stopsACommandThroughTheCancellationToken();
     void reportsTheFailingCommandAndExitCode();
 
@@ -413,6 +415,26 @@ void TestGitIntegration::reportsRenamesWithTheOriginalPath() {
     const GitFileStatus status = findStatus(git.status(), renamed);
     QCOMPARE(status.indexStatus, u'R');
     QCOMPARE(normalized(status.originalPath), normalized(original));
+}
+
+// An untracked file has no committed side to compare against, so the diff is
+// taken against the empty one. Git spells that "/dev/null" on every platform
+// and matches the name before touching the filesystem; the device the system
+// calls its own would send it looking for a path that is not there.
+void TestGitIntegration::rendersAnUntrackedFileAsAPatch() {
+    const GitClient git = workRepository();
+    writeWorkFile(QStringLiteral("fresh.txt"), QStringLiteral("a brand new line\n"));
+    QVERIFY(findStatus(git.status(), QStringLiteral("fresh.txt")).isUntracked());
+
+    QElapsedTimer elapsed;
+    elapsed.start();
+    const GitCommandResult patch = git.diff(QStringLiteral("fresh.txt"), false, true);
+    const qint64 elapsedMs = elapsed.elapsed();
+
+    QVERIFY2(patch.succeeded(), qPrintable(patch.errorText()));
+    QVERIFY(patch.outputText().contains(QStringLiteral("a brand new line")));
+    // A local file needs no lookup: a slow answer means Git went hunting.
+    QVERIFY2(elapsedMs < 10'000, qPrintable(QStringLiteral("took %1 ms").arg(elapsedMs)));
 }
 
 void TestGitIntegration::stopsACommandThroughTheCancellationToken() {

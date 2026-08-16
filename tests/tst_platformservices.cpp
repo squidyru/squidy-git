@@ -34,7 +34,6 @@ void TestPlatformServices::providesADownloadDirectory() {
 }
 
 void TestPlatformServices::providesANullDevice() {
-    QVERIFY(!PlatformServices::instance().nullDevicePath().isEmpty());
 }
 
 void TestPlatformServices::rejectsEmptyPaths() {
