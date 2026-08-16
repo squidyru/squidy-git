@@ -33,6 +33,22 @@ QString refLine(const QStringList &fields) {
     return fields.join(QChar(0x01));
 }
 
+// Encodes one commit of "git log --name-status -z", where the change records
+// follow the commit body after a newline.
+QByteArray fileRevisionRecord(const QByteArray &hash, const QByteArray &subject,
+                              const QByteArray &body, const QList<QByteArray> &changes) {
+    QByteArray record = commitRecord({hash, hash.left(7), "", "Alice", "alice@example.com",
+                                      "Bob", "bob@example.com", "2026-08-14T10:00:00+03:00",
+                                      "2026-08-14T11:00:00+03:00", "", subject, body});
+    record.append('\n');
+    for (const QByteArray &change : changes) {
+        record.append(change);
+        record.append('\0');
+    }
+    record.append('\0');
+    return record;
+}
+
 QByteArray sampleCommit(const QByteArray &hash, const QByteArray &parents,
                         const QByteArray &subject, const QByteArray &body = QByteArray()) {
     return commitRecord({hash, hash.left(7), parents, "Alice", "alice@example.com",
@@ -63,6 +79,11 @@ private Q_SLOTS:
     void parsesNameStatusWithRename();
     void parsesNameStatusPairs();
     void assignsChangeCountsAndBinaryFlag();
+    void parsesTreeEntriesWithDirectoriesFirst();
+    void readsSizeOfTreeBlobsOnly();
+    void followsRenamesThroughFileHistory();
+    void keepsFileHistoryBodyOutOfChangeRecords();
+    void carriesPathThroughRevisionsWithoutChanges();
 };
 
 void TestGitParse::splitsNulRecordsDroppingTrailingEmpty() {
@@ -314,6 +335,97 @@ void TestGitParse::assignsChangeCountsAndBinaryFlag() {
 
     QVERIFY(files.at(1).binary);
     QCOMPARE(files.at(1).additions, 0);
+}
+
+void TestGitParse::parsesTreeEntriesWithDirectoriesFirst() {
+    const QList<GitTreeEntry> entries = GitParse::parseTreeEntries(nulRecords({
+        "100644 blob f384549cbeb481e437091320de6d1f2e15e11b4a      19\tsrc/main.cpp",
+        "040000 tree ca220cc0cb1424bd101ce23c993b0927e6f10ffc       -\tsrc/ui",
+        "160000 commit 5626abf0f72e58d7a153368ba57db4c673c0e171       -\tsrc/vendor",
+        "100644 blob 298944b11df396e6cf17e803af4ac9abe4676812     107\tsrc/Api.cpp"
+    }));
+
+    QCOMPARE(entries.size(), 4);
+
+    QCOMPARE(entries.at(0).name, QStringLiteral("ui"));
+    QVERIFY(entries.at(0).directory);
+    QCOMPARE(entries.at(0).path, QStringLiteral("src/ui"));
+
+    // Case is ignored when ordering, and submodules are files of the level.
+    QCOMPARE(entries.at(1).name, QStringLiteral("Api.cpp"));
+    QCOMPARE(entries.at(2).name, QStringLiteral("main.cpp"));
+    QCOMPARE(entries.at(3).name, QStringLiteral("vendor"));
+    QVERIFY(entries.at(3).submodule);
+    QVERIFY(!entries.at(3).directory);
+}
+
+void TestGitParse::readsSizeOfTreeBlobsOnly() {
+    const QList<GitTreeEntry> entries = GitParse::parseTreeEntries(nulRecords({
+        "100644 blob f384549cbeb481e437091320de6d1f2e15e11b4a      19\treadme.md",
+        "040000 tree ca220cc0cb1424bd101ce23c993b0927e6f10ffc       -\tdocs",
+        "this record has no tab"
+    }));
+
+    QCOMPARE(entries.size(), 2);
+    QCOMPARE(entries.at(0).name, QStringLiteral("docs"));
+    QCOMPARE(entries.at(0).size, -1);
+    QCOMPARE(entries.at(1).name, QStringLiteral("readme.md"));
+    QCOMPARE(entries.at(1).size, 19);
+    QCOMPARE(entries.at(1).hash,
+             QStringLiteral("f384549cbeb481e437091320de6d1f2e15e11b4a"));
+}
+
+void TestGitParse::followsRenamesThroughFileHistory() {
+    QByteArray payload;
+    payload.append(fileRevisionRecord("aaaa111", "fourth", "", {"M", "src/new.txt"}));
+    payload.append(fileRevisionRecord("bbbb222", "rename and edit", "",
+                                      {"R100", "src/old.txt", "src/new.txt"}));
+    payload.append(fileRevisionRecord("cccc333", "first", "", {"A", "src/old.txt"}));
+
+    const QList<GitFileRevision> revisions = GitParse::parseFileHistory(payload);
+
+    QCOMPARE(revisions.size(), 3);
+
+    QCOMPARE(revisions.at(0).status, u'M');
+    QCOMPARE(revisions.at(0).path, QStringLiteral("src/new.txt"));
+    QVERIFY(revisions.at(0).previousPath.isEmpty());
+
+    // The rename keeps both paths, because content has to be read by the path
+    // the file carried at that commit.
+    QVERIFY(revisions.at(1).isRename());
+    QCOMPARE(revisions.at(1).previousPath, QStringLiteral("src/old.txt"));
+    QCOMPARE(revisions.at(1).path, QStringLiteral("src/new.txt"));
+
+    QVERIFY(revisions.at(2).isAddition());
+    QCOMPARE(revisions.at(2).path, QStringLiteral("src/old.txt"));
+    QCOMPARE(revisions.at(2).commit.subject, QStringLiteral("first"));
+}
+
+void TestGitParse::keepsFileHistoryBodyOutOfChangeRecords() {
+    const QByteArray payload = fileRevisionRecord("aaaa111", "subject",
+                                                  "first body line\nsecond body line",
+                                                  {"M", "src/main.cpp"});
+
+    const QList<GitFileRevision> revisions = GitParse::parseFileHistory(payload);
+
+    QCOMPARE(revisions.size(), 1);
+    QCOMPARE(revisions.at(0).commit.body,
+             QStringLiteral("first body line\nsecond body line"));
+    QCOMPARE(revisions.at(0).path, QStringLiteral("src/main.cpp"));
+}
+
+void TestGitParse::carriesPathThroughRevisionsWithoutChanges() {
+    QByteArray payload;
+    payload.append(fileRevisionRecord("aaaa111", "rename", "",
+                                      {"R100", "src/old.txt", "src/new.txt"}));
+    payload.append(fileRevisionRecord("bbbb222", "merge", "", {}));
+
+    const QList<GitFileRevision> revisions = GitParse::parseFileHistory(payload);
+
+    QCOMPARE(revisions.size(), 2);
+    // A commit reported without a diff sits below the rename, so it carries
+    // the name the file had before it.
+    QCOMPARE(revisions.at(1).path, QStringLiteral("src/old.txt"));
 }
 
 QTEST_APPLESS_MAIN(TestGitParse)

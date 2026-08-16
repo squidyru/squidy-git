@@ -14,6 +14,24 @@ const char RecordSeparator = '\x1e';
 // Field separator used by ref and stash formats.
 const QChar RefFieldSeparator = QChar(0x01);
 
+// The body is separate because --name-status appends its records to it.
+GitCommitInfo commitFromFields(const QStringList &fields, const QString &body) {
+    GitCommitInfo commit;
+    commit.hash = fields.at(0).trimmed();
+    commit.shortHash = fields.at(1);
+    commit.parents = fields.at(2).split(u' ', Qt::SkipEmptyParts);
+    commit.author = fields.at(3);
+    commit.authorEmail = fields.at(4);
+    commit.committer = fields.at(5);
+    commit.committerEmail = fields.at(6);
+    commit.authoredAt = QDateTime::fromString(fields.at(7), Qt::ISODate);
+    commit.committedAt = QDateTime::fromString(fields.at(8), Qt::ISODate);
+    commit.references = fields.at(9);
+    commit.subject = fields.at(10);
+    commit.body = body;
+    return commit;
+}
+
 }
 
 namespace GitParse {
@@ -41,22 +59,116 @@ QList<GitCommitInfo> parseCommits(const QByteArray &payload) {
             continue;
         }
 
-        GitCommitInfo commit;
-        commit.hash = fields.at(0).trimmed();
-        commit.shortHash = fields.at(1);
-        commit.parents = fields.at(2).split(u' ', Qt::SkipEmptyParts);
-        commit.author = fields.at(3);
-        commit.authorEmail = fields.at(4);
-        commit.committer = fields.at(5);
-        commit.committerEmail = fields.at(6);
-        commit.authoredAt = QDateTime::fromString(fields.at(7), Qt::ISODate);
-        commit.committedAt = QDateTime::fromString(fields.at(8), Qt::ISODate);
-        commit.references = fields.at(9);
-        commit.subject = fields.at(10);
-        commit.body = fields.mid(11).join(FieldSeparator).trimmed();
-        commits.append(commit);
+        commits.append(commitFromFields(fields, fields.mid(11).join(FieldSeparator).trimmed()));
     }
     return commits;
+}
+
+QList<GitTreeEntry> parseTreeEntries(const QByteArray &payload) {
+    QList<GitTreeEntry> entries;
+
+    for (const QByteArray &record : splitNulRecords(payload)) {
+        // "<mode> <type> <object>  <size>\t<path>", the size column is padded.
+        const qsizetype tab = record.indexOf('\t');
+        if (tab < 0) {
+            continue;
+        }
+
+        const QList<QByteArray> header = record.left(tab).simplified().split(' ');
+        if (header.size() < 3) {
+            continue;
+        }
+
+        GitTreeEntry entry;
+        const QByteArray &type = header.at(1);
+        entry.directory = type == "tree";
+        entry.submodule = type == "commit";
+        entry.hash = QString::fromLatin1(header.at(2));
+        if (header.size() > 3) {
+            bool parsed = false;
+            const qint64 size = header.at(3).toLongLong(&parsed);
+            if (parsed) {
+                entry.size = size;
+            }
+        }
+        entry.path = QString::fromUtf8(record.mid(tab + 1));
+        entry.name = entry.path.section(u'/', -1);
+        entries.append(entry);
+    }
+
+    sortTreeEntries(entries);
+    return entries;
+}
+
+void sortTreeEntries(QList<GitTreeEntry> &entries) {
+    std::sort(entries.begin(), entries.end(),
+              [](const GitTreeEntry &left, const GitTreeEntry &right) {
+                  if (left.directory != right.directory) {
+                      return left.directory;
+                  }
+                  const int order = QString::compare(left.name, right.name,
+                                                     Qt::CaseInsensitive);
+                  return order != 0 ? order < 0 : left.name < right.name;
+              });
+}
+
+QList<GitFileRevision> parseFileHistory(const QByteArray &payload) {
+    QList<GitFileRevision> revisions;
+
+    for (const QByteArray &record : payload.split(RecordSeparator)) {
+        if (record.trimmed().isEmpty()) {
+            continue;
+        }
+
+        const QStringList fields = QString::fromUtf8(record).split(FieldSeparator,
+                                                                   Qt::KeepEmptyParts);
+        if (fields.size() < 12) {
+            continue;
+        }
+
+        // The last field holds the commit body, then a newline, then the
+        // NUL separated "--name-status -z" records of that commit.
+        const QString tail = fields.mid(11).join(FieldSeparator);
+        QString body = tail;
+        QString changes;
+        const qsizetype firstNul = tail.indexOf(QChar(u'\0'));
+        if (firstNul >= 0) {
+            const qsizetype bodyEnd = tail.lastIndexOf(u'\n', firstNul);
+            body = bodyEnd > 0 ? tail.first(bodyEnd) : QString();
+            changes = tail.sliced(bodyEnd + 1);
+        }
+
+        GitFileRevision revision;
+        revision.commit = commitFromFields(fields, body.trimmed());
+
+        const QStringList records = changes.split(QChar(u'\0'), Qt::SkipEmptyParts);
+        if (!records.isEmpty()) {
+            revision.status = records.first().at(0);
+            // A rename or copy spends three records: the marker, the path
+            // before the commit and the path the file carries afterwards.
+            if (revision.isRename() && records.size() >= 3) {
+                revision.previousPath = records.at(1);
+                revision.path = records.at(2);
+            } else if (records.size() >= 2) {
+                revision.path = records.at(1);
+            }
+        }
+
+        revisions.append(revision);
+    }
+
+    // Merge commits reach the timeline without a diff of their own. They take
+    // the path the file carried just after them, so the viewer always has a
+    // path to read; across a rename that is the older name.
+    for (qsizetype index = 0; index < revisions.size(); ++index) {
+        if (!revisions.at(index).path.isEmpty() || index == 0) {
+            continue;
+        }
+        const GitFileRevision &newer = revisions.at(index - 1);
+        revisions[index].path = newer.isRename() ? newer.previousPath : newer.path;
+    }
+
+    return revisions;
 }
 
 QList<GitFileStatus> parseStatus(const QByteArray &payload) {

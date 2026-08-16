@@ -28,6 +28,9 @@ set(CMAKE_AUTOUIC ON)
 
 find_package(Qt6 REQUIRED COMPONENTS Concurrent Core Gui LinguistTools Network Svg Widgets)
 
+# PDF preview is optional; without it the Files page uses a byte dump.
+find_package(Qt6 QUIET COMPONENTS PdfWidgets)
+
 # Core code must remain independent of Qt Widgets.
 add_library(squidygit_core STATIC
         core/gitclient.cpp
@@ -58,12 +61,23 @@ add_library(squidygit_ui STATIC
         ui/commitmodel.h
         ui/diffview.cpp
         ui/diffview.h
+        ui/filepreview.cpp
+        ui/filepreview.h
+        ui/filespage.cpp
+        ui/filespage.h
+        ui/flatcombobox.h
         ui/commitgraph.cpp
         ui/commitgraph.h
         ui/dialogs.cpp
         ui/dialogs.h
         ui/icons.cpp
         ui/icons.h
+        ui/pdfpreview.cpp
+        ui/pdfpreview.h
+        ui/sourceview.cpp
+        ui/sourceview.h
+        ui/syntaxhighlighter.cpp
+        ui/syntaxhighlighter.h
         ui/theme.cpp
         ui/theme.h
         ui/updatechecker.cpp
@@ -76,6 +90,14 @@ target_link_libraries(squidygit_ui PUBLIC
         Qt6::Network
         Qt6::Svg
         Qt6::Widgets)
+
+if (Qt6PdfWidgets_FOUND)
+    target_link_libraries(squidygit_ui PUBLIC Qt6::PdfWidgets)
+    target_compile_definitions(squidygit_ui PUBLIC SQUIDYGIT_HAS_PDF)
+    message(STATUS "Qt PDF module found: PDF revisions are shown as pages")
+else ()
+    message(STATUS "Qt PDF module missing: PDF revisions are shown as a byte dump")
+endif ()
 
 qt_add_resources(squidygit_ui "branding"
         PREFIX "/branding"
@@ -313,6 +335,11 @@ if (UNIX AND NOT APPLE)
             ", libqt6gui6 (>= ${SQUIDYGIT_QT_RUNTIME})"
             ", libqt6network6 (>= ${SQUIDYGIT_QT_RUNTIME})"
             ", libqt6widgets6 (>= ${SQUIDYGIT_QT_RUNTIME})")
+    if (Qt6PdfWidgets_FOUND)
+        string(APPEND CPACK_DEBIAN_PACKAGE_DEPENDS
+                ", libqt6pdf6 (>= ${SQUIDYGIT_QT_RUNTIME})"
+                ", libqt6pdfwidgets6 (>= ${SQUIDYGIT_QT_RUNTIME})")
+    endif ()
 
     # Without the Qt catalogs the buttons of the standard dialogs stay English
     # while the rest of the interface is translated.

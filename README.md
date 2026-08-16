@@ -92,6 +92,17 @@ Open an existing repository, clone a remote project or initialize a new one.
 - Changed files and a diff preview for the selected commit
 - Search by message, author, file contents, path or SHA
 
+### Files and file history
+
+- Browse tracked files in the working copy, HEAD, any branch, tag or commit without
+  checking it out
+- Follow a file across renames, reach deleted files through older revisions and jump
+  from the file timeline to the full commit
+- View the changes made by a commit, read historical contents or compare a historical
+  version with the revision selected in the tree
+- Filter by file name and preview source code with line numbers and syntax highlighting,
+  images and SVG drawings, PDFs when Qt PDF is available, and binary data as a hex dump
+
 ### Branches and remotes
 
 - Create, check out, rename, delete, merge and rebase branches
@@ -121,7 +132,7 @@ intent, not a schedule.
 - Automatic refresh when the repository changes outside the application
 - External diff and merge tools, including conflict resolution through Meld, KDiff3 and
   similar utilities
-- Blame and per-file history
+- Blame with per-line authorship
 
 ### Planned
 
@@ -163,11 +174,11 @@ language is applied after the application restarts.
 
 SquidyGit is a native C++20 application built with:
 
-- Qt 6: Core, Gui, Widgets and Concurrent
+- Qt 6: Core, Gui, Widgets, Concurrent, Network and SVG; PDF/PdfWidgets is optional
 - CMake 3.16 or newer
 - The system Git command-line client
 
-No additional runtime library or embedded Git implementation is used.
+No runtime is bundled, and there is no embedded Git implementation.
 
 ## Build
 
@@ -181,6 +192,9 @@ cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build --parallel
 ./build/SquidyGit
 ```
+
+The Qt PDF development module is optional (`qt6-pdf-dev` on Debian and Ubuntu). Without
+it, SquidyGit still builds and shows PDF revisions as a hexadecimal byte dump.
 
 To install the application, desktop entry and icons for the current user:
 

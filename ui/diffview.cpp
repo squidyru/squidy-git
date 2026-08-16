@@ -376,6 +376,9 @@ void SideDiffPane::resizeEvent(QResizeEvent *event) {
 void SideDiffPane::gutterPaintEvent(QPaintEvent *event) {
     const ThemePalette &palette = Theme::instance()->palette();
     QPainter painter(gutter_);
+    // The gutter is a plain widget and takes its font from the style sheet,
+    // which is not the fixed font the width was measured with.
+    painter.setFont(font());
     painter.fillRect(event->rect(), palette.surfaceAlternate);
     painter.setPen(palette.border);
     painter.drawLine(gutter_->width() - 1, event->rect().top(),
@@ -731,7 +734,13 @@ int DiffView::gutterWidth() const {
     if (document_.isEmpty()) {
         return 0;
     }
-    const int digits = qMax(3, QString::number(qMax(1, blockCount())).size());
+    // The width follows the largest number on display, not the length of the
+    // patch: a hunk of a long file starts far beyond its own line count.
+    int maximumNumber = 1;
+    for (const DiffLine &line : document_.lines()) {
+        maximumNumber = qMax(maximumNumber, qMax(line.oldNumber, line.newNumber));
+    }
+    const int digits = qMax(3, QString::number(maximumNumber).size());
     return 12 + 2 * fontMetrics().horizontalAdvance(u'9') * digits;
 }
 
@@ -761,6 +770,7 @@ void DiffView::resizeEvent(QResizeEvent *event) {
 void DiffView::gutterPaintEvent(QPaintEvent *event) {
     const ThemePalette &palette = Theme::instance()->palette();
     QPainter painter(gutter_);
+    painter.setFont(font());
     painter.fillRect(event->rect(), palette.surfaceAlternate);
     painter.setPen(palette.border);
     painter.drawLine(gutter_->width() - 1, event->rect().top(),

@@ -13,6 +13,7 @@
 
 class CommitModel;
 class DiffView;
+class FilesPage;
 class RepositoryWatcher;
 class QCheckBox;
 class QSortFilterProxyModel;
@@ -67,6 +68,7 @@ public Q_SLOTS:
     void showFileStatusPage();
     void showHistoryPage();
     void showSearchPage();
+    void showFilesPage();
 
 Q_SIGNALS:
     void repositoryChanged();
@@ -77,7 +79,8 @@ private:
     enum class Page {
         FileStatus = 0,
         History = 1,
-        Search = 2
+        Search = 2,
+        Files = 3
     };
 
     // --- Construction -----------------------------------------------------
@@ -114,6 +117,8 @@ private:
     void applyPatchAction(const QByteArray &patch, int action);
     void showFileContextMenu(QTreeWidget *tree, bool staged, const QPoint &position);
     void openSelectedFile(QTreeWidget *tree);
+    /// Opens the Files page on @p path, at @p revision or at the working copy.
+    void showFileHistory(const QString &path, const QString &revision = {});
 
     // --- History ----------------------------------------------------------
     /// Returns the current row mapped to the source model.
@@ -158,6 +163,7 @@ private:
     QPushButton *fileStatusButton_ = nullptr;
     QPushButton *historyButton_ = nullptr;
     QPushButton *searchButton_ = nullptr;
+    QPushButton *filesButton_ = nullptr;
 
     QLineEdit *fileFilter_ = nullptr;
     QToolButton *treeModeButton_ = nullptr;
@@ -183,6 +189,8 @@ private:
     QTextBrowser *commitDetails_ = nullptr;
     QTreeWidget *commitFilesTree_ = nullptr;
     DiffView *commitDiffView_ = nullptr;
+
+    FilesPage *filesPage_ = nullptr;
 
     QLineEdit *searchEdit_ = nullptr;
     QComboBox *searchMode_ = nullptr;

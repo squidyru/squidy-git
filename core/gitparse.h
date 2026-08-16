@@ -17,6 +17,16 @@ namespace GitParse {
 
 [[nodiscard]] QList<GitCommitInfo> parseCommits(const QByteArray &payload);
 
+/// Reads "git ls-tree -z --long" for one directory level.
+[[nodiscard]] QList<GitTreeEntry> parseTreeEntries(const QByteArray &payload);
+
+/// Orders directories before files, then by name.
+void sortTreeEntries(QList<GitTreeEntry> &entries);
+
+/// Reads "git log --follow --name-status -z" with commitFormatArguments(),
+/// keeping the path the file carried at each commit.
+[[nodiscard]] QList<GitFileRevision> parseFileHistory(const QByteArray &payload);
+
 /// Reads "git status --porcelain=v1 -z --untracked-files=all". Renames and
 /// copies spend two records: the new path first, the original path second.
 [[nodiscard]] QList<GitFileStatus> parseStatus(const QByteArray &payload);

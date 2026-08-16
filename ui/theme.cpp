@@ -19,6 +19,7 @@ ThemePalette lightPalette() {
     palette.sidebar = QColor(QStringLiteral("#F4F6F9"));
     palette.surface = QColor(QStringLiteral("#FFFFFF"));
     palette.surfaceAlternate = QColor(QStringLiteral("#FAFBFD"));
+    palette.rowStripe = QColor(QStringLiteral("#F2F5FA"));
     palette.border = QColor(QStringLiteral("#CDD4E0"));
     palette.text = QColor(QStringLiteral("#1E2333"));
     palette.mutedText = QColor(QStringLiteral("#6E7488"));
@@ -41,6 +42,12 @@ ThemePalette lightPalette() {
     palette.hunkBackground = QColor(QStringLiteral("#E7ECF7"));
     palette.hunkText = QColor(QStringLiteral("#22305C"));
     palette.graphNodeBorder = QColor(QStringLiteral("#FFFFFF"));
+    palette.syntaxKeyword = QColor(QStringLiteral("#8A3FA0"));
+    palette.syntaxType = QColor(QStringLiteral("#0E7490"));
+    palette.syntaxString = QColor(QStringLiteral("#B0433A"));
+    palette.syntaxNumber = QColor(QStringLiteral("#2A5DB0"));
+    palette.syntaxComment = QColor(QStringLiteral("#6E7488"));
+    palette.syntaxMeta = QColor(QStringLiteral("#A2680F"));
     palette.laneColors = {
         QColor(QStringLiteral("#3A4C82")),
         QColor(QStringLiteral("#D02B44")),
@@ -64,6 +71,7 @@ ThemePalette darkPalette() {
     palette.sidebar = QColor(QStringLiteral("#0D1322"));
     palette.surface = QColor(QStringLiteral("#0A0F1E"));
     palette.surfaceAlternate = QColor(QStringLiteral("#101728"));
+    palette.rowStripe = QColor(QStringLiteral("#131B2E"));
     palette.border = QColor(QStringLiteral("#232C45"));
     palette.text = QColor(QStringLiteral("#DDE4F2"));
     palette.mutedText = QColor(QStringLiteral("#8794AC"));
@@ -87,6 +95,12 @@ ThemePalette darkPalette() {
     palette.hunkBackground = QColor(QStringLiteral("#121B33"));
     palette.hunkText = QColor(QStringLiteral("#8FA6E8"));
     palette.graphNodeBorder = QColor(QStringLiteral("#0A0F1E"));
+    palette.syntaxKeyword = QColor(QStringLiteral("#C792EA"));
+    palette.syntaxType = QColor(QStringLiteral("#4EC9B0"));
+    palette.syntaxString = QColor(QStringLiteral("#CE9178"));
+    palette.syntaxNumber = QColor(QStringLiteral("#B5CEA8"));
+    palette.syntaxComment = QColor(QStringLiteral("#7A87A0"));
+    palette.syntaxMeta = QColor(QStringLiteral("#D7BA7D"));
     palette.laneColors = {
         QColor(QStringLiteral("#7B92E8")),
         QColor(QStringLiteral("#FF6E7C")),
@@ -453,7 +467,8 @@ QString Theme::styleSheet() const {
         QMenu#historyJumpMenu::separator {
             margin: 2px 0;
         }
-        QWidget#historyPage QCheckBox, QWidget#historyPage QLabel {
+        QWidget#historyPage QCheckBox, QWidget#historyPage QLabel,
+        QWidget#filesPage QCheckBox, QWidget#filesPage QLabel {
             font-family: "Arial";
             font-size: 12px;
         }
@@ -475,7 +490,7 @@ QString Theme::styleSheet() const {
             font-family: "Arial";
             font-size: 12px;
         }
-        QPlainTextEdit#diffView { padding: 0; }
+        QPlainTextEdit#diffView, QPlainTextEdit#fileContents { padding: 0; }
         QDialog#sideBySideDiffDialog { background: transparent; }
         QFrame#sideDiffWindowFrame {
             background: %(window);
@@ -543,7 +558,7 @@ QString Theme::styleSheet() const {
 
         QTreeWidget, QTreeView, QListWidget, QTableWidget {
             background: %(surface);
-            alternate-background-color: %(surfaceAlternate);
+            alternate-background-color: %(rowStripe);
             color: %(text);
             border: 1px solid %(border);
             border-radius: 1px;
@@ -557,19 +572,24 @@ QString Theme::styleSheet() const {
             background: %(selection);
             color: %(selectionText);
         }
-        QTreeView#historyTree {
+        /* The long lists stripe their rows. The branch column of the file tree
+           is left unstyled: a rule there would replace the expander marks Qt
+           draws by default. */
+        QTreeView#historyTree, QTreeView#fileTimeline, QTreeView#fileTree {
             background: %(surface);
-            alternate-background-color: %(surface);
+            alternate-background-color: %(rowStripe);
             color: %(text);
             font-family: "Arial";
             font-size: 12px;
         }
-        QTreeView#historyTree::item {
+        QTreeView#historyTree::item, QTreeView#fileTimeline::item, QTreeView#fileTree::item {
             min-height: 19px;
             max-height: 19px;
             padding: 0 3px;
         }
-        QTreeView#historyTree QHeaderView::section {
+        QTreeView#historyTree QHeaderView::section,
+        QTreeView#fileTimeline QHeaderView::section,
+        QTreeView#fileTree QHeaderView::section {
             background: %(surface);
             color: %(historyHeaderText);
             border: none;
@@ -582,18 +602,26 @@ QString Theme::styleSheet() const {
             font-size: 12px;
             font-weight: 400;
         }
-        QTreeView#historyTree QScrollBar:vertical {
+        QTreeView#historyTree QScrollBar:vertical,
+        QTreeView#fileTimeline QScrollBar:vertical,
+        QTreeView#fileTree QScrollBar:vertical {
             background: %(historyScrollTrack);
             border-left: 1px solid %(border);
             width: 16px;
         }
-        QTreeView#historyTree QScrollBar:horizontal {
+        QTreeView#historyTree QScrollBar:horizontal,
+        QTreeView#fileTimeline QScrollBar:horizontal,
+        QTreeView#fileTree QScrollBar:horizontal {
             background: %(historyScrollTrack);
             border-top: 1px solid %(border);
             height: 16px;
         }
         QTreeView#historyTree QScrollBar::handle:vertical,
-        QTreeView#historyTree QScrollBar::handle:horizontal {
+        QTreeView#historyTree QScrollBar::handle:horizontal,
+        QTreeView#fileTimeline QScrollBar::handle:vertical,
+        QTreeView#fileTimeline QScrollBar::handle:horizontal,
+        QTreeView#fileTree QScrollBar::handle:vertical,
+        QTreeView#fileTree QScrollBar::handle:horizontal {
             background: %(border);
             border-radius: 0;
         }
@@ -768,6 +796,7 @@ QString Theme::styleSheet() const {
         .replace(QStringLiteral("%(toolbar)"), name(p.toolbar))
         .replace(QStringLiteral("%(sidebar)"), name(p.sidebar))
         .replace(QStringLiteral("%(surfaceAlternate)"), name(p.surfaceAlternate))
+        .replace(QStringLiteral("%(rowStripe)"), name(p.rowStripe))
         .replace(QStringLiteral("%(surface)"), name(p.surface))
         .replace(QStringLiteral("%(border)"), name(p.border))
         .replace(QStringLiteral("%(text)"), name(p.text))

@@ -24,6 +24,20 @@ add_test(NAME gitclient COMMAND tst_gitclient)
 set_tests_properties(gitclient PROPERTIES LABELS integration)
 
 # Widget integration tests
+foreach (suite IN ITEMS diffview filespage)
+    add_executable(tst_${suite} tst_${suite}.cpp)
+    target_link_libraries(tst_${suite} PRIVATE squidygit_ui Qt6::Test)
+    if (MSVC)
+        target_compile_options(tst_${suite} PRIVATE /W4 /utf-8)
+    else ()
+        target_compile_options(tst_${suite} PRIVATE -Wall -Wextra -Wpedantic)
+    endif ()
+    add_test(NAME ${suite} COMMAND tst_${suite})
+    set_tests_properties(${suite} PROPERTIES
+            LABELS integration
+            ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
+endforeach ()
+
 add_executable(tst_repositoryview tst_repositoryview.cpp)
 target_link_libraries(tst_repositoryview PRIVATE squidygit_ui Qt6::Test)
 if (MSVC)

@@ -6,6 +6,8 @@
 #include "commitmodel.h"
 #include "dialogs.h"
 #include "diffview.h"
+#include "filespage.h"
+#include "flatcombobox.h"
 #include "icons.h"
 #include "repositorywatcher.h"
 #include "theme.h"
@@ -122,31 +124,6 @@ QColor navigationTextColor() {
 }
 
 /// Compact history combo with a custom dropdown arrow.
-class HistoryComboBox final : public QComboBox {
-public:
-    using QComboBox::QComboBox;
-
-protected:
-    void paintEvent(QPaintEvent *event) override {
-        QComboBox::paintEvent(event);
-
-        QPainter painter(this);
-        painter.setRenderHint(QPainter::Antialiasing, true);
-        painter.setPen(Qt::NoPen);
-        painter.setBrush(palette().color(isEnabled() ? QPalette::Active
-                                                      : QPalette::Disabled,
-                                         QPalette::ButtonText));
-        const qreal centerX = width() - 9.0;
-        const qreal centerY = height() / 2.0 + 1.0;
-        QPainterPath arrow;
-        arrow.moveTo(centerX - 3.5, centerY - 2.0);
-        arrow.lineTo(centerX + 3.5, centerY - 2.0);
-        arrow.lineTo(centerX, centerY + 2.0);
-        arrow.closeSubpath();
-        painter.drawPath(arrow);
-    }
-};
-
 QIcon navigationSectionIcon(const Icons::Glyph glyph, const QColor &color) {
     // Toolbar glyphs intentionally have generous whitespace. Trim only two
     // logical pixels here: this enlarges sidebar icons slightly while leaving
@@ -478,6 +455,17 @@ RepositoryView::RepositoryView(const QString &path, QWidget *parent)
     pages_->addWidget(buildHistoryPage());
     pages_->addWidget(buildSearchPage());
 
+    filesPage_ = new FilesPage(git_.repositoryRoot());
+    pages_->addWidget(filesPage_);
+    connect(filesPage_, &FilesPage::messagePosted, this,
+            [this](const QString &message, const int timeoutMs) {
+                Q_EMIT messagePosted(message, timeoutMs);
+            });
+    connect(filesPage_, &FilesPage::commitActivated, this, [this](const QString &hash) {
+        showPage(Page::History);
+        jumpToRevision(hash);
+    });
+
     auto *content = new QWidget;
     auto *contentLayout = new QVBoxLayout(content);
     contentLayout->setContentsMargins(0, 0, 0, 0);
@@ -512,7 +500,7 @@ RepositoryView::RepositoryView(const QString &path, QWidget *parent)
         const int storedPage = QSettings()
                                    .value(pageSettingsKey(git_.repositoryRoot()), 0)
                                    .toInt();
-        currentPage_ = static_cast<Page>(qBound(0, storedPage, 2));
+        currentPage_ = static_cast<Page>(qBound(0, storedPage, 3));
         diskWatcher_->setRepository(git_.gitDirectory());
         refreshAll();
         showPage(currentPage_);
@@ -611,6 +599,7 @@ QWidget *RepositoryView::buildViewSwitcher() {
 
     fileStatusButton_ = addButton(tr("File Status"), Page::FileStatus);
     historyButton_ = addButton(tr("History"), Page::History);
+    filesButton_ = addButton(tr("Files"), Page::Files);
     searchButton_ = addButton(tr("Search"), Page::Search);
     fileStatusButton_->setChecked(true);
 
@@ -923,7 +912,7 @@ QWidget *RepositoryView::buildHistoryPage() {
     auto *toolRow = new QHBoxLayout;
     toolRow->setContentsMargins(4, 0, 0, 2);
     toolRow->setSpacing(8);
-    historyScope_ = new HistoryComboBox;
+    historyScope_ = new FlatComboBox;
     historyScope_->setObjectName(QStringLiteral("historyScope"));
     historyScope_->setFixedWidth(88);
     historyScope_->addItem(tr("All branches"),
@@ -932,7 +921,7 @@ QWidget *RepositoryView::buildHistoryPage() {
                            static_cast<int>(GitHistoryScope::CurrentBranch));
     showRemoteBranches_ = new QCheckBox(tr("Show remote branches"));
     showRemoteBranches_->setChecked(true);
-    historyOrder_ = new HistoryComboBox;
+    historyOrder_ = new FlatComboBox;
     historyOrder_->setObjectName(QStringLiteral("historyOrder"));
     historyOrder_->setFixedWidth(154);
     historyOrder_->addItem(tr("Sort by date"), true);
@@ -979,7 +968,7 @@ QWidget *RepositoryView::buildHistoryPage() {
     historyView_->setModel(historyProxy_);
     historyView_->setRootIsDecorated(false);
     historyView_->setUniformRowHeights(true);
-    historyView_->setAlternatingRowColors(false);
+    historyView_->setAlternatingRowColors(true);
     historyView_->setSelectionBehavior(QAbstractItemView::SelectRows);
     historyView_->setSelectionMode(QAbstractItemView::SingleSelection);
     historyView_->setContextMenuPolicy(Qt::CustomContextMenu);
@@ -1038,6 +1027,20 @@ QWidget *RepositoryView::buildHistoryPage() {
     commitFilesTree_->setRootIsDecorated(false);
     commitFilesTree_->setUniformRowHeights(true);
     commitFilesTree_->setIconSize(QSize(15, 15));
+    commitFilesTree_->setContextMenuPolicy(Qt::CustomContextMenu);
+    connect(commitFilesTree_, &QTreeWidget::customContextMenuRequested, this,
+            [this](const QPoint &position) {
+                const QTreeWidgetItem *item = commitFilesTree_->itemAt(position);
+                if (item == nullptr) {
+                    return;
+                }
+                const QString path = item->data(0, PathRole).toString();
+                const QString hash = selectedCommitHash();
+                QMenu menu(this);
+                menu.addAction(tr("File history"), this,
+                               [this, path, hash] { showFileHistory(path, hash); });
+                menu.exec(commitFilesTree_->viewport()->mapToGlobal(position));
+            });
     leftSplitter->addWidget(commitFilesTree_);
     leftSplitter->setStretchFactor(0, 5);
     leftSplitter->setStretchFactor(1, 4);
@@ -1290,6 +1293,7 @@ void RepositoryView::applySnapshot(const RepositorySnapshot &snapshot) {
     }
 
     refreshHistoryScope(branches_);
+    filesPage_->setReferences(branches_, tags_);
     refreshHeader();
     refreshNavigation();
     refreshStatus();
@@ -1897,9 +1901,14 @@ void RepositoryView::showPage(const Page page) {
     currentPage_ = page;
     pages_->setCurrentIndex(static_cast<int>(page));
 
-    QPushButton *button = page == Page::History
-                              ? historyButton_
-                              : (page == Page::Search ? searchButton_ : fileStatusButton_);
+    QPushButton *button = fileStatusButton_;
+    if (page == Page::History) {
+        button = historyButton_;
+    } else if (page == Page::Search) {
+        button = searchButton_;
+    } else if (page == Page::Files) {
+        button = filesButton_;
+    }
     if (button != nullptr && !button->isChecked()) {
         button->setChecked(true);
     }
@@ -1933,6 +1942,18 @@ void RepositoryView::showFileStatusPage() {
 
 void RepositoryView::showHistoryPage() {
     showPage(Page::History);
+}
+
+void RepositoryView::showFilesPage() {
+    showPage(Page::Files);
+}
+
+void RepositoryView::showFileHistory(const QString &path, const QString &revision) {
+    if (path.isEmpty()) {
+        return;
+    }
+    showPage(Page::Files);
+    filesPage_->showFile(path, revision);
 }
 
 void RepositoryView::showSearchPage() {
@@ -2218,6 +2239,9 @@ void RepositoryView::showFileContextMenu(QTreeWidget *tree, const bool staged,
     }
 
     menu.addSeparator();
+    menu.addAction(tr("File history"), this, [this, paths] {
+        showFileHistory(paths.constFirst());
+    });
     menu.addAction(tr("Open the file"), this, [this, tree] { openSelectedFile(tree); });
     menu.addAction(tr("Show in the folder"), this, [this, paths] {
         const QFileInfo info(QDir(git_.repositoryRoot()).filePath(paths.constFirst()));

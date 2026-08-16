@@ -3,6 +3,7 @@
 #include "icons.h"
 
 #include <QGuiApplication>
+#include <QHash>
 #include <QPainter>
 #include <QPainterPath>
 #include <QPixmap>
@@ -32,6 +33,17 @@ QColor defaultColor(const Icons::Glyph glyph) {
         case Icons::Glyph::Create:
         case Icons::Glyph::Add:
             return QColor(QStringLiteral("#238A5B"));
+        // File kinds are told apart by colour first and by their mark second,
+        // because the tree draws them at fifteen pixels.
+        case Icons::Glyph::FilePdf:
+            return QColor(QStringLiteral("#C4453C"));
+        case Icons::Glyph::FileImage:
+            return QColor(QStringLiteral("#2E9E74"));
+        case Icons::Glyph::FileArchive:
+            return QColor(QStringLiteral("#B8862B"));
+        case Icons::Glyph::File:
+        case Icons::Glyph::FileText:
+            return QColor(QStringLiteral("#7F899E"));
         case Icons::Glyph::Terminal:
         case Icons::Glyph::Explorer:
         case Icons::Glyph::Settings:
@@ -84,6 +96,38 @@ void paintGlyph(QPainter &painter, const Icons::Glyph glyph, const QColor &color
         painter.setBrush(Qt::white);
         painter.drawEllipse(center, 2.05, 2.05);
         painter.setBrush(Qt::NoBrush);
+    };
+
+    const auto tinted = [&color](const qreal alpha) {
+        QColor wash = color;
+        wash.setAlphaF(alpha);
+        return wash;
+    };
+
+    const qreal treeStroke = 1.5;
+    const auto treePen = [&painter, &color, treeStroke] {
+        painter.setPen(QPen(color, treeStroke, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
+    };
+
+    // Shared outline for file-type glyphs.
+    const auto drawSheet = [&painter, &tinted, &treePen] {
+        treePen();
+        QPainterPath sheet;
+        sheet.moveTo(5.8, 3.0);
+        sheet.lineTo(14.0, 3.0);
+        sheet.lineTo(18.6, 7.6);
+        sheet.lineTo(18.6, 21.0);
+        sheet.lineTo(5.8, 21.0);
+        sheet.closeSubpath();
+        painter.setBrush(tinted(0.14));
+        painter.drawPath(sheet);
+
+        QPainterPath fold;
+        fold.moveTo(14.0, 3.0);
+        fold.lineTo(14.0, 7.6);
+        fold.lineTo(18.6, 7.6);
+        painter.setBrush(Qt::NoBrush);
+        painter.drawPath(fold);
     };
 
     QPainterPath path;
@@ -324,6 +368,70 @@ void paintGlyph(QPainter &painter, const Icons::Glyph glyph, const QColor &color
             painter.drawLine(QPointF(11.5, 8.5), QPointF(16.5, 8.5));
             painter.drawLine(QPointF(11.5, 12.0), QPointF(16.5, 12.0));
             break;
+        case Icons::Glyph::Folder:
+            treePen();
+            path.moveTo(2.6, 20.2);
+            path.lineTo(2.6, 4.6);
+            path.lineTo(9.8, 4.6);
+            path.lineTo(12.1, 8.0);
+            path.lineTo(21.4, 8.0);
+            path.lineTo(21.4, 20.2);
+            path.closeSubpath();
+            painter.setBrush(tinted(0.30));
+            painter.drawPath(path);
+            painter.setBrush(Qt::NoBrush);
+            break;
+        case Icons::Glyph::File:
+            drawSheet();
+            break;
+        case Icons::Glyph::FileText:
+            drawSheet();
+            painter.drawLine(QPointF(8.4, 11.6), QPointF(16.0, 11.6));
+            painter.drawLine(QPointF(8.4, 15.0), QPointF(16.0, 15.0));
+            painter.drawLine(QPointF(8.4, 18.4), QPointF(12.8, 18.4));
+            break;
+        case Icons::Glyph::FileImage:
+            drawSheet();
+            painter.setBrush(color);
+            painter.drawEllipse(QPointF(10.2, 12.4), 1.35, 1.35);
+            painter.setBrush(Qt::NoBrush);
+            path.moveTo(7.6, 18.8);
+            path.lineTo(11.8, 13.4);
+            path.lineTo(14.4, 16.6);
+            path.lineTo(15.8, 15.0);
+            path.lineTo(17.4, 18.8);
+            painter.drawPath(path);
+            break;
+        case Icons::Glyph::FilePdf:
+            drawSheet();
+            painter.setPen(Qt::NoPen);
+            painter.setBrush(color);
+            painter.drawRoundedRect(QRectF(7.6, 13.8, 9.8, 5.2), 1.4, 1.4);
+            painter.setBrush(Qt::NoBrush);
+            treePen();
+            break;
+        case Icons::Glyph::FileCode:
+            drawSheet();
+            path.moveTo(11.0, 11.8);
+            path.lineTo(8.2, 15.6);
+            path.lineTo(11.0, 19.4);
+            painter.drawPath(path);
+            path = QPainterPath();
+            path.moveTo(14.2, 11.8);
+            path.lineTo(17.0, 15.6);
+            path.lineTo(14.2, 19.4);
+            painter.drawPath(path);
+            break;
+        case Icons::Glyph::FileArchive:
+            drawSheet();
+            painter.setPen(Qt::NoPen);
+            painter.setBrush(color);
+            painter.drawRoundedRect(QRectF(11.0, 10.6, 2.8, 2.8), 0.7, 0.7);
+            painter.drawRoundedRect(QRectF(11.0, 14.2, 2.8, 2.8), 0.7, 0.7);
+            painter.drawRoundedRect(QRectF(11.0, 17.8, 2.8, 2.8), 0.7, 0.7);
+            painter.setBrush(Qt::NoBrush);
+            treePen();
+            break;
         case Icons::Glyph::Ghost:
             QSvgRenderer(QStringLiteral(":/branding/logo/logo_ghost.svg"))
                 .render(&painter, QRectF(2.0, 2.0, 20.0, 20.0));
@@ -416,6 +524,97 @@ QIcon Icons::icon(const Glyph glyph, const QColor &color) {
         }
     }
     return result;
+}
+
+Icons::Glyph Icons::fileGlyph(const QString &fileName) {
+    static const QHash<QString, Glyph> byExtension = {
+        {QStringLiteral("png"), Glyph::FileImage},
+        {QStringLiteral("jpg"), Glyph::FileImage},
+        {QStringLiteral("jpeg"), Glyph::FileImage},
+        {QStringLiteral("gif"), Glyph::FileImage},
+        {QStringLiteral("bmp"), Glyph::FileImage},
+        {QStringLiteral("svg"), Glyph::FileImage},
+        {QStringLiteral("webp"), Glyph::FileImage},
+        {QStringLiteral("ico"), Glyph::FileImage},
+        {QStringLiteral("icns"), Glyph::FileImage},
+        {QStringLiteral("tif"), Glyph::FileImage},
+        {QStringLiteral("tiff"), Glyph::FileImage},
+        {QStringLiteral("avif"), Glyph::FileImage},
+        {QStringLiteral("ai"), Glyph::FileImage},
+        {QStringLiteral("psd"), Glyph::FileImage},
+
+        {QStringLiteral("pdf"), Glyph::FilePdf},
+
+        {QStringLiteral("txt"), Glyph::FileText},
+        {QStringLiteral("md"), Glyph::FileText},
+        {QStringLiteral("rst"), Glyph::FileText},
+        {QStringLiteral("log"), Glyph::FileText},
+        {QStringLiteral("csv"), Glyph::FileText},
+        {QStringLiteral("ini"), Glyph::FileText},
+        {QStringLiteral("cfg"), Glyph::FileText},
+        {QStringLiteral("conf"), Glyph::FileText},
+        {QStringLiteral("toml"), Glyph::FileText},
+        {QStringLiteral("desktop"), Glyph::FileText},
+        {QStringLiteral("in"), Glyph::FileText},
+
+        {QStringLiteral("c"), Glyph::FileCode},
+        {QStringLiteral("cc"), Glyph::FileCode},
+        {QStringLiteral("cpp"), Glyph::FileCode},
+        {QStringLiteral("cxx"), Glyph::FileCode},
+        {QStringLiteral("h"), Glyph::FileCode},
+        {QStringLiteral("hpp"), Glyph::FileCode},
+        {QStringLiteral("py"), Glyph::FileCode},
+        {QStringLiteral("js"), Glyph::FileCode},
+        {QStringLiteral("java"), Glyph::FileCode},
+        {QStringLiteral("rs"), Glyph::FileCode},
+        {QStringLiteral("go"), Glyph::FileCode},
+        {QStringLiteral("rb"), Glyph::FileCode},
+        {QStringLiteral("sh"), Glyph::FileCode},
+        {QStringLiteral("bat"), Glyph::FileCode},
+        {QStringLiteral("ps1"), Glyph::FileCode},
+        {QStringLiteral("cmake"), Glyph::FileCode},
+        {QStringLiteral("json"), Glyph::FileCode},
+        {QStringLiteral("xml"), Glyph::FileCode},
+        {QStringLiteral("yml"), Glyph::FileCode},
+        {QStringLiteral("yaml"), Glyph::FileCode},
+        {QStringLiteral("qrc"), Glyph::FileCode},
+        {QStringLiteral("ui"), Glyph::FileCode},
+        {QStringLiteral("ts"), Glyph::FileCode},
+        {QStringLiteral("qm"), Glyph::FileCode},
+
+        {QStringLiteral("zip"), Glyph::FileArchive},
+        {QStringLiteral("gz"), Glyph::FileArchive},
+        {QStringLiteral("bz2"), Glyph::FileArchive},
+        {QStringLiteral("xz"), Glyph::FileArchive},
+        {QStringLiteral("zst"), Glyph::FileArchive},
+        {QStringLiteral("tar"), Glyph::FileArchive},
+        {QStringLiteral("7z"), Glyph::FileArchive},
+        {QStringLiteral("rar"), Glyph::FileArchive},
+        {QStringLiteral("deb"), Glyph::FileArchive},
+        {QStringLiteral("rpm"), Glyph::FileArchive},
+        {QStringLiteral("appimage"), Glyph::FileArchive}
+    };
+
+    const QString name = fileName.section(u'/', -1);
+
+    // Files named after their purpose rather than their type still deserve the
+    // text sheet: CMakeLists.txt already matches, LICENSE and friends do not.
+    static const QStringList textNames = {
+        QStringLiteral("license"), QStringLiteral("licence"),
+        QStringLiteral("copying"), QStringLiteral("authors"),
+        QStringLiteral("notice"), QStringLiteral("changelog"),
+        QStringLiteral("readme")
+    };
+    if (textNames.contains(name.toLower())) {
+        return Glyph::FileText;
+    }
+
+    const qsizetype dot = name.lastIndexOf(u'.');
+    if (dot <= 0) {
+        return Glyph::File;
+    }
+
+    return byExtension.value(name.sliced(dot + 1).toLower(), Glyph::File);
 }
 
 QPixmap Icons::applicationPixmap(const int size) {

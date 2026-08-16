@@ -7,6 +7,9 @@
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
+#include <QSet>
+
+#include <algorithm>
 
 namespace {
 constexpr qint64 MaximumPreviewSize = 2 * 1024 * 1024;
@@ -70,6 +73,18 @@ bool GitFileStatus::hasStagedChanges() const {
 
 bool GitFileStatus::hasWorkingTreeChanges() const {
     return workTreeStatus != u' ' || isUntracked() || isConflicted();
+}
+
+bool GitFileRevision::isAddition() const {
+    return status == u'A';
+}
+
+bool GitFileRevision::isDeletion() const {
+    return status == u'D';
+}
+
+bool GitFileRevision::isRename() const {
+    return status == u'R' || status == u'C';
 }
 
 bool GitRepositoryState::isBusy() const {
@@ -535,6 +550,249 @@ QString GitClient::lastCommitMessage() const {
         QStringLiteral("--pretty=format:%B")
     });
     return result.succeeded() ? result.outputText().trimmed() : QString();
+}
+
+QList<GitTreeEntry> GitClient::treeEntries(const QString &revision, const QString &directory,
+                                           QString *errorMessage) const {
+    if (errorMessage != nullptr) {
+        errorMessage->clear();
+    }
+
+    if (revision.isEmpty()) {
+        return workingCopyEntries(directory, errorMessage);
+    }
+
+    QStringList arguments{
+        QStringLiteral("ls-tree"),
+        QStringLiteral("-z"),
+        QStringLiteral("--long"),
+        revision
+    };
+    if (!directory.isEmpty()) {
+        arguments.append(QStringLiteral("--"));
+        arguments.append(directory + u'/');
+    }
+
+    const GitCommandResult result = run(arguments);
+    if (!result.succeeded()) {
+        if (errorMessage != nullptr) {
+            *errorMessage = result.errorText();
+        }
+        return {};
+    }
+
+    return GitParse::parseTreeEntries(result.output);
+}
+
+QList<GitTreeEntry> GitClient::workingCopyEntries(const QString &directory,
+                                                  QString *errorMessage) const {
+    QStringList arguments{
+        QStringLiteral("ls-files"),
+        QStringLiteral("-z"),
+        QStringLiteral("--cached")
+    };
+    if (!directory.isEmpty()) {
+        arguments.append(QStringLiteral("--"));
+        arguments.append(directory + u'/');
+    }
+
+    const GitCommandResult result = run(arguments);
+    if (!result.succeeded()) {
+        if (errorMessage != nullptr) {
+            *errorMessage = result.errorText();
+        }
+        return {};
+    }
+
+    // The index lists paths recursively, so the level below "directory" has to
+    // be folded out of them.
+    const qsizetype prefixLength = directory.isEmpty() ? 0 : directory.size() + 1;
+    const QDir root(repositoryRoot_);
+    QList<GitTreeEntry> entries;
+    QSet<QString> seenDirectories;
+
+    for (const QByteArray &record : GitParse::splitNulRecords(result.output)) {
+        const QString path = QString::fromUtf8(record);
+        if (path.size() <= prefixLength) {
+            continue;
+        }
+
+        const QString relative = path.sliced(prefixLength);
+        const qsizetype separator = relative.indexOf(u'/');
+
+        GitTreeEntry entry;
+        entry.directory = separator >= 0;
+        entry.name = entry.directory ? relative.first(separator) : relative;
+        entry.path = directory.isEmpty() ? entry.name : directory + u'/' + entry.name;
+
+        if (entry.directory) {
+            if (seenDirectories.contains(entry.name)) {
+                continue;
+            }
+            seenDirectories.insert(entry.name);
+        } else {
+            const QFileInfo info(root.filePath(entry.path));
+            if (info.exists()) {
+                entry.size = info.size();
+            }
+        }
+
+        entries.append(entry);
+    }
+
+    GitParse::sortTreeEntries(entries);
+    return entries;
+}
+
+QList<GitTreeEntry> GitClient::allFiles(const QString &revision,
+                                        QString *errorMessage) const {
+    if (errorMessage != nullptr) {
+        errorMessage->clear();
+    }
+
+    if (revision.isEmpty()) {
+        const GitCommandResult result = run({
+            QStringLiteral("ls-files"),
+            QStringLiteral("-z"),
+            QStringLiteral("--cached")
+        });
+        if (!result.succeeded()) {
+            if (errorMessage != nullptr) {
+                *errorMessage = result.errorText();
+            }
+            return {};
+        }
+
+        const QDir root(repositoryRoot_);
+        QList<GitTreeEntry> entries;
+        for (const QByteArray &record : GitParse::splitNulRecords(result.output)) {
+            GitTreeEntry entry;
+            entry.path = QString::fromUtf8(record);
+            entry.name = entry.path.section(u'/', -1);
+            if (const QFileInfo info(root.filePath(entry.path)); info.exists()) {
+                entry.size = info.size();
+            }
+            entries.append(entry);
+        }
+        return entries;
+    }
+
+    const GitCommandResult result = run({
+        QStringLiteral("ls-tree"),
+        QStringLiteral("-r"),
+        QStringLiteral("-z"),
+        QStringLiteral("--long"),
+        revision
+    });
+    if (!result.succeeded()) {
+        if (errorMessage != nullptr) {
+            *errorMessage = result.errorText();
+        }
+        return {};
+    }
+
+    // The parser orders one level for display; a flat listing is more useful
+    // grouped by path, the way Git itself reports it.
+    QList<GitTreeEntry> entries = GitParse::parseTreeEntries(result.output);
+    std::sort(entries.begin(), entries.end(),
+              [](const GitTreeEntry &left, const GitTreeEntry &right) {
+                  return left.path < right.path;
+              });
+    return entries;
+}
+
+QList<GitFileRevision> GitClient::fileHistory(const QString &path, const QString &revision,
+                                              const int maximumCount,
+                                              QString *errorMessage) const {
+    if (errorMessage != nullptr) {
+        errorMessage->clear();
+    }
+    if (path.isEmpty() || !hasCommits()) {
+        return {};
+    }
+
+    QStringList arguments{
+        QStringLiteral("log"),
+        QStringLiteral("--follow"),
+        QStringLiteral("--find-renames"),
+        QStringLiteral("--name-status"),
+        QStringLiteral("--no-color"),
+        QStringLiteral("-z"),
+        QStringLiteral("--max-count=%1").arg(qMax(1, maximumCount))
+    };
+    arguments.append(GitParse::commitFormatArguments());
+    arguments.append(revision.isEmpty() ? QStringLiteral("HEAD") : revision);
+    arguments.append(QStringLiteral("--"));
+    arguments.append(path);
+
+    const GitCommandResult result = run(arguments);
+    if (!result.succeeded()) {
+        if (errorMessage != nullptr) {
+            *errorMessage = result.errorText();
+        }
+        return {};
+    }
+
+    return GitParse::parseFileHistory(result.output);
+}
+
+GitCommandResult GitClient::fileContent(const QString &revision, const QString &path) const {
+    if (!revision.isEmpty()) {
+        return run({
+            QStringLiteral("show"),
+            QStringLiteral("%1:%2").arg(revision, path)
+        });
+    }
+
+    GitCommandResult result;
+    QFile file(QDir(repositoryRoot_).filePath(path));
+    if (!file.open(QIODevice::ReadOnly)) {
+        result.processError = tr("“%1” cannot be read.").arg(path);
+        return result;
+    }
+
+    result.exitCode = 0;
+    result.output = file.readAll();
+    return result;
+}
+
+qint64 GitClient::fileSize(const QString &revision, const QString &path) const {
+    if (revision.isEmpty()) {
+        const QFileInfo info(QDir(repositoryRoot_).filePath(path));
+        return info.exists() ? info.size() : -1;
+    }
+
+    const GitCommandResult result = run({
+        QStringLiteral("cat-file"),
+        QStringLiteral("-s"),
+        QStringLiteral("%1:%2").arg(revision, path)
+    });
+    if (!result.succeeded()) {
+        return -1;
+    }
+
+    bool parsed = false;
+    const qint64 size = result.outputText().trimmed().toLongLong(&parsed);
+    return parsed ? size : -1;
+}
+
+GitCommandResult GitClient::fileDiff(const QString &fromRevision, const QString &fromPath,
+                                     const QString &toRevision, const QString &toPath,
+                                     const int contextLines) const {
+    // A blob pair keeps the patch correct when the file moved between the two
+    // revisions. An empty revision would name the index blob instead, so the
+    // committed version is used for it.
+    const QString from = fromRevision.isEmpty() ? QStringLiteral("HEAD") : fromRevision;
+    const QString to = toRevision.isEmpty() ? QStringLiteral("HEAD") : toRevision;
+
+    return run({
+        QStringLiteral("diff"),
+        QStringLiteral("--no-ext-diff"),
+        QStringLiteral("--no-color"),
+        QStringLiteral("--unified=%1").arg(qMax(0, contextLines)),
+        QStringLiteral("%1:%2").arg(from, fromPath),
+        QStringLiteral("%1:%2").arg(to, toPath)
+    });
 }
 
 GitCommandResult GitClient::diff(const QString &path, const bool staged, const bool untracked,

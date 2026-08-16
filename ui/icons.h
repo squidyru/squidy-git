@@ -4,6 +4,7 @@
 
 #include <QColor>
 #include <QIcon>
+#include <QString>
 
 /// Vector glyphs drawn with QPainter so the application needs no external assets
 /// and stays crisp on high-DPI screens with flat toolbar icons.
@@ -44,6 +45,13 @@ enum class Glyph {
     CherryPick,
     Submodule,
     Repository,
+    Folder,
+    File,
+    FileText,
+    FileImage,
+    FilePdf,
+    FileCode,
+    FileArchive,
     Ghost,
     Warning,
     WindowMinimize,
@@ -55,6 +63,9 @@ enum class Glyph {
 
 [[nodiscard]] QPixmap pixmap(Glyph glyph, int size, const QColor &color);
 [[nodiscard]] QIcon icon(Glyph glyph, const QColor &color = QColor());
+
+/// Picks the file glyph that matches the extension of @p fileName.
+[[nodiscard]] Glyph fileGlyph(const QString &fileName);
 
 /// The application mark: a squid-ghost on a round red gradient.
 [[nodiscard]] QPixmap applicationPixmap(int size);

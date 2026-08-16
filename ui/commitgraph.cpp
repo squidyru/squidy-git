@@ -212,6 +212,12 @@ void CommitGraphDelegate::paint(QPainter *painter, const QStyleOptionViewItem &o
     const bool graphUncommitted = index.data(CommitRoles::IsUncommitted).toBool();
     const bool isMerge = index.data(CommitRoles::IsMerge).toBool();
 
+    // Hollow nodes are punched out of the row they sit on, which is the stripe
+    // colour on every second row.
+    const QColor rowBackground = option.features.testFlag(QStyleOptionViewItem::Alternate)
+                                     ? palette.rowStripe
+                                     : palette.surface;
+
     const auto laneX = [&option](const int lane) {
         return option.rect.left() + LaneOffset + lane * LaneWidth;
     };
@@ -260,18 +266,18 @@ void CommitGraphDelegate::paint(QPainter *painter, const QStyleOptionViewItem &o
         QPen pen(palette.mutedText, 1.6);
         pen.setStyle(Qt::DashLine);
         painter->setPen(pen);
-        painter->setBrush(palette.surface);
+        painter->setBrush(rowBackground);
         painter->drawEllipse(center, NodeRadius, NodeRadius);
     } else if (!hasIncoming || isHead) {
         painter->setPen(QPen(isHead ? palette.text : laneColor(nodeColor), 1.6));
-        painter->setBrush(palette.surface);
+        painter->setBrush(rowBackground);
         painter->drawEllipse(center, NodeRadius, NodeRadius);
     } else {
         painter->setPen(Qt::NoPen);
         painter->setBrush(laneColor(nodeColor));
         painter->drawEllipse(center, NodeRadius, NodeRadius);
         if (isMerge) {
-            painter->setBrush(palette.surface);
+            painter->setBrush(rowBackground);
             painter->setPen(Qt::NoPen);
             painter->drawEllipse(center, NodeRadius - 2.4, NodeRadius - 2.4);
         }

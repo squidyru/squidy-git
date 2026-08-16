@@ -87,6 +87,32 @@ struct GitCommitInfo {
     QString body;
 };
 
+/// One entry of a repository tree at a revision.
+struct GitTreeEntry {
+    QString name;
+    /// Path from the repository root.
+    QString path;
+    QString hash;
+    /// Blob size in bytes, -1 when unknown.
+    qint64 size = -1;
+    bool directory = false;
+    bool submodule = false;
+};
+
+/// One point of a file timeline. The path is the one the file carried at that
+/// commit, which is not necessarily the path it carries today.
+struct GitFileRevision {
+    GitCommitInfo commit;
+    QString path;
+    /// Set when the commit renamed or copied the file.
+    QString previousPath;
+    QChar status = u'M';
+
+    [[nodiscard]] bool isAddition() const;
+    [[nodiscard]] bool isDeletion() const;
+    [[nodiscard]] bool isRename() const;
+};
+
 struct GitChangedFile {
     QString path;
     QString originalPath;

@@ -17,6 +17,8 @@ struct ThemePalette {
     QColor sidebar;
     QColor surface;
     QColor surfaceAlternate;
+    /// Every second row of the file tree, in the manner of a Finder list.
+    QColor rowStripe;
     QColor border;
     QColor text;
     QColor mutedText;
@@ -39,6 +41,13 @@ struct ThemePalette {
     QColor hunkBackground;
     QColor hunkText;
     QColor graphNodeBorder;
+    /// Colours of the read-only source viewer.
+    QColor syntaxKeyword;
+    QColor syntaxType;
+    QColor syntaxString;
+    QColor syntaxNumber;
+    QColor syntaxComment;
+    QColor syntaxMeta;
     QList<QColor> laneColors;
 };
 

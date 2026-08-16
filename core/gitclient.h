@@ -56,6 +56,33 @@ public:
     [[nodiscard]] QString userEmail() const;
     [[nodiscard]] QString lastCommitMessage() const;
 
+    // --- File time travel ---------------------------------------------------
+    /// Lists one directory level of @p revision, or of the working copy when
+    /// the revision is empty. @p directory is empty for the repository root.
+    [[nodiscard]] QList<GitTreeEntry> treeEntries(const QString &revision,
+                                                  const QString &directory,
+                                                  QString *errorMessage = nullptr) const;
+    /// Lists every tracked file of @p revision, or of the working copy when the
+    /// revision is empty. Directories are not reported: the caller rebuilds the
+    /// levels it needs from the paths.
+    [[nodiscard]] QList<GitTreeEntry> allFiles(const QString &revision,
+                                               QString *errorMessage = nullptr) const;
+    /// Follows @p path through renames, newest revision first. Reading starts
+    /// at @p revision, or at HEAD when it is empty.
+    [[nodiscard]] QList<GitFileRevision> fileHistory(const QString &path,
+                                                     const QString &revision,
+                                                     int maximumCount = 200,
+                                                     QString *errorMessage = nullptr) const;
+    /// Reads file contents without touching the index or the working tree.
+    [[nodiscard]] GitCommandResult fileContent(const QString &revision,
+                                               const QString &path) const;
+    /// Returns the size in bytes, or -1 when the path is missing.
+    [[nodiscard]] qint64 fileSize(const QString &revision, const QString &path) const;
+    /// Compares two versions of a file, which may sit at different paths.
+    [[nodiscard]] GitCommandResult fileDiff(const QString &fromRevision, const QString &fromPath,
+                                            const QString &toRevision, const QString &toPath,
+                                            int contextLines = 3) const;
+
     // --- Diffs ------------------------------------------------------------
     [[nodiscard]] GitCommandResult diff(const QString &path, bool staged, bool untracked,
                                         int contextLines = 3) const;
@@ -123,6 +150,10 @@ public:
                                              int timeoutMs = 60'000) const;
 
 private:
+    /// Groups the tracked paths under @p directory into one directory level.
+    [[nodiscard]] QList<GitTreeEntry> workingCopyEntries(const QString &directory,
+                                                         QString *errorMessage) const;
+
     [[nodiscard]] GitCommandResult run(const QStringList &arguments,
                                        int timeoutMs = 30'000) const;
     [[nodiscard]] GitCommandResult runWithInput(const QStringList &arguments,
