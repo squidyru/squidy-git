@@ -171,25 +171,86 @@ QList<GitFileRevision> parseFileHistory(const QByteArray &payload) {
     return revisions;
 }
 
+/// Offset just past the @p count-th space, or -1 when the record holds fewer.
+/// The path is the last field and may hold spaces, so it is never split.
+qsizetype offsetAfterFields(const QByteArray &record, const int count) {
+    qsizetype offset = 0;
+    for (int field = 0; field < count; ++field) {
+        const qsizetype space = record.indexOf(' ', offset);
+        if (space < 0) {
+            return -1;
+        }
+        offset = space + 1;
+    }
+    return offset;
+}
+
+/// Version 2 writes an unmodified side as '.', version 1 left a space. One
+/// representation everywhere else keeps the status predicates unchanged.
+QChar normalizedState(const char state) {
+    return state == '.' ? u' ' : QChar::fromLatin1(state);
+}
+
+void readCommonFields(const QByteArray &record, GitFileStatus *file) {
+    file->indexStatus = normalizedState(record.at(2));
+    file->workTreeStatus = normalizedState(record.at(3));
+    // The submodule field is "N..." for anything that is not one.
+    file->submodule = record.size() > 5 && record.at(5) == 'S';
+}
+
 QList<GitFileStatus> parseStatus(const QByteArray &payload) {
     QList<GitFileStatus> files;
     const QList<QByteArray> records = splitNulRecords(payload);
 
     for (qsizetype index = 0; index < records.size(); ++index) {
         const QByteArray &record = records.at(index);
-        if (record.size() < 4) {
+        if (record.size() < 2) {
+            continue;
+        }
+
+        const char kind = record.at(0);
+        if (kind == '#' || kind == '!') {
+            // Branch headers and ignored paths are of no interest here.
             continue;
         }
 
         GitFileStatus file;
-        file.indexStatus = QChar::fromLatin1(record.at(0));
-        file.workTreeStatus = QChar::fromLatin1(record.at(1));
-        file.path = QString::fromUtf8(record.mid(3));
+        if (kind == '?') {
+            file.indexStatus = u'?';
+            file.workTreeStatus = u'?';
+            file.path = QString::fromUtf8(record.mid(2));
+            files.append(file);
+            continue;
+        }
 
-        const bool isRenameOrCopy = file.indexStatus == u'R' || file.indexStatus == u'C'
-                                    || file.workTreeStatus == u'R' || file.workTreeStatus == u'C';
-        if (isRenameOrCopy && index + 1 < records.size()) {
-            file.originalPath = QString::fromUtf8(records.at(++index));
+        // Fields before the path: a rename adds the score, an unmerged path
+        // carries three stages instead of one.
+        const int leadingFields = kind == '1' ? 8 : (kind == '2' ? 9 : 10);
+        if (kind != '1' && kind != '2' && kind != 'u') {
+            continue;
+        }
+        if (record.size() < 6) {
+            continue;
+        }
+
+        const qsizetype pathOffset = offsetAfterFields(record, leadingFields);
+        if (pathOffset < 0) {
+            continue;
+        }
+
+        readCommonFields(record, &file);
+        file.path = QString::fromUtf8(record.mid(pathOffset));
+
+        if (kind == '2') {
+            // The score reads "R100" or "C75"; the original path follows.
+            const qsizetype scoreOffset = offsetAfterFields(record, 8);
+            if (scoreOffset > 0) {
+                file.renameScore =
+                    record.mid(scoreOffset + 1, pathOffset - scoreOffset - 2).toInt();
+            }
+            if (index + 1 < records.size()) {
+                file.originalPath = QString::fromUtf8(records.at(++index));
+            }
         }
 
         files.append(file);
@@ -270,20 +331,34 @@ QList<GitStashInfo> parseStashes(const QString &payload) {
 }
 
 QList<GitSubmoduleInfo> parseSubmodules(const QString &payload) {
+    // A line is "<state><hash> <path>" with an optional " (<describe>)" tail.
+    // The path may hold spaces, so it is the remainder, not a field.
+    constexpr qsizetype HashLength = 40;
+
     QList<GitSubmoduleInfo> submodules;
     const QStringList lines = payload.split(u'\n', Qt::SkipEmptyParts);
     for (const QString &line : lines) {
-        const QStringList fields = line.trimmed().split(QRegularExpression(QStringLiteral("\\s+")),
-                                                        Qt::SkipEmptyParts);
-        if (fields.size() < 2) {
+        // The state character is absent when the submodule is in sync.
+        const QString body = line.startsWith(u' ') || line.startsWith(u'-')
+                                     || line.startsWith(u'+') || line.startsWith(u'U')
+                                 ? line.mid(1)
+                                 : line;
+        if (body.size() < HashLength + 2) {
             continue;
         }
+
         GitSubmoduleInfo submodule;
-        submodule.hash = fields.at(0);
-        submodule.path = fields.at(1);
-        if (fields.size() > 2) {
-            submodule.describe = fields.at(2);
+        submodule.hash = body.left(HashLength);
+        QString remainder = body.mid(HashLength + 1);
+        if (remainder.endsWith(u')')) {
+            const qsizetype describeStart = remainder.lastIndexOf(QStringLiteral(" ("));
+            if (describeStart > 0) {
+                submodule.describe = remainder.mid(describeStart + 2,
+                                                   remainder.size() - describeStart - 3);
+                remainder = remainder.left(describeStart);
+            }
         }
+        submodule.path = remainder;
         submodules.append(submodule);
     }
     return submodules;
@@ -293,11 +368,18 @@ QList<GitRemoteInfo> parseRemotes(const QString &payload) {
     QList<GitRemoteInfo> remotes;
     const QStringList lines = payload.split(u'\n', Qt::SkipEmptyParts);
     for (const QString &line : lines) {
-        const QStringList fields = line.split(QRegularExpression(QStringLiteral("\\s+")),
-                                              Qt::SkipEmptyParts);
-        if (fields.size() < 2) {
+        // A tab separates the name from the URL. Splitting on whitespace
+        // would cut a URL holding a space, as local paths often do.
+        const qsizetype tab = line.indexOf(u'\t');
+        if (tab <= 0) {
             continue;
         }
+        QString url = line.mid(tab + 1);
+        const qsizetype role = url.lastIndexOf(QStringLiteral(" ("));
+        if (role > 0 && url.endsWith(u')')) {
+            url = url.left(role);
+        }
+        const QStringList fields{line.left(tab), url};
         const auto existing = std::find_if(remotes.begin(), remotes.end(),
                                            [&fields](const GitRemoteInfo &remote) {
                                                return remote.name == fields.at(0);
@@ -378,24 +460,36 @@ QList<GitChangedFile> parseNameStatus(const QByteArray &payload,
     return files;
 }
 
-void assignChangeCounts(QList<GitChangedFile> &files, const QString &payload) {
-    const QStringList lines = payload.split(u'\n', Qt::SkipEmptyParts);
-    for (const QString &line : lines) {
-        const QStringList fields = line.split(u'\t');
+void assignChangeCounts(QList<GitChangedFile> &files, const QByteArray &payload) {
+    // Under -z a record is "<added>\t<removed>\t<path>". A rename leaves the
+    // path empty and sends the old and new paths as the next two records.
+    const QList<QByteArray> records = splitNulRecords(payload);
+
+    for (qsizetype index = 0; index < records.size(); ++index) {
+        const QList<QByteArray> fields = records.at(index).split('\t');
         if (fields.size() < 3) {
             continue;
         }
-        const QString path = fields.constLast();
+
+        QString path = QString::fromUtf8(fields.at(2));
+        if (path.isEmpty()) {
+            if (index + 2 >= records.size()) {
+                break;
+            }
+            // Counts belong to the new path.
+            ++index;
+            path = QString::fromUtf8(records.at(++index));
+        }
+
+        const QString added = QString::fromUtf8(fields.at(0));
         for (GitChangedFile &file : files) {
-            if (file.path != path && !path.contains(QStringLiteral(" => "))) {
+            if (file.path != path) {
                 continue;
             }
-            if (path.contains(QStringLiteral(" => ")) && !path.contains(file.path)) {
-                continue;
-            }
-            file.binary = fields.at(0) == QStringLiteral("-");
-            file.additions = fields.at(0).toInt();
-            file.deletions = fields.at(1).toInt();
+            // A binary file reports "-" for both counts.
+            file.binary = added == QStringLiteral("-");
+            file.additions = added.toInt();
+            file.deletions = QString::fromUtf8(fields.at(1)).toInt();
             break;
         }
     }

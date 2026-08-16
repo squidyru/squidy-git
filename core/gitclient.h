@@ -22,6 +22,10 @@ public:
     /// Allows command tests to inject a runner.
     explicit GitClient(GitProcessRunner *runner);
 
+    /// Binds a cancellation flag to every command this client runs. The client
+    /// is copied into the worker, so the copy carries the token.
+    void setCancellation(GitCancellationPtr cancellation);
+
     [[nodiscard]] GitCommandResult openRepository(const QString &directory);
     [[nodiscard]] bool hasRepository() const;
     [[nodiscard]] const QString &repositoryRoot() const;
@@ -30,6 +34,9 @@ public:
     [[nodiscard]] static bool isRepository(const QString &directory);
     [[nodiscard]] static GitCommandResult initRepository(const QString &directory, bool bare);
     [[nodiscard]] static QString gitExecutable();
+    /// Records @p helper as the global credential helper, so Git keeps secrets
+    /// in the system store instead of asking again.
+    [[nodiscard]] static bool configureCredentialHelper(const QString &helper);
 
     // --- Inspection -------------------------------------------------------
     [[nodiscard]] QList<GitFileStatus> status(QString *errorMessage = nullptr) const;
@@ -166,4 +173,5 @@ private:
 
     GitProcessRunner *runner_ = nullptr;
     QString repositoryRoot_;
+    GitCancellationPtr cancellation_;
 };

@@ -1,5 +1,6 @@
 // Copyright (c) 2026 Sergey Yakunin <sergey@squidy.ru>
 
+#include "ui/credentialprompter.h"
 #include "ui/icons.h"
 #include "ui/mainwindow.h"
 #include "ui/theme.h"
@@ -14,6 +15,16 @@
 #include <QTranslator>
 
 int main(int argc, char *argv[]) {
+    // Git and ssh run this same binary to ask for a credential, passing the
+    // question as the only argument. That mode answers on standard output and
+    // exits, so it must not reach the interface below.
+    if (CredentialPrompter::isHelperInvocation()) {
+        QCoreApplication helper(argc, argv);
+        const QStringList arguments = QCoreApplication::arguments();
+        return CredentialPrompter::runHelper(arguments.size() > 1 ? arguments.at(1)
+                                                                  : QString());
+    }
+
     QApplication app(argc, argv);
 
     QCoreApplication::setOrganizationName(QStringLiteral("SquidyGit"));
@@ -45,6 +56,10 @@ int main(int argc, char *argv[]) {
         QApplication::setStyle(QStringLiteral("Fusion"));
     }
     Theme::instance()->applyToApplication();
+
+    // Started before the window so that the very first fetch can already ask.
+    CredentialPrompter credentials;
+    static_cast<void>(credentials.start());
 
     MainWindow window;
     window.show();

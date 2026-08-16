@@ -43,7 +43,11 @@ constexpr int MaximumTimelineCount = 200;
 constexpr qint64 MaximumViewerSize = 2 * 1024 * 1024;
 constexpr qsizetype MaximumHighlightedSize = 512 * 1024;
 constexpr qsizetype MaximumHexDumpSize = 64 * 1024;
+// Panes sit flush, so the handle takes no room and the panes do not resize.
+// Safe only while collapsing stays disabled: see RepositorySplitterWidth.
 constexpr int SplitterWidth = 0;
+constexpr int MinimumPaneHeight = 80;
+constexpr int MinimumPaneWidth = 180;
 constexpr int FilterDelayMs = 250;
 constexpr int MaximumMatchCount = 2000;
 
@@ -172,18 +176,26 @@ FilesPage::FilesPage(const QString &repositoryRoot, QWidget *parent)
 
     auto *splitter = new QSplitter(Qt::Horizontal);
     splitter->setHandleWidth(SplitterWidth);
-    splitter->addWidget(buildTree());
+    splitter->setChildrenCollapsible(false);
+    QWidget *tree = buildTree();
+    tree->setMinimumWidth(MinimumPaneWidth);
+    splitter->addWidget(tree);
 
     auto *rightSplitter = new QSplitter(Qt::Vertical);
     rightSplitter->setHandleWidth(SplitterWidth);
-    rightSplitter->addWidget(buildTimeline());
-    rightSplitter->addWidget(buildViewer());
+    rightSplitter->setChildrenCollapsible(false);
+    QWidget *timeline = buildTimeline();
+    QWidget *viewer = buildViewer();
+    timeline->setMinimumHeight(MinimumPaneHeight);
+    viewer->setMinimumHeight(MinimumPaneHeight);
+    rightSplitter->addWidget(timeline);
+    rightSplitter->addWidget(viewer);
     rightSplitter->setStretchFactor(0, 2);
     rightSplitter->setStretchFactor(1, 3);
     rightSplitter->setSizes({240, 340});
 
+    rightSplitter->setMinimumWidth(MinimumPaneWidth);
     splitter->addWidget(rightSplitter);
-    splitter->setCollapsible(0, false);
     splitter->setStretchFactor(0, 0);
     splitter->setStretchFactor(1, 1);
     splitter->setSizes({320, 940});

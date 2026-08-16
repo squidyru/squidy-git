@@ -93,6 +93,7 @@ private:
     QToolBar *mainToolbar_ = nullptr;
     QListWidget *bookmarksList_ = nullptr;
     QProgressBar *busyIndicator_ = nullptr;
+    QToolButton *cancelOperationButton_ = nullptr;
     QLabel *statusLabel_ = nullptr;
     QLabel *commitBadge_ = nullptr;
     QLabel *pushBadge_ = nullptr;

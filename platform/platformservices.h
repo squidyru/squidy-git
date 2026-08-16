@@ -49,6 +49,10 @@ public:
     [[nodiscard]] virtual bool openTerminal(const QString &directory) const = 0;
     [[nodiscard]] virtual bool revealInFileManager(const QString &path) const = 0;
 
+    /// The credential helper this system can store secrets with, or empty when
+    /// none is installed. The application never writes one to disk itself.
+    [[nodiscard]] virtual QString preferredCredentialHelper() const;
+
     virtual void configureApplication() const;
     [[nodiscard]] bool openPath(const QString &path) const;
     [[nodiscard]] QString downloadDirectory() const;

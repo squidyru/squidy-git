@@ -12,6 +12,7 @@
 #include <QEvent>
 #include <QFontDatabase>
 #include <QFrame>
+#include <QFutureWatcher>
 #include <QGraphicsDropShadowEffect>
 #include <QHBoxLayout>
 #include <QLabel>
@@ -701,8 +702,7 @@ void DiffView::setMode(const Mode mode) {
     mode_ = mode;
 }
 
-void DiffView::setPatch(const QString &patch,
-                        std::function<QString()> fullPatchProvider) {
+void DiffView::setPatch(const QString &patch, FullPatchProvider fullPatchProvider) {
     document_.parse(patch);
     fullPatchProvider_ = std::move(fullPatchProvider);
     setPlainText(document_.text());
@@ -912,14 +912,6 @@ void DiffView::openSideBySideDiff() {
     const QString hiddenLinesTemplate = tr("%1 lines hidden");
     auto rowSets = std::make_shared<SideDiffRowSets>();
     rowSets->hidden = sideBySideRows(document_, hiddenLinesTemplate);
-    if (fullPatchProvider_) {
-        const QString fullPatch = fullPatchProvider_();
-        DiffDocument fullDocument;
-        fullDocument.parse(fullPatch);
-        if (!fullDocument.isEmpty()) {
-            rowSets->full = sideBySideRows(fullDocument, hiddenLinesTemplate, false);
-        }
-    }
 
     auto *controls = new QWidget;
     controls->setObjectName(QStringLiteral("sideDiffControls"));
@@ -931,9 +923,12 @@ void DiffView::openSideBySideDiff() {
 
     auto *hideUnchanged = new QCheckBox(tr("Hide unchanged lines"));
     hideUnchanged->setChecked(true);
-    hideUnchanged->setEnabled(!rowSets->full.isEmpty());
+    // Stays disabled until the complete files arrive from the worker below.
+    hideUnchanged->setEnabled(false);
     hideUnchanged->setToolTip(
-        tr("Show only the changed fragments or the complete old and new files"));
+        fullPatchProvider_ ? tr("Reading the complete files…")
+                           : tr("Show only the changed fragments or the complete old and "
+                                "new files"));
     controlsLayout->addWidget(hideUnchanged);
 
     auto *noEmptyLeft = new QCheckBox(tr("Do not add empty rows on the left"));
@@ -995,6 +990,32 @@ void DiffView::openSideBySideDiff() {
         newScroll->setValue(qRound(scrollRatio * newScroll->maximum()));
     };
     refreshPanes();
+
+    // Read on a worker so the dialog opens at once. The watcher belongs to
+    // the dialog, so closing it drops the result.
+    if (fullPatchProvider_) {
+        auto *fullWatcher = new QFutureWatcher<QString>(dialog);
+        connect(fullWatcher, &QFutureWatcher<QString>::finished, dialog,
+                [fullWatcher, hideUnchanged, rowSets, hiddenLinesTemplate, refreshPanes] {
+                    DiffDocument fullDocument;
+                    fullDocument.parse(fullWatcher->result());
+                    if (fullDocument.isEmpty()) {
+                        hideUnchanged->setToolTip(
+                            tr("The complete files could not be read"));
+                        return;
+                    }
+
+                    rowSets->full = sideBySideRows(fullDocument, hiddenLinesTemplate, false);
+                    hideUnchanged->setEnabled(true);
+                    hideUnchanged->setToolTip(
+                        tr("Show only the changed fragments or the complete old and new "
+                           "files"));
+                    if (!hideUnchanged->isChecked()) {
+                        refreshPanes();
+                    }
+                });
+        fullWatcher->setFuture(fullPatchProvider_());
+    }
 
     connect(oldPane->verticalScrollBar(), &QScrollBar::valueChanged,
             dialog, [newPane, noEmptyLeft](const int value) {

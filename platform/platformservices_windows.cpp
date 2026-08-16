@@ -66,6 +66,12 @@ public:
         return executable;
     }
 
+    /// Git for Windows ships the credential manager, and falls back to the
+    /// built-in store on installations without it.
+    [[nodiscard]] QString preferredCredentialHelper() const override {
+        return QStringLiteral("manager");
+    }
+
     [[nodiscard]] bool openTerminal(const QString &directory) const override {
         if (directory.isEmpty()) {
             return false;

@@ -27,8 +27,9 @@ void sortTreeEntries(QList<GitTreeEntry> &entries);
 /// keeping the path the file carried at each commit.
 [[nodiscard]] QList<GitFileRevision> parseFileHistory(const QByteArray &payload);
 
-/// Reads "git status --porcelain=v1 -z --untracked-files=all". Renames and
-/// copies spend two records: the new path first, the original path second.
+/// Reads "git status --porcelain=v2 -z --untracked-files=all". Each record
+/// opens with its kind: "1" ordinary, "2" rename or copy whose original path
+/// follows as the next record, "u" unmerged, "?" untracked.
 [[nodiscard]] QList<GitFileStatus> parseStatus(const QByteArray &payload);
 
 [[nodiscard]] QList<GitBranchInfo> parseBranches(const QString &payload);
@@ -48,7 +49,8 @@ void assignRemoteBranches(QList<GitRemoteInfo> &remotes, const QString &payload)
                                                     bool renamesCarryOriginal);
 
 /// Adds "--numstat" counts to files read from "--name-status".
-void assignChangeCounts(QList<GitChangedFile> &files, const QString &payload);
+/// Reads "--numstat -z" and fills in the line counts of @p files.
+void assignChangeCounts(QList<GitChangedFile> &files, const QByteArray &payload);
 
 /// Reads the "[ahead 1, behind 2]" field of "git for-each-ref".
 void parseTrackInformation(const QString &track, int *ahead, int *behind);

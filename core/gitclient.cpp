@@ -3,6 +3,7 @@
 #include "gitclient.h"
 
 #include "gitparse.h"
+#include "gitredact.h"
 #include "platform/platformservices.h"
 
 #include <QDir>
@@ -11,6 +12,7 @@
 #include <QSet>
 
 #include <algorithm>
+#include <utility>
 
 namespace {
 constexpr qint64 MaximumPreviewSize = 2 * 1024 * 1024;
@@ -24,19 +26,21 @@ QString GitCommandResult::outputText() const {
     return QString::fromUtf8(output);
 }
 
+// Reaches the command log and the error dialog, so credentials are stripped.
+// outputText() stays verbatim: the parsers read it.
 QString GitCommandResult::errorText() const {
     if (!processError.isEmpty()) {
-        return processError;
+        return redactCredentials(processError);
     }
 
     const QString gitError = QString::fromUtf8(errorOutput).trimmed();
     if (!gitError.isEmpty()) {
-        return gitError;
+        return redactCredentials(gitError);
     }
 
     const QString gitOutput = outputText().trimmed();
     if (!gitOutput.isEmpty()) {
-        return gitOutput;
+        return redactCredentials(gitOutput);
     }
 
     return GitClient::tr("Git exited with code %1").arg(exitCode);
@@ -55,7 +59,7 @@ QString GitCommandResult::reportText() const {
     if (!processError.isEmpty()) {
         parts.append(processError);
     }
-    return parts.join(u'\n');
+    return redactCredentials(parts.join(u'\n'));
 }
 
 bool GitFileStatus::isUntracked() const {
@@ -110,11 +114,15 @@ GitClient::GitClient(GitProcessRunner *runner)
     : runner_(runner != nullptr ? runner : defaultGitRunner()) {
 }
 
+void GitClient::setCancellation(GitCancellationPtr cancellation) {
+    cancellation_ = std::move(cancellation);
+}
+
 GitCommandResult GitClient::openRepository(const QString &directory) {
     GitCommandResult result = runner_->run(directory, {
         QStringLiteral("rev-parse"),
         QStringLiteral("--show-toplevel")
-    }, 30'000, nullptr);
+    }, 30'000, nullptr, cancellation_);
 
     if (result.succeeded()) {
         repositoryRoot_ = QDir::cleanPath(result.outputText().trimmed());
@@ -159,10 +167,22 @@ QString GitClient::gitExecutable() {
     return GitProcess::executable();
 }
 
+bool GitClient::configureCredentialHelper(const QString &helper) {
+    if (helper.isEmpty()) {
+        return false;
+    }
+    return runAt(QDir::homePath(), {
+        QStringLiteral("config"),
+        QStringLiteral("--global"),
+        QStringLiteral("credential.helper"),
+        helper
+    }).succeeded();
+}
+
 QList<GitFileStatus> GitClient::status(QString *errorMessage) const {
     const GitCommandResult result = run({
         QStringLiteral("status"),
-        QStringLiteral("--porcelain=v1"),
+        QStringLiteral("--porcelain=v2"),
         QStringLiteral("-z"),
         QStringLiteral("--untracked-files=all")
     });
@@ -497,6 +517,7 @@ QList<GitChangedFile> GitClient::commitFiles(const QString &hash) const {
         QStringLiteral("show"),
         QStringLiteral("--format="),
         QStringLiteral("--numstat"),
+        QStringLiteral("-z"),
         QStringLiteral("--find-renames"),
         QStringLiteral("--no-ext-diff"),
         QStringLiteral("-m"),
@@ -504,7 +525,7 @@ QList<GitChangedFile> GitClient::commitFiles(const QString &hash) const {
         hash
     });
     if (numStat.succeeded()) {
-        GitParse::assignChangeCounts(files, numStat.outputText());
+        GitParse::assignChangeCounts(files, numStat.output);
     }
 
     return files;
@@ -1347,7 +1368,7 @@ GitCommandResult GitClient::run(const QStringList &arguments, const int timeoutM
         result.processError = tr("No repository is open.");
         return result;
     }
-    return runner_->run(repositoryRoot_, arguments, timeoutMs, nullptr);
+    return runner_->run(repositoryRoot_, arguments, timeoutMs, nullptr, cancellation_);
 }
 
 GitCommandResult GitClient::runWithInput(const QStringList &arguments,
@@ -1357,10 +1378,10 @@ GitCommandResult GitClient::runWithInput(const QStringList &arguments,
         result.processError = tr("No repository is open.");
         return result;
     }
-    return runner_->run(repositoryRoot_, arguments, 30'000, &input);
+    return runner_->run(repositoryRoot_, arguments, 30'000, &input, cancellation_);
 }
 
 GitCommandResult GitClient::runAt(const QString &directory, const QStringList &arguments,
                                   const int timeoutMs, const QByteArray *input) {
-    return defaultGitRunner()->run(directory, arguments, timeoutMs, input);
+    return defaultGitRunner()->run(directory, arguments, timeoutMs, input, {});
 }

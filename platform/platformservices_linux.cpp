@@ -23,6 +23,17 @@ public:
         return executable;
     }
 
+    /// Distributions ship the libsecret helper separately from Git, and often
+    /// unbuilt, so it is only offered once the binary is actually there.
+    [[nodiscard]] QString preferredCredentialHelper() const override {
+        static const QString helper = firstExecutable({
+            QStringLiteral("git-credential-libsecret"),
+            QStringLiteral("/usr/lib/git-core/git-credential-libsecret"),
+            QStringLiteral("/usr/libexec/git-core/git-credential-libsecret")
+        });
+        return helper.isEmpty() ? QString() : QStringLiteral("libsecret");
+    }
+
     [[nodiscard]] bool openTerminal(const QString &directory) const override {
         if (directory.isEmpty()) {
             return false;

@@ -15,6 +15,11 @@ struct GitCommandResult {
     QByteArray output;
     QByteArray errorOutput;
     QString processError;
+    /// The invocation, stripped of credentials, shown when an operation fails.
+    QString command;
+    /// Set when the user stopped the command: not a success, but not a failure
+    /// worth an error dialog either.
+    bool cancelled = false;
 
     [[nodiscard]] bool succeeded() const;
     [[nodiscard]] QString outputText() const;
@@ -27,6 +32,10 @@ struct GitFileStatus {
     QString originalPath;
     QChar indexStatus = u' ';
     QChar workTreeStatus = u' ';
+    /// Porcelain v2 tells a submodule apart from an ordinary entry.
+    bool submodule = false;
+    /// Similarity of a rename or copy, 0 to 100.
+    int renameScore = 0;
 
     [[nodiscard]] bool isUntracked() const;
     [[nodiscard]] bool isConflicted() const;

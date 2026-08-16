@@ -4,6 +4,9 @@
 
 #include "core/gitclient.h"
 #include "core/repositorysnapshot.h"
+// Needed whole rather than forward declared: the view hands DiffView the
+// loader type it declares.
+#include "ui/diffview.h"
 
 #include <QFutureWatcher>
 #include <QModelIndex>
@@ -12,7 +15,6 @@
 #include <functional>
 
 class CommitModel;
-class DiffView;
 class FilesPage;
 class RepositoryWatcher;
 class QCheckBox;
@@ -30,6 +32,44 @@ class QTimer;
 class QToolButton;
 class QTreeWidget;
 class QTreeWidgetItem;
+
+// Results of the repository reads that back the viewing panes. Each one
+// carries the request it answers, so a result that arrives after the selection
+// has moved on can be recognised and dropped.
+
+/// One diff, of a working tree file or of a file inside a commit.
+struct PatchLoad {
+    /// Empty for a working tree diff.
+    QString hash;
+    QString path;
+    bool staged = false;
+    bool untracked = false;
+    QString patch;
+    QString error;
+};
+
+struct CommitDetailsLoad {
+    QString hash;
+    /// Filled only when the commit is missing from the loaded history and its
+    /// description cannot be built from memory.
+    QString rawDetails;
+    QList<GitChangedFile> files;
+    /// Whole-commit diff, read only when the commit touched no files.
+    QString patch;
+};
+
+struct StashLoad {
+    int index = 0;
+    QString patch;
+    QList<GitChangedFile> files;
+};
+
+struct SearchLoad {
+    GitSearchMode mode = GitSearchMode::Message;
+    QString query;
+    QList<GitCommitInfo> commits;
+    QString error;
+};
 
 /// A single repository tab: sidebar, File Status, History and Search views.
 class RepositoryView final : public QWidget {
@@ -50,6 +90,8 @@ public:
 
 public Q_SLOTS:
     void refreshAll();
+    /// Asks the running command to stop. Safe to call when nothing is running.
+    void cancelOperation();
     void focusCommitMessage();
     void checkoutInteractive();
     void discardSelectedFiles();
@@ -102,9 +144,26 @@ private:
     void refreshHistory();
     void refreshWorkingTreeDiff();
     void refreshCommitDetails();
+    void refreshCommitFileDiff();
     void filterHistoryByAuthor(const QString &text);
     void jumpToRevision(const QString &revision);
     void showPage(Page page);
+
+    // --- Repository reads -------------------------------------------------
+    // Every read below runs on a worker thread with its own copy of the
+    // client. The appliers compare the answered request against the current
+    // selection and drop anything the user has already moved past.
+    void applyWorkingTreeDiff(const PatchLoad &load);
+    void applyCommitFileDiff(const PatchLoad &load);
+    void applyCommitDetails(const CommitDetailsLoad &load);
+    void applyStash(const StashLoad &load);
+    void applySearch(const SearchLoad &load);
+    /// Builds the loader DiffView calls when the user asks for full context.
+    [[nodiscard]] DiffView::FullPatchProvider fullDiffProvider(const PatchLoad &request) const;
+    /// Shows @p message only if @p watcher is still running after a short
+    /// grace period, so quick reads do not flash a placeholder.
+    void showLoadingLater(const QFutureWatcherBase *watcher, DiffView *view,
+                          const QString &message);
 
     // --- File status ------------------------------------------------------
     void populateFileTree(QTreeWidget *tree, const QList<GitFileStatus> &files, bool staged);
@@ -131,11 +190,18 @@ private:
     void runSearch();
 
     // --- Operations -------------------------------------------------------
-    bool runOperation(const QString &title, const std::function<GitCommandResult()> &operation,
+    /// Carried out on a worker with its own copy of the client, so it must not
+    /// reach back into the view.
+    using GitOperation = std::function<GitCommandResult(GitClient &)>;
+    /// Runs on the UI thread once the operation has finished.
+    using OperationContinuation = std::function<void()>;
+
+    void runOperation(const QString &title, GitOperation operation,
+                      OperationContinuation onSuccess = {},
+                      OperationContinuation onFailure = {},
                       bool refresh = true);
-    void runRemoteOperation(const QString &title,
-                            const std::function<GitCommandResult()> &operation);
-    void finishRemoteOperation();
+    void runRemoteOperation(const QString &title, GitOperation operation);
+    void finishOperation();
 
     // --- Periodic remote check --------------------------------------------
     [[nodiscard]] QString currentUpstream() const;
@@ -217,10 +283,28 @@ private:
     bool hasStagedChanges_ = false;
     bool treeMode_ = false;
     bool operationInProgress_ = false;
-    bool blockingOperation_ = false;
     bool pushAfterCommitPending_ = false;
     QString operationTitle_;
     QFutureWatcher<GitCommandResult> *operationWatcher_ = nullptr;
+    OperationContinuation operationOnSuccess_;
+    OperationContinuation operationOnFailure_;
+    bool operationRefresh_ = true;
+    /// Held by the view while the worker holds it through its client copy.
+    GitCancellationPtr operationCancellation_;
+
+    QFutureWatcher<PatchLoad> *diffWatcher_ = nullptr;
+    QFutureWatcher<PatchLoad> *commitPatchWatcher_ = nullptr;
+    QFutureWatcher<CommitDetailsLoad> *commitDetailsWatcher_ = nullptr;
+    QFutureWatcher<StashLoad> *stashWatcher_ = nullptr;
+    QFutureWatcher<SearchLoad> *searchWatcher_ = nullptr;
+    // What each pane is currently meant to show. A result that no longer
+    // matches belongs to a selection the user has already left.
+    PatchLoad diffRequest_;
+    PatchLoad commitPatchRequest_;
+    QString commitDetailsHash_;
+    SearchLoad searchRequest_;
+    /// The stash on screen, or -1 when the pane shows a commit.
+    int stashRequest_ = -1;
 
     QTimer *autoFetchTimer_ = nullptr;
     QFutureWatcher<GitCommandResult> *autoFetchWatcher_ = nullptr;

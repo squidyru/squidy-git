@@ -58,8 +58,12 @@ add_library(squidygit_core STATIC
         core/gitclient.h
         core/gitparse.cpp
         core/gitparse.h
+        core/gitaskpass.cpp
+        core/gitaskpass.h
         core/gitprocess.cpp
         core/gitprocess.h
+        core/gitredact.cpp
+        core/gitredact.h
         core/gittypes.h
         core/diffdocument.cpp
         core/diffdocument.h
@@ -91,6 +95,8 @@ add_library(squidygit_ui STATIC
         ui/flatcombobox.h
         ui/commitgraph.cpp
         ui/commitgraph.h
+        ui/credentialprompter.cpp
+        ui/credentialprompter.h
         ui/dialogs.cpp
         ui/dialogs.h
         ui/icons.cpp

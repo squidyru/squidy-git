@@ -3,16 +3,19 @@
 #include "core/gitclient.h"
 #include "ui/commitgraph.h"
 #include "ui/commitmodel.h"
+#include "ui/diffview.h"
 #include "ui/repositoryview.h"
 
 #include <QAbstractItemModel>
 #include <QDir>
 #include <QFile>
 #include <QSignalSpy>
+#include <QSplitter>
 #include <QTemporaryDir>
 #include <QTest>
 #include <QTextStream>
 #include <QTreeView>
+#include <QTreeWidget>
 
 // RepositoryView integration tests.
 class TestRepositoryView final : public QObject {
@@ -28,6 +31,12 @@ private Q_SLOTS:
     void feedsTheHistoryViewFromTheModel();
     void countsIncomingCommitsWithoutUserAction();
     void checksEveryOpenTabAndNotJustTheActiveOne();
+    void keepsTheInterfaceLiveWhileAnOperationRuns();
+    void refusesToStartASecondOperation();
+    void keepsEveryPaneReachable();
+    void readsTheWorkingTreeDiffOffTheUiThread();
+    void dropsADiffTheSelectionHasMovedPast();
+    void listsCommitFilesWithoutBlocking();
 
 private:
     void writeFile(const QString &name, const QString &contents) const;
@@ -230,6 +239,163 @@ void TestRepositoryView::checksEveryOpenTabAndNotJustTheActiveOne() {
     QVERIFY(second.isValid());
 
     QTRY_VERIFY_WITH_TIMEOUT(first.behindCount() == 1 && second.behindCount() == 1, 60'000);
+}
+
+// Operations run on a worker. One running inline again would stop the event
+// loop and with it the busy state this waits for.
+void TestRepositoryView::keepsTheInterfaceLiveWhileAnOperationRuns() {
+    QTemporaryDir remote;
+    QVERIFY(remote.isValid());
+    putRemoteAhead(directory_->path(), remote.path());
+    QVERIFY(!QTest::currentTestFailed());
+
+    RepositoryView view(directory_->path());
+    QVERIFY(view.isValid());
+    QSignalSpy refreshed(&view, &RepositoryView::repositoryChanged);
+    QVERIFY(refreshed.wait(10'000));
+
+    QSignalSpy busy(&view, &RepositoryView::busyChanged);
+    view.startFetch();
+
+    // Announced before the command finishes, which is only observable while
+    // the event loop still turns.
+    QCOMPARE(busy.count(), 1);
+    QVERIFY(busy.constFirst().constFirst().toBool());
+    QVERIFY(view.isBusy());
+
+    QTRY_VERIFY_WITH_TIMEOUT(!view.isBusy(), 30'000);
+    QCOMPARE(busy.count(), 2);
+    QVERIFY(!busy.constLast().constFirst().toBool());
+}
+
+// Two commands over one repository would collide over the index lock.
+void TestRepositoryView::refusesToStartASecondOperation() {
+    QTemporaryDir remote;
+    QVERIFY(remote.isValid());
+    putRemoteAhead(directory_->path(), remote.path());
+    QVERIFY(!QTest::currentTestFailed());
+
+    RepositoryView view(directory_->path());
+    QVERIFY(view.isValid());
+    QSignalSpy refreshed(&view, &RepositoryView::repositoryChanged);
+    QVERIFY(refreshed.wait(10'000));
+
+    QSignalSpy busy(&view, &RepositoryView::busyChanged);
+    view.startFetch();
+    view.startFetch();
+
+    // The second request is turned away rather than queued behind the first.
+    QCOMPARE(busy.count(), 1);
+    QTRY_VERIFY_WITH_TIMEOUT(!view.isBusy(), 30'000);
+    QCOMPARE(busy.count(), 2);
+}
+
+namespace {
+
+// DiffView names itself and the theme keys its padding off that name, so the
+// panel around it carries the name looked up here.
+DiffView *workingTreeDiff(const RepositoryView &view) {
+    auto *panel = view.findChild<QWidget *>(QStringLiteral("workingTreeDiffPanel"));
+    return panel != nullptr ? panel->findChild<DiffView *>() : nullptr;
+}
+
+// Selects the row named @p path in the unstaged file list.
+bool selectUnstagedFile(const RepositoryView &view, const QString &path) {
+    auto *tree = view.findChild<QTreeWidget *>(QStringLiteral("unstagedTree"));
+    if (tree == nullptr) {
+        return false;
+    }
+    for (int row = 0; row < tree->topLevelItemCount(); ++row) {
+        QTreeWidgetItem *item = tree->topLevelItem(row);
+        if (item->text(0).contains(path)) {
+            tree->setCurrentItem(item);
+            item->setSelected(true);
+            return true;
+        }
+    }
+    return false;
+}
+
+}
+
+// A pane shut against a zero width handle can never be pulled back. Either
+// half alone is fine; only the pair is a fault.
+void TestRepositoryView::keepsEveryPaneReachable() {
+    RepositoryView view(directory_->path());
+    QVERIFY(view.isValid());
+    QSignalSpy refreshed(&view, &RepositoryView::repositoryChanged);
+    QVERIFY(refreshed.wait(10'000));
+
+    const QList<QSplitter *> splitters = view.findChildren<QSplitter *>();
+    QVERIFY2(splitters.size() >= 5, "the pages should be built by now");
+
+    for (const QSplitter *splitter : splitters) {
+        const bool reachable = !splitter->childrenCollapsible()
+                               || splitter->handleWidth() > 0;
+        const QString name = splitter->objectName().isEmpty()
+                                 ? QStringLiteral("<unnamed>")
+                                 : splitter->objectName();
+        QVERIFY2(reachable,
+                 qPrintable(QStringLiteral("%1 can hide a pane with no way back")
+                                .arg(name)));
+    }
+}
+
+// Read on a worker, so it cannot be on screen when the handler returns.
+void TestRepositoryView::readsTheWorkingTreeDiffOffTheUiThread() {
+    writeFile(QStringLiteral("first.txt"), QStringLiteral("one\nsecond line\n"));
+
+    RepositoryView view(directory_->path());
+    QVERIFY(view.isValid());
+    QSignalSpy refreshed(&view, &RepositoryView::repositoryChanged);
+    QVERIFY(refreshed.wait(10'000));
+
+    DiffView *diff = workingTreeDiff(view);
+    QVERIFY(diff != nullptr);
+    QVERIFY(selectUnstagedFile(view, QStringLiteral("first.txt")));
+
+    QVERIFY2(!diff->hasPatch(), "the diff was read inline instead of on a worker");
+    QTRY_VERIFY_WITH_TIMEOUT(diff->hasPatch(), 15'000);
+    QVERIFY(diff->toPlainText().contains(QStringLiteral("second line")));
+}
+
+// Moving on before a read lands must not leave the old diff on screen.
+void TestRepositoryView::dropsADiffTheSelectionHasMovedPast() {
+    writeFile(QStringLiteral("alpha.txt"), QStringLiteral("alpha contents\n"));
+    writeFile(QStringLiteral("beta.txt"), QStringLiteral("beta contents\n"));
+
+    RepositoryView view(directory_->path());
+    QVERIFY(view.isValid());
+    QSignalSpy refreshed(&view, &RepositoryView::repositoryChanged);
+    QVERIFY(refreshed.wait(10'000));
+
+    DiffView *diff = workingTreeDiff(view);
+    QVERIFY(diff != nullptr);
+
+    // Two selections back to back: the first read is still in flight.
+    QVERIFY(selectUnstagedFile(view, QStringLiteral("alpha.txt")));
+    QVERIFY(selectUnstagedFile(view, QStringLiteral("beta.txt")));
+
+    QTRY_VERIFY_WITH_TIMEOUT(diff->hasPatch(), 15'000);
+    const QString shown = diff->toPlainText();
+    QVERIFY2(shown.contains(QStringLiteral("beta")), "the last selection is not the one shown");
+    QVERIFY2(!shown.contains(QStringLiteral("alpha contents")),
+             "a superseded diff reached the pane");
+}
+
+void TestRepositoryView::listsCommitFilesWithoutBlocking() {
+    RepositoryView view(directory_->path());
+    QVERIFY(view.isValid());
+    QSignalSpy refreshed(&view, &RepositoryView::repositoryChanged);
+    QVERIFY(refreshed.wait(10'000));
+
+    auto *files = view.findChild<QTreeWidget *>(QStringLiteral("commitFilesTree"));
+    QVERIFY(files != nullptr);
+
+    // The first commit is selected as the history arrives; its file list is
+    // filled by the worker rather than during the selection handler.
+    QTRY_VERIFY_WITH_TIMEOUT(files->topLevelItemCount() == 1, 15'000);
+    QCOMPARE(files->topLevelItem(0)->text(0), QStringLiteral("first.txt"));
 }
 
 QTEST_MAIN(TestRepositoryView)

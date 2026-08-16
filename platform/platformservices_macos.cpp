@@ -25,6 +25,11 @@ public:
         return executable;
     }
 
+    /// Bundled with Git on macOS, so it is always available.
+    [[nodiscard]] QString preferredCredentialHelper() const override {
+        return QStringLiteral("osxkeychain");
+    }
+
     [[nodiscard]] bool openTerminal(const QString &directory) const override {
         if (directory.isEmpty()) {
             return false;

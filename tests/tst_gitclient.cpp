@@ -17,11 +17,13 @@ namespace {
 class RecordedRunner final : public GitProcessRunner {
 public:
     GitCommandResult run(const QString &workingDirectory, const QStringList &arguments,
-                         const int timeoutMs, const QByteArray *input) override {
+                         const int timeoutMs, const QByteArray *input,
+                         const GitCancellationPtr &cancellation) override {
         lastDirectory = workingDirectory;
         lastArguments = arguments;
         lastTimeoutMs = timeoutMs;
         lastInput = input != nullptr ? *input : QByteArray();
+        lastCancellation = cancellation;
         ++invocations;
         return next;
     }
@@ -30,6 +32,7 @@ public:
     QStringList lastArguments;
     int lastTimeoutMs = 0;
     QByteArray lastInput;
+    GitCancellationPtr lastCancellation;
     int invocations = 0;
     GitCommandResult next;
 };
@@ -149,11 +152,12 @@ void TestGitClient::asksForMachineReadableStatus() {
     QVERIFY(client.openRepository(QStringLiteral("/somewhere")).succeeded());
     QCOMPARE(client.repositoryRoot(), QStringLiteral("/somewhere"));
 
-    runner.next = succeededWith(QByteArray("?? new.txt\0", 11));
+    // Porcelain v2 introduces every record by its kind: "?" is untracked.
+    runner.next = succeededWith(QByteArray("? new.txt\0", 10));
     const QList<GitFileStatus> files = client.status();
 
     QVERIFY(runner.lastArguments.contains(QStringLiteral("status")));
-    QVERIFY(runner.lastArguments.contains(QStringLiteral("--porcelain=v1")));
+    QVERIFY(runner.lastArguments.contains(QStringLiteral("--porcelain=v2")));
     QVERIFY(runner.lastArguments.contains(QStringLiteral("-z")));
     QCOMPARE(files.size(), 1);
     QCOMPARE(files.constFirst().path, QStringLiteral("new.txt"));

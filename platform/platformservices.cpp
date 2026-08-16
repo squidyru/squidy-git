@@ -15,6 +15,10 @@ PlatformServices::~PlatformServices() = default;
 void PlatformServices::configureApplication() const {
 }
 
+QString PlatformServices::preferredCredentialHelper() const {
+    return {};
+}
+
 bool PlatformServices::openPath(const QString &path) const {
     return !path.isEmpty() && QDesktopServices::openUrl(QUrl::fromLocalFile(path));
 }

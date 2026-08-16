@@ -327,6 +327,18 @@ void MainWindow::buildInterface() {
     busyIndicator_->setTextVisible(false);
     busyIndicator_->hide();
     statusBar()->addPermanentWidget(busyIndicator_);
+
+    // The way out of a command that waits on an unreachable remote.
+    cancelOperationButton_ = new QToolButton;
+    cancelOperationButton_->setText(tr("Stop"));
+    cancelOperationButton_->setToolTip(tr("Stop the running operation"));
+    cancelOperationButton_->hide();
+    connect(cancelOperationButton_, &QToolButton::clicked, this, [this] {
+        if (RepositoryView *view = currentRepository()) {
+            view->cancelOperation();
+        }
+    });
+    statusBar()->addPermanentWidget(cancelOperationButton_);
 }
 
 void MainWindow::buildToolbar() {
@@ -1152,6 +1164,7 @@ bool MainWindow::openRepository(const QString &path, const bool activate) {
     connect(view, &RepositoryView::busyChanged, this, [this, view](const bool busy) {
         if (view == currentRepository()) {
             busyIndicator_->setVisible(busy);
+            cancelOperationButton_->setVisible(busy);
             updateActions();
         }
     });
@@ -1379,6 +1392,7 @@ void MainWindow::updateActions() {
     }
     closeTabAction_->setEnabled(hasRepository);
     busyIndicator_->setVisible(busy);
+    cancelOperationButton_->setVisible(busy);
 
     // A clean working tree cannot be stashed or discarded. The interface makes
     // this state immediately visible by dimming both toolbar commands.

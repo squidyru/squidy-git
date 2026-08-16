@@ -674,7 +674,8 @@ QString Theme::styleSheet() const {
         }
         QGroupBox::title { subcontrol-origin: margin; left: 10px; padding: 0 4px; }
 
-        /* Zero-width handles remove the gutter while retaining a resize hit area. */
+        /* Handles take no room, so the panes meet flush. Nothing may be
+           dragged shut against them: see RepositorySplitterWidth. */
         QSplitter::handle {
             background: transparent;
             border: none;

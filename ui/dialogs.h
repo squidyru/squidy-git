@@ -15,7 +15,6 @@ class QLabel;
 class QLineEdit;
 class QListWidget;
 class QPlainTextEdit;
-class QProcess;
 class QProgressBar;
 class QPushButton;
 class QRadioButton;
@@ -35,7 +34,7 @@ private:
     void updateSuggestedDirectory();
     void startClone();
     void appendOutput(const QString &text);
-    void finishClone(int exitCode);
+    void finishClone(const GitCommandResult &result);
 
     QLineEdit *sourceEdit_ = nullptr;
     QLineEdit *destinationEdit_ = nullptr;
@@ -44,7 +43,8 @@ private:
     QProgressBar *progress_ = nullptr;
     QPushButton *cloneButton_ = nullptr;
     QDialogButtonBox *buttons_ = nullptr;
-    QProcess *process_ = nullptr;
+    /// Shared with the rest of the application, credentials already stripped.
+    GitStreamingProcess *process_ = nullptr;
     QString clonedPath_;
 };
 

@@ -5,6 +5,7 @@
 #include "core/diffdocument.h"
 
 #include <QByteArray>
+#include <QFuture>
 #include <QList>
 #include <QPlainTextEdit>
 #include <QString>
@@ -31,11 +32,14 @@ public:
         Staged
     };
 
+    /// Reads the same diff with full context, once per patch when the side by
+    /// side view opens. Answered on a worker so the dialog appears at once.
+    using FullPatchProvider = std::function<QFuture<QString>()>;
+
     explicit DiffView(QWidget *parent = nullptr);
 
     void setMode(Mode mode);
-    void setPatch(const QString &patch,
-                  std::function<QString()> fullPatchProvider = {});
+    void setPatch(const QString &patch, FullPatchProvider fullPatchProvider = {});
     void setPlaceholderMessage(const QString &message);
     [[nodiscard]] bool hasPatch() const;
     [[nodiscard]] int hunkCountAtCursor() const;
@@ -64,5 +68,5 @@ private:
     Mode mode_ = Mode::ReadOnly;
     QWidget *gutter_ = nullptr;
     QString placeholderMessage_;
-    std::function<QString()> fullPatchProvider_;
+    FullPatchProvider fullPatchProvider_;
 };

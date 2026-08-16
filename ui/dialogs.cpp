@@ -106,8 +106,8 @@ CloneDialog::CloneDialog(QWidget *parent)
     connect(sourceEdit_, &QLineEdit::textChanged, this, [this] { updateSuggestedDirectory(); });
     connect(cloneButton_, &QPushButton::clicked, this, [this] { startClone(); });
     connect(buttons_, &QDialogButtonBox::rejected, this, [this] {
-        if (process_ != nullptr && process_->state() != QProcess::NotRunning) {
-            process_->kill();
+        if (process_ != nullptr) {
+            process_->cancel();
         }
         reject();
     });
@@ -154,12 +154,6 @@ void CloneDialog::startClone() {
         return;
     }
 
-    const QString executable = GitClient::gitExecutable();
-    if (executable.isEmpty()) {
-        appendOutput(tr("Git was not found in PATH."));
-        return;
-    }
-
     QStringList arguments{QStringLiteral("clone"), QStringLiteral("--progress")};
     if (recursiveCheck_->isChecked()) {
         arguments.append(QStringLiteral("--recurse-submodules"));
@@ -167,34 +161,23 @@ void CloneDialog::startClone() {
     arguments.append(source);
     arguments.append(destination);
 
-    process_ = new QProcess(this);
-    QProcessEnvironment environment = QProcessEnvironment::systemEnvironment();
-    environment.insert(QStringLiteral("GIT_TERMINAL_PROMPT"), QStringLiteral("0"));
-    environment.insert(QStringLiteral("LC_ALL"), QStringLiteral("C.UTF-8"));
-    process_->setProcessEnvironment(environment);
-    process_->setProgram(executable);
-    process_->setArguments(arguments);
-
-    connect(process_, &QProcess::readyReadStandardOutput, this, [this] {
-        appendOutput(QString::fromUtf8(process_->readAllStandardOutput()));
-    });
-    connect(process_, &QProcess::readyReadStandardError, this, [this] {
-        appendOutput(QString::fromUtf8(process_->readAllStandardError()));
-    });
-    connect(process_, &QProcess::finished, this,
-            [this](const int exitCode) { finishClone(exitCode); });
-    connect(process_, &QProcess::errorOccurred, this, [this] {
-        appendOutput(process_->errorString());
-        finishClone(-1);
-    });
+    if (process_ == nullptr) {
+        process_ = new GitStreamingProcess(this);
+        connect(process_, &GitStreamingProcess::outputReceived, this,
+                [this](const QString &text) { appendOutput(text); });
+        connect(process_, &GitStreamingProcess::finished, this,
+                [this](const GitCommandResult &result) { finishClone(result); });
+    }
 
     clonedPath_ = QDir::cleanPath(destination);
     cloneButton_->setEnabled(false);
     sourceEdit_->setEnabled(false);
     destinationEdit_->setEnabled(false);
     progress_->show();
-    appendOutput(QStringLiteral("git %1\n").arg(arguments.join(u' ')));
-    process_->start();
+    // The URL may carry a token, so the echoed command line is stripped too.
+    appendOutput(GitStreamingProcess::describe(arguments) + u'\n');
+    // No repository yet: only the parent of the destination surely exists.
+    process_->start(QFileInfo(destination).absolutePath(), arguments);
 }
 
 void CloneDialog::appendOutput(const QString &text) {
@@ -206,19 +189,28 @@ void CloneDialog::appendOutput(const QString &text) {
     outputView_->appendPlainText(normalized.trimmed());
 }
 
-void CloneDialog::finishClone(const int exitCode) {
+void CloneDialog::finishClone(const GitCommandResult &result) {
     progress_->hide();
     cloneButton_->setEnabled(true);
     sourceEdit_->setEnabled(true);
     destinationEdit_->setEnabled(true);
 
-    if (exitCode == 0) {
+    if (result.succeeded()) {
         appendOutput(tr("\nDone."));
         accept();
-    } else {
-        clonedPath_.clear();
-        appendOutput(tr("\nCloning failed (code %1).").arg(exitCode));
+        return;
     }
+
+    clonedPath_.clear();
+    if (result.cancelled) {
+        appendOutput(tr("\nCloning was cancelled."));
+        return;
+    }
+    if (!result.processError.isEmpty()) {
+        appendOutput(u'\n' + result.errorText());
+        return;
+    }
+    appendOutput(tr("\nCloning failed (code %1).").arg(result.exitCode));
 }
 
 BranchDialog::BranchDialog(const QString &startPointDescription, QWidget *parent)

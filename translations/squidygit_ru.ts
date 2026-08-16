@@ -4,32 +4,32 @@
 <context>
     <name>BranchDialog</name>
     <message>
-        <location filename="../ui/dialogs.cpp" line="226"/>
+        <location filename="../ui/dialogs.cpp" line="219"/>
         <source>New Branch</source>
         <translation>Новая ветка</translation>
     </message>
     <message>
-        <location filename="../ui/dialogs.cpp" line="232"/>
+        <location filename="../ui/dialogs.cpp" line="225"/>
         <source>feature/new-feature</source>
         <translation>feature/новая-функция</translation>
     </message>
     <message>
-        <location filename="../ui/dialogs.cpp" line="233"/>
+        <location filename="../ui/dialogs.cpp" line="226"/>
         <source>Branch name:</source>
         <translation>Имя ветки:</translation>
     </message>
     <message>
-        <location filename="../ui/dialogs.cpp" line="234"/>
+        <location filename="../ui/dialogs.cpp" line="227"/>
         <source>Create from:</source>
         <translation>Создать от:</translation>
     </message>
     <message>
-        <location filename="../ui/dialogs.cpp" line="237"/>
+        <location filename="../ui/dialogs.cpp" line="230"/>
         <source>Switch to the new branch</source>
         <translation>Переключиться на новую ветку</translation>
     </message>
     <message>
-        <location filename="../ui/dialogs.cpp" line="242"/>
+        <location filename="../ui/dialogs.cpp" line="235"/>
         <source>Create Branch</source>
         <translation>Создать ветку</translation>
     </message>
@@ -92,19 +92,25 @@
         <translation>Папка %1 не пуста.</translation>
     </message>
     <message>
-        <location filename="../ui/dialogs.cpp" line="159"/>
         <source>Git was not found in PATH.</source>
-        <translation>Git не найден в PATH.</translation>
+        <translation type="vanished">Git не найден в PATH.</translation>
     </message>
     <message>
-        <location filename="../ui/dialogs.cpp" line="216"/>
+        <location filename="../ui/dialogs.cpp" line="200"/>
         <source>
 Done.</source>
         <translation>
 Готово.</translation>
     </message>
     <message>
-        <location filename="../ui/dialogs.cpp" line="220"/>
+        <location filename="../ui/dialogs.cpp" line="207"/>
+        <source>
+Cloning was cancelled.</source>
+        <translation>
+Клонирование отменено.</translation>
+    </message>
+    <message>
+        <location filename="../ui/dialogs.cpp" line="214"/>
         <source>
 Cloning failed (code %1).</source>
         <translation>
@@ -112,34 +118,52 @@ Cloning failed (code %1).</source>
     </message>
 </context>
 <context>
+    <name>CredentialDialog</name>
+    <message>
+        <location filename="../ui/credentialprompter.cpp" line="62"/>
+        <source>Git credentials</source>
+        <translation>Учётные данные Git</translation>
+    </message>
+    <message>
+        <location filename="../ui/credentialprompter.cpp" line="79"/>
+        <source>Remember using the system credential store (%1)</source>
+        <translation>Запомнить в системном хранилище (%1)</translation>
+    </message>
+    <message>
+        <location filename="../ui/credentialprompter.cpp" line="81"/>
+        <source>Configures Git to store the credential itself. Without this the answer is kept only until SquidyGit is closed.</source>
+        <translation>Git будет хранить учётные данные сам. Без этого ответ помнится только до закрытия SquidyGit.</translation>
+    </message>
+</context>
+<context>
     <name>DiffView</name>
     <message>
-        <location filename="../ui/diffview.cpp" line="1042"/>
+        <location filename="../ui/diffview.cpp" line="1063"/>
         <source>Unstage hunk</source>
         <translation>Убрать ханк из индекса</translation>
     </message>
     <message>
-        <location filename="../ui/diffview.cpp" line="1043"/>
+        <location filename="../ui/diffview.cpp" line="1064"/>
         <source>Stage hunk</source>
         <translation>Добавить ханк в индекс</translation>
     </message>
     <message>
-        <location filename="../ui/diffview.cpp" line="1048"/>
+        <location filename="../ui/diffview.cpp" line="1069"/>
         <source>Unstage selected lines</source>
         <translation>Убрать выбранные строки</translation>
     </message>
     <message>
-        <location filename="../ui/diffview.cpp" line="1049"/>
+        <location filename="../ui/diffview.cpp" line="1070"/>
         <source>Stage selected lines</source>
         <translation>Добавить выбранные строки</translation>
     </message>
     <message>
-        <location filename="../ui/diffview.cpp" line="1058"/>
+        <location filename="../ui/diffview.cpp" line="1079"/>
         <source>Discard hunk</source>
         <translation>Откатить ханк</translation>
     </message>
     <message>
-        <location filename="../ui/diffview.cpp" line="1061"/>
+        <location filename="../ui/diffview.cpp" line="1082"/>
         <source>Discard selected lines</source>
         <translation>Откатить выбранные строки</translation>
     </message>
@@ -159,17 +183,22 @@ Cloning failed (code %1).</source>
         <translation>Скрыто строк: %1</translation>
     </message>
     <message>
-        <location filename="../ui/diffview.cpp" line="968"/>
+        <location filename="../ui/diffview.cpp" line="963"/>
         <source>Old version</source>
         <translation>Старая версия</translation>
     </message>
     <message>
-        <location filename="../ui/diffview.cpp" line="969"/>
+        <location filename="../ui/diffview.cpp" line="964"/>
         <source>New version</source>
         <translation>Новая версия</translation>
     </message>
     <message>
-        <location filename="../ui/diffview.cpp" line="1029"/>
+        <location filename="../ui/diffview.cpp" line="1004"/>
+        <source>The complete files could not be read</source>
+        <translation>Не удалось прочитать файлы целиком</translation>
+    </message>
+    <message>
+        <location filename="../ui/diffview.cpp" line="1050"/>
         <source>Open Diff Window</source>
         <translation>Открыть окно Diff</translation>
     </message>
@@ -194,22 +223,28 @@ Cloning failed (code %1).</source>
         <translation>Закрыть</translation>
     </message>
     <message>
-        <location filename="../ui/diffview.cpp" line="932"/>
+        <location filename="../ui/diffview.cpp" line="924"/>
         <source>Hide unchanged lines</source>
         <translation>Скрывать неизменённые строки</translation>
     </message>
     <message>
-        <location filename="../ui/diffview.cpp" line="936"/>
+        <location filename="../ui/diffview.cpp" line="929"/>
+        <source>Reading the complete files…</source>
+        <translation>Чтение файлов целиком…</translation>
+    </message>
+    <message>
+        <location filename="../ui/diffview.cpp" line="930"/>
+        <location filename="../ui/diffview.cpp" line="1011"/>
         <source>Show only the changed fragments or the complete old and new files</source>
         <translation>Показывать только изменённые фрагменты или полные старую и новую версии файла</translation>
     </message>
     <message>
-        <location filename="../ui/diffview.cpp" line="939"/>
+        <location filename="../ui/diffview.cpp" line="934"/>
         <source>Do not add empty rows on the left</source>
         <translation>Не добавлять пустые строки слева</translation>
     </message>
     <message>
-        <location filename="../ui/diffview.cpp" line="941"/>
+        <location filename="../ui/diffview.cpp" line="936"/>
         <source>Do not insert empty rows on the left to align added lines</source>
         <translation>Не вставлять пустые строки слева для выравнивания добавленных строк</translation>
     </message>
@@ -520,112 +555,131 @@ Cloning failed (code %1).</source>
 <context>
     <name>GitClient</name>
     <message>
-        <location filename="../core/gitclient.cpp" line="42"/>
+        <location filename="../core/gitclient.cpp" line="46"/>
         <source>Git exited with code %1</source>
         <translation>Git завершился с кодом %1</translation>
     </message>
     <message>
-        <location filename="../core/gitclient.cpp" line="96"/>
+        <location filename="../core/gitclient.cpp" line="100"/>
         <source>Merge in progress</source>
         <translation>Слияние в процессе</translation>
     </message>
     <message>
-        <location filename="../core/gitclient.cpp" line="97"/>
+        <location filename="../core/gitclient.cpp" line="101"/>
         <source>Rebase in progress</source>
         <translation>Rebase в процессе</translation>
     </message>
     <message>
-        <location filename="../core/gitclient.cpp" line="98"/>
+        <location filename="../core/gitclient.cpp" line="102"/>
         <source>Cherry-pick in progress</source>
         <translation>Cherry-pick в процессе</translation>
     </message>
     <message>
-        <location filename="../core/gitclient.cpp" line="99"/>
+        <location filename="../core/gitclient.cpp" line="103"/>
         <source>Revert in progress</source>
         <translation>Revert в процессе</translation>
     </message>
     <message>
-        <location filename="../core/gitclient.cpp" line="100"/>
+        <location filename="../core/gitclient.cpp" line="104"/>
         <source>Bisect in progress</source>
         <translation>Bisect в процессе</translation>
     </message>
     <message>
-        <location filename="../core/gitclient.cpp" line="101"/>
+        <location filename="../core/gitclient.cpp" line="105"/>
         <source>Detached HEAD</source>
         <translation>Отсоединённый HEAD</translation>
     </message>
     <message>
-        <location filename="../core/gitclient.cpp" line="451"/>
+        <location filename="../core/gitclient.cpp" line="471"/>
         <source>Commit “%1” was not found.</source>
         <translation>Коммит «%1» не найден.</translation>
     </message>
     <message>
-        <location filename="../core/gitclient.cpp" line="751"/>
+        <location filename="../core/gitclient.cpp" line="772"/>
         <source>“%1” cannot be read.</source>
         <translation>«%1» не удалось прочитать.</translation>
     </message>
     <message>
-        <location filename="../core/gitclient.cpp" line="806"/>
+        <location filename="../core/gitclient.cpp" line="827"/>
         <source>The file no longer exists: %1</source>
         <translation>Файл больше не существует: %1</translation>
     </message>
     <message>
-        <location filename="../core/gitclient.cpp" line="812"/>
+        <location filename="../core/gitclient.cpp" line="833"/>
         <source>The new file is too large to preview (%1 MB).</source>
         <translation>Новый файл слишком велик для предпросмотра (%1 МБ).</translation>
     </message>
     <message>
-        <location filename="../core/gitclient.cpp" line="904"/>
+        <location filename="../core/gitclient.cpp" line="925"/>
         <source>No files are selected for staging.</source>
         <translation>Не выбраны файлы для добавления в индекс.</translation>
     </message>
     <message>
-        <location filename="../core/gitclient.cpp" line="916"/>
+        <location filename="../core/gitclient.cpp" line="937"/>
         <source>No files are selected for unstaging.</source>
         <translation>Не выбраны файлы для удаления из индекса.</translation>
     </message>
     <message>
-        <location filename="../core/gitclient.cpp" line="958"/>
-        <location filename="../core/gitclient.cpp" line="1017"/>
+        <location filename="../core/gitclient.cpp" line="979"/>
+        <location filename="../core/gitclient.cpp" line="1038"/>
         <source>No files are selected.</source>
         <translation>Не выбраны файлы.</translation>
     </message>
     <message>
-        <location filename="../core/gitclient.cpp" line="1037"/>
+        <location filename="../core/gitclient.cpp" line="1058"/>
         <source>There is nothing to add to .gitignore.</source>
         <translation>Нечего добавлять в .gitignore.</translation>
     </message>
     <message>
-        <location filename="../core/gitclient.cpp" line="1065"/>
+        <location filename="../core/gitclient.cpp" line="1086"/>
         <source>Updated .gitignore</source>
         <translation>Обновлён .gitignore</translation>
     </message>
     <message>
-        <location filename="../core/gitclient.cpp" line="1110"/>
+        <location filename="../core/gitclient.cpp" line="1131"/>
         <source>Invalid branch name: %1</source>
         <translation>Недопустимое имя ветки: %1</translation>
     </message>
     <message>
-        <location filename="../core/gitclient.cpp" line="1201"/>
-        <location filename="../core/gitclient.cpp" line="1223"/>
+        <location filename="../core/gitclient.cpp" line="1222"/>
+        <location filename="../core/gitclient.cpp" line="1244"/>
         <source>There is no operation in progress.</source>
         <translation>Нет незавершённой операции.</translation>
     </message>
     <message>
-        <location filename="../core/gitclient.cpp" line="1347"/>
-        <location filename="../core/gitclient.cpp" line="1357"/>
+        <location filename="../core/gitclient.cpp" line="1368"/>
+        <location filename="../core/gitclient.cpp" line="1378"/>
         <source>No repository is open.</source>
         <translation>Репозиторий не открыт.</translation>
     </message>
     <message>
-        <location filename="../core/gitprocess.cpp" line="25"/>
+        <location filename="../core/gitprocess.cpp" line="60"/>
         <source>Git was not found. Install Git and add it to the system PATH.</source>
         <translation>Git не найден. Установите Git и добавьте его в системный PATH.</translation>
     </message>
     <message>
-        <location filename="../core/gitprocess.cpp" line="65"/>
+        <location filename="../core/gitprocess.cpp" line="68"/>
+        <location filename="../core/gitprocess.cpp" line="109"/>
+        <source>The operation was cancelled.</source>
+        <translation>Операция отменена.</translation>
+    </message>
+    <message>
+        <location filename="../core/gitprocess.cpp" line="110"/>
         <source>Git did not finish the operation in time.</source>
         <translation>Git не завершил операцию за отведённое время.</translation>
+    </message>
+</context>
+<context>
+    <name>GitStreamingProcess</name>
+    <message>
+        <location filename="../core/gitprocess.cpp" line="155"/>
+        <source>Git was not found. Install Git and add it to the system PATH.</source>
+        <translation>Git не найден. Установите Git и добавьте его в системный PATH.</translation>
+    </message>
+    <message>
+        <location filename="../core/gitprocess.cpp" line="213"/>
+        <source>The operation was cancelled.</source>
+        <translation>Операция отменена.</translation>
     </message>
 </context>
 <context>
@@ -643,400 +697,410 @@ Cloning failed (code %1).</source>
     </message>
     <message>
         <location filename="../ui/mainwindow.cpp" line="322"/>
-        <location filename="../ui/mainwindow.cpp" line="1415"/>
+        <location filename="../ui/mainwindow.cpp" line="1429"/>
         <source>Open or clone a repository</source>
         <translation>Откройте или клонируйте репозиторий</translation>
     </message>
     <message>
-        <location filename="../ui/mainwindow.cpp" line="333"/>
+        <location filename="../ui/mainwindow.cpp" line="345"/>
         <source>Actions</source>
         <translation>Действия</translation>
     </message>
     <message>
-        <location filename="../ui/mainwindow.cpp" line="349"/>
+        <location filename="../ui/mainwindow.cpp" line="361"/>
         <source>Commit</source>
         <translation>Закоммитить</translation>
     </message>
     <message>
-        <location filename="../ui/mainwindow.cpp" line="353"/>
+        <location filename="../ui/mainwindow.cpp" line="365"/>
         <source>Push</source>
         <translation>Отправить</translation>
     </message>
     <message>
-        <location filename="../ui/mainwindow.cpp" line="356"/>
+        <location filename="../ui/mainwindow.cpp" line="368"/>
         <source>Pull</source>
         <translation>Получить</translation>
     </message>
     <message>
-        <location filename="../ui/mainwindow.cpp" line="359"/>
+        <location filename="../ui/mainwindow.cpp" line="371"/>
         <source>Fetch</source>
         <translation>Извлечь</translation>
     </message>
     <message>
-        <location filename="../ui/mainwindow.cpp" line="362"/>
+        <location filename="../ui/mainwindow.cpp" line="374"/>
         <source>Branch</source>
         <translation>Ветка</translation>
     </message>
     <message>
-        <location filename="../ui/mainwindow.cpp" line="364"/>
+        <location filename="../ui/mainwindow.cpp" line="376"/>
         <source>Merge</source>
         <translation>Слияние</translation>
     </message>
     <message>
-        <location filename="../ui/mainwindow.cpp" line="367"/>
+        <location filename="../ui/mainwindow.cpp" line="379"/>
         <source>Stash</source>
         <translation>Спрятать</translation>
     </message>
     <message>
-        <location filename="../ui/mainwindow.cpp" line="370"/>
+        <location filename="../ui/mainwindow.cpp" line="382"/>
         <source>Discard</source>
         <translation>Отменить</translation>
     </message>
     <message>
-        <location filename="../ui/mainwindow.cpp" line="372"/>
+        <location filename="../ui/mainwindow.cpp" line="384"/>
         <source>Tag</source>
         <translation>Метка</translation>
     </message>
     <message>
-        <location filename="../ui/mainwindow.cpp" line="377"/>
+        <location filename="../ui/mainwindow.cpp" line="389"/>
         <source>Checkout</source>
         <translation>Переключиться</translation>
     </message>
     <message>
-        <location filename="../ui/mainwindow.cpp" line="350"/>
+        <location filename="../ui/mainwindow.cpp" line="362"/>
         <source>Commit the staged changes</source>
         <translation>Зафиксировать проиндексированные изменения</translation>
     </message>
     <message>
-        <location filename="../ui/mainwindow.cpp" line="354"/>
+        <location filename="../ui/mainwindow.cpp" line="333"/>
+        <source>Stop</source>
+        <translation>Остановить</translation>
+    </message>
+    <message>
+        <location filename="../ui/mainwindow.cpp" line="334"/>
+        <source>Stop the running operation</source>
+        <translation>Остановить текущую операцию</translation>
+    </message>
+    <message>
+        <location filename="../ui/mainwindow.cpp" line="366"/>
         <source>Push the changes</source>
         <translation>Отправить изменения</translation>
     </message>
     <message>
-        <location filename="../ui/mainwindow.cpp" line="357"/>
+        <location filename="../ui/mainwindow.cpp" line="369"/>
         <source>Pull and merge the changes</source>
         <translation>Забрать и влить изменения</translation>
     </message>
     <message>
-        <location filename="../ui/mainwindow.cpp" line="360"/>
+        <location filename="../ui/mainwindow.cpp" line="372"/>
         <source>Fetch from all remote repositories</source>
         <translation>Получить изменения из всех удалённых репозиториев</translation>
     </message>
     <message>
-        <location filename="../ui/mainwindow.cpp" line="363"/>
+        <location filename="../ui/mainwindow.cpp" line="375"/>
         <source>Create a branch</source>
         <translation>Создать ветку</translation>
     </message>
     <message>
-        <location filename="../ui/mainwindow.cpp" line="365"/>
+        <location filename="../ui/mainwindow.cpp" line="377"/>
         <source>Merge a branch into the current one</source>
         <translation>Влить ветку в текущую</translation>
     </message>
     <message>
-        <location filename="../ui/mainwindow.cpp" line="368"/>
+        <location filename="../ui/mainwindow.cpp" line="380"/>
         <source>Stash the current changes</source>
         <translation>Спрятать текущие изменения</translation>
     </message>
     <message>
-        <location filename="../ui/mainwindow.cpp" line="371"/>
+        <location filename="../ui/mainwindow.cpp" line="383"/>
         <source>Discard the selected files</source>
         <translation>Откатить выбранные файлы</translation>
     </message>
     <message>
-        <location filename="../ui/mainwindow.cpp" line="373"/>
+        <location filename="../ui/mainwindow.cpp" line="385"/>
         <source>Create a tag</source>
         <translation>Создать тег</translation>
     </message>
     <message>
-        <location filename="../ui/mainwindow.cpp" line="378"/>
+        <location filename="../ui/mainwindow.cpp" line="390"/>
         <source>Switch to a branch or tag</source>
         <translation>Переключиться на ветку или тег</translation>
     </message>
     <message>
-        <location filename="../ui/mainwindow.cpp" line="380"/>
+        <location filename="../ui/mainwindow.cpp" line="392"/>
         <source>Apply the latest stash</source>
         <translation>Применить последний stash</translation>
     </message>
     <message>
-        <location filename="../ui/mainwindow.cpp" line="381"/>
+        <location filename="../ui/mainwindow.cpp" line="393"/>
         <source>Pop the latest stash</source>
         <translation>Вернуть последний stash</translation>
     </message>
     <message>
-        <location filename="../ui/mainwindow.cpp" line="388"/>
+        <location filename="../ui/mainwindow.cpp" line="400"/>
         <source>Terminal</source>
         <translation>Терминал</translation>
     </message>
     <message>
-        <location filename="../ui/mainwindow.cpp" line="389"/>
+        <location filename="../ui/mainwindow.cpp" line="401"/>
         <source>Open a terminal in the repository folder</source>
         <translation>Открыть терминал в папке репозитория</translation>
     </message>
     <message>
-        <location filename="../ui/mainwindow.cpp" line="390"/>
+        <location filename="../ui/mainwindow.cpp" line="402"/>
         <source>Folder</source>
         <translation>Папка</translation>
     </message>
     <message>
-        <location filename="../ui/mainwindow.cpp" line="391"/>
+        <location filename="../ui/mainwindow.cpp" line="403"/>
         <source>Open the repository folder</source>
         <translation>Открыть папку репозитория</translation>
     </message>
     <message>
-        <location filename="../ui/mainwindow.cpp" line="392"/>
+        <location filename="../ui/mainwindow.cpp" line="404"/>
         <source>Settings</source>
         <translation>Настройки</translation>
     </message>
     <message>
-        <location filename="../ui/mainwindow.cpp" line="393"/>
+        <location filename="../ui/mainwindow.cpp" line="405"/>
         <source>Repository and application settings</source>
         <translation>Настройки репозитория и приложения</translation>
     </message>
     <message>
-        <location filename="../ui/mainwindow.cpp" line="466"/>
+        <location filename="../ui/mainwindow.cpp" line="478"/>
         <source>Minimize</source>
         <translation>Свернуть</translation>
     </message>
     <message>
-        <location filename="../ui/mainwindow.cpp" line="468"/>
-        <location filename="../ui/mainwindow.cpp" line="494"/>
+        <location filename="../ui/mainwindow.cpp" line="480"/>
+        <location filename="../ui/mainwindow.cpp" line="506"/>
         <source>Maximize</source>
         <translation>Развернуть</translation>
     </message>
     <message>
-        <location filename="../ui/mainwindow.cpp" line="470"/>
-        <location filename="../ui/mainwindow.cpp" line="813"/>
+        <location filename="../ui/mainwindow.cpp" line="482"/>
+        <location filename="../ui/mainwindow.cpp" line="825"/>
         <source>Close</source>
         <translation>Закрыть</translation>
     </message>
     <message>
-        <location filename="../ui/mainwindow.cpp" line="493"/>
+        <location filename="../ui/mainwindow.cpp" line="505"/>
         <source>Restore</source>
         <translation>Восстановить</translation>
     </message>
     <message>
-        <location filename="../ui/mainwindow.cpp" line="651"/>
+        <location filename="../ui/mainwindow.cpp" line="663"/>
         <source>&amp;File</source>
         <translation>&amp;Файл</translation>
     </message>
     <message>
-        <location filename="../ui/mainwindow.cpp" line="653"/>
+        <location filename="../ui/mainwindow.cpp" line="665"/>
         <source>Open Repository…</source>
         <translation>Открыть репозиторий…</translation>
     </message>
     <message>
-        <location filename="../ui/mainwindow.cpp" line="656"/>
+        <location filename="../ui/mainwindow.cpp" line="668"/>
         <source>Clone…</source>
         <translation>Клонировать…</translation>
     </message>
     <message>
-        <location filename="../ui/mainwindow.cpp" line="659"/>
+        <location filename="../ui/mainwindow.cpp" line="671"/>
         <source>Create Repository…</source>
         <translation>Создать репозиторий…</translation>
     </message>
     <message>
-        <location filename="../ui/mainwindow.cpp" line="661"/>
-        <location filename="../ui/mainwindow.cpp" line="1128"/>
+        <location filename="../ui/mainwindow.cpp" line="673"/>
+        <location filename="../ui/mainwindow.cpp" line="1140"/>
         <source>Close Tab</source>
         <translation>Закрыть вкладку</translation>
     </message>
     <message>
-        <location filename="../ui/mainwindow.cpp" line="664"/>
+        <location filename="../ui/mainwindow.cpp" line="676"/>
         <source>Quit</source>
         <translation>Выход</translation>
     </message>
     <message>
-        <location filename="../ui/mainwindow.cpp" line="667"/>
+        <location filename="../ui/mainwindow.cpp" line="679"/>
         <source>&amp;Edit</source>
         <translation>&amp;Правка</translation>
     </message>
     <message>
-        <location filename="../ui/mainwindow.cpp" line="672"/>
+        <location filename="../ui/mainwindow.cpp" line="684"/>
         <source>&amp;View</source>
         <translation>&amp;Вид</translation>
     </message>
     <message>
-        <location filename="../ui/mainwindow.cpp" line="674"/>
+        <location filename="../ui/mainwindow.cpp" line="686"/>
         <source>File Status</source>
         <translation>Состояние файлов</translation>
     </message>
     <message>
-        <location filename="../ui/mainwindow.cpp" line="677"/>
+        <location filename="../ui/mainwindow.cpp" line="689"/>
         <source>History</source>
         <translation>История</translation>
     </message>
     <message>
-        <location filename="../ui/mainwindow.cpp" line="680"/>
+        <location filename="../ui/mainwindow.cpp" line="692"/>
         <source>Search</source>
         <translation>Поиск</translation>
     </message>
     <message>
-        <location filename="../ui/mainwindow.cpp" line="683"/>
+        <location filename="../ui/mainwindow.cpp" line="695"/>
         <source>Dark Theme</source>
         <translation>Тёмная тема</translation>
     </message>
     <message>
-        <location filename="../ui/mainwindow.cpp" line="687"/>
-        <location filename="../ui/mainwindow.cpp" line="938"/>
-        <location filename="../ui/mainwindow.cpp" line="952"/>
+        <location filename="../ui/mainwindow.cpp" line="699"/>
+        <location filename="../ui/mainwindow.cpp" line="950"/>
+        <location filename="../ui/mainwindow.cpp" line="964"/>
         <source>Language</source>
         <translation>Язык</translation>
     </message>
     <message>
-        <location filename="../ui/mainwindow.cpp" line="689"/>
+        <location filename="../ui/mainwindow.cpp" line="701"/>
         <source>&amp;Repository</source>
         <translation>&amp;Репозиторий</translation>
     </message>
     <message>
-        <location filename="../ui/mainwindow.cpp" line="691"/>
+        <location filename="../ui/mainwindow.cpp" line="703"/>
         <source>Refresh</source>
         <translation>Обновить</translation>
     </message>
     <message>
-        <location filename="../ui/mainwindow.cpp" line="700"/>
+        <location filename="../ui/mainwindow.cpp" line="712"/>
         <source>Add Remote…</source>
         <translation>Добавить remote…</translation>
     </message>
     <message>
-        <location filename="../ui/mainwindow.cpp" line="702"/>
+        <location filename="../ui/mainwindow.cpp" line="714"/>
         <source>&amp;Actions</source>
         <translation>&amp;Действия</translation>
     </message>
     <message>
-        <location filename="../ui/mainwindow.cpp" line="713"/>
+        <location filename="../ui/mainwindow.cpp" line="725"/>
         <source>&amp;Tools</source>
         <translation>&amp;Инструменты</translation>
     </message>
     <message>
-        <location filename="../ui/mainwindow.cpp" line="717"/>
-        <location filename="../ui/mainwindow.cpp" line="1011"/>
+        <location filename="../ui/mainwindow.cpp" line="729"/>
+        <location filename="../ui/mainwindow.cpp" line="1023"/>
         <source>Git Command Log</source>
         <translation>Журнал команд git</translation>
     </message>
     <message>
-        <location filename="../ui/mainwindow.cpp" line="721"/>
+        <location filename="../ui/mainwindow.cpp" line="733"/>
         <source>&amp;Help</source>
         <translation>&amp;Справка</translation>
     </message>
     <message>
-        <location filename="../ui/mainwindow.cpp" line="723"/>
+        <location filename="../ui/mainwindow.cpp" line="735"/>
         <source>Check for Updates…</source>
         <translation>Проверить обновления…</translation>
     </message>
     <message>
-        <location filename="../ui/mainwindow.cpp" line="725"/>
+        <location filename="../ui/mainwindow.cpp" line="737"/>
         <source>Check for Updates Automatically</source>
         <translation>Проверять обновления автоматически</translation>
     </message>
     <message>
-        <location filename="../ui/mainwindow.cpp" line="730"/>
-        <location filename="../ui/mainwindow.cpp" line="800"/>
+        <location filename="../ui/mainwindow.cpp" line="742"/>
+        <location filename="../ui/mainwindow.cpp" line="812"/>
         <source>About</source>
         <translation>О программе</translation>
     </message>
     <message>
-        <location filename="../ui/mainwindow.cpp" line="764"/>
-        <location filename="../ui/mainwindow.cpp" line="842"/>
+        <location filename="../ui/mainwindow.cpp" line="776"/>
+        <location filename="../ui/mainwindow.cpp" line="854"/>
         <source>About SquidyGit</source>
         <translation>О программе SquidyGit</translation>
     </message>
     <message>
-        <location filename="../ui/mainwindow.cpp" line="849"/>
+        <location filename="../ui/mainwindow.cpp" line="861"/>
         <source>Copyright © 2026 Sergey Yakunin. All rights reserved.</source>
         <translation>Copyright © 2026 Sergey Yakunin. Все права защищены.</translation>
     </message>
     <message>
-        <location filename="../ui/mainwindow.cpp" line="855"/>
+        <location filename="../ui/mainwindow.cpp" line="867"/>
         <source>Version %1</source>
         <translation>Версия %1</translation>
     </message>
     <message>
-        <location filename="../ui/mainwindow.cpp" line="912"/>
+        <location filename="../ui/mainwindow.cpp" line="924"/>
         <source>System</source>
         <translation>Системный</translation>
     </message>
     <message>
-        <location filename="../ui/mainwindow.cpp" line="939"/>
+        <location filename="../ui/mainwindow.cpp" line="951"/>
         <source>The interface language changes after a restart. Restart SquidyGit now?</source>
         <translation>Язык интерфейса изменится после перезапуска. Перезапустить SquidyGit сейчас?</translation>
     </message>
     <message>
-        <location filename="../ui/mainwindow.cpp" line="953"/>
+        <location filename="../ui/mainwindow.cpp" line="965"/>
         <source>SquidyGit could not be restarted. Start it manually to apply the new language.</source>
         <translation>Не удалось перезапустить SquidyGit. Запустите его вручную, чтобы применить новый язык.</translation>
     </message>
     <message>
-        <location filename="../ui/mainwindow.cpp" line="964"/>
+        <location filename="../ui/mainwindow.cpp" line="976"/>
         <source>Local repositories</source>
         <translation>Локальные репозитории</translation>
     </message>
     <message>
-        <location filename="../ui/mainwindow.cpp" line="968"/>
+        <location filename="../ui/mainwindow.cpp" line="980"/>
         <source>Bookmarks are kept between sessions. A double click opens the repository in a tab.</source>
         <translation>Закладки сохраняются между запусками. Двойной щелчок открывает репозиторий во вкладке.</translation>
     </message>
     <message>
-        <location filename="../ui/mainwindow.cpp" line="976"/>
+        <location filename="../ui/mainwindow.cpp" line="988"/>
         <source>Clone</source>
         <translation>Клонировать</translation>
     </message>
     <message>
-        <location filename="../ui/mainwindow.cpp" line="979"/>
+        <location filename="../ui/mainwindow.cpp" line="991"/>
         <source>Add existing</source>
         <translation>Добавить существующий</translation>
     </message>
     <message>
-        <location filename="../ui/mainwindow.cpp" line="981"/>
+        <location filename="../ui/mainwindow.cpp" line="993"/>
         <source>Create new</source>
         <translation>Создать новый</translation>
     </message>
     <message>
-        <location filename="../ui/mainwindow.cpp" line="983"/>
+        <location filename="../ui/mainwindow.cpp" line="995"/>
         <source>Remove from the list</source>
         <translation>Убрать из списка</translation>
     </message>
     <message>
-        <location filename="../ui/mainwindow.cpp" line="1048"/>
+        <location filename="../ui/mainwindow.cpp" line="1060"/>
         <source>Open a Git repository</source>
         <translation>Открыть Git-репозиторий</translation>
     </message>
     <message>
-        <location filename="../ui/mainwindow.cpp" line="1053"/>
+        <location filename="../ui/mainwindow.cpp" line="1065"/>
         <source>Not a Git repository</source>
         <translation>Не Git-репозиторий</translation>
     </message>
     <message>
-        <location filename="../ui/mainwindow.cpp" line="1054"/>
+        <location filename="../ui/mainwindow.cpp" line="1066"/>
         <source>The folder %1 does not contain a Git repository.</source>
         <translation>В папке %1 нет репозитория Git.</translation>
     </message>
     <message>
-        <location filename="../ui/mainwindow.cpp" line="1079"/>
+        <location filename="../ui/mainwindow.cpp" line="1091"/>
         <source>The repository could not be opened: %1</source>
         <translation>Не удалось открыть репозиторий: %1</translation>
     </message>
     <message>
-        <location filename="../ui/mainwindow.cpp" line="1174"/>
+        <location filename="../ui/mainwindow.cpp" line="1187"/>
         <source>Folder for the new repository</source>
         <translation>Папка для нового репозитория</translation>
     </message>
     <message>
-        <location filename="../ui/mainwindow.cpp" line="1186"/>
+        <location filename="../ui/mainwindow.cpp" line="1199"/>
         <source>The repository could not be created</source>
         <translation>Не удалось создать репозиторий</translation>
     </message>
     <message>
-        <location filename="../ui/mainwindow.cpp" line="1218"/>
+        <location filename="../ui/mainwindow.cpp" line="1231"/>
         <source>Close all tabs</source>
         <translation>Закрыть все вкладки</translation>
     </message>
     <message>
-        <location filename="../ui/mainwindow.cpp" line="1217"/>
+        <location filename="../ui/mainwindow.cpp" line="1230"/>
         <source>Close tab</source>
         <translation>Закрыть вкладку</translation>
     </message>
     <message>
-        <location filename="../ui/mainwindow.cpp" line="1219"/>
+        <location filename="../ui/mainwindow.cpp" line="1232"/>
         <source>Close all tabs except this one</source>
         <translation>Закрыть все вкладки кроме этой</translation>
     </message>
@@ -1049,19 +1113,19 @@ Cloning failed (code %1).</source>
         <translation type="vanished">Закрыть вкладки справа</translation>
     </message>
     <message>
-        <location filename="../ui/mainwindow.cpp" line="1277"/>
+        <location filename="../ui/mainwindow.cpp" line="1290"/>
         <source>%1
 Branch: %2</source>
         <translation>%1
 Ветка: %2</translation>
     </message>
     <message>
-        <location filename="../ui/mainwindow.cpp" line="1407"/>
+        <location filename="../ui/mainwindow.cpp" line="1421"/>
         <source>%1  ·  branch %2  ·  changes: %3  ·  ↑%4 ↓%5</source>
         <translation>%1  ·  ветка %2  ·  изменений: %3  ·  ↑%4 ↓%5</translation>
     </message>
     <message>
-        <location filename="../ui/mainwindow.cpp" line="1501"/>
+        <location filename="../ui/mainwindow.cpp" line="1515"/>
         <source>The folder no longer exists</source>
         <translation>Папка больше не существует</translation>
     </message>
@@ -1069,32 +1133,32 @@ Branch: %2</source>
 <context>
     <name>MergeDialog</name>
     <message>
-        <location filename="../ui/dialogs.cpp" line="264"/>
+        <location filename="../ui/dialogs.cpp" line="257"/>
         <source>Merge</source>
         <translation>Слияние</translation>
     </message>
     <message>
-        <location filename="../ui/dialogs.cpp" line="268"/>
+        <location filename="../ui/dialogs.cpp" line="261"/>
         <source>Merge “%1” into the current branch “%2”.</source>
         <translation>Влить «%1» в текущую ветку «%2».</translation>
     </message>
     <message>
-        <location filename="../ui/dialogs.cpp" line="272"/>
+        <location filename="../ui/dialogs.cpp" line="265"/>
         <source>Create a merge commit even when fast-forward is possible</source>
         <translation>Создать коммит слияния, даже если возможен fast-forward</translation>
     </message>
     <message>
-        <location filename="../ui/dialogs.cpp" line="273"/>
+        <location filename="../ui/dialogs.cpp" line="266"/>
         <source>Squash — combine the changes into one</source>
         <translation>Squash — свести изменения в одно</translation>
     </message>
     <message>
-        <location filename="../ui/dialogs.cpp" line="274"/>
+        <location filename="../ui/dialogs.cpp" line="267"/>
         <source>Commit the result right away</source>
         <translation>Зафиксировать результат сразу</translation>
     </message>
     <message>
-        <location filename="../ui/dialogs.cpp" line="286"/>
+        <location filename="../ui/dialogs.cpp" line="279"/>
         <source>Merge</source>
         <comment>button</comment>
         <translation>Слить</translation>
@@ -1111,32 +1175,32 @@ Branch: %2</source>
 <context>
     <name>PreferencesDialog</name>
     <message>
-        <location filename="../ui/dialogs.cpp" line="526"/>
+        <location filename="../ui/dialogs.cpp" line="519"/>
         <source>Settings</source>
         <translation>Настройки</translation>
     </message>
     <message>
-        <location filename="../ui/dialogs.cpp" line="534"/>
+        <location filename="../ui/dialogs.cpp" line="527"/>
         <source>Light</source>
         <translation>Светлая</translation>
     </message>
     <message>
-        <location filename="../ui/dialogs.cpp" line="535"/>
+        <location filename="../ui/dialogs.cpp" line="528"/>
         <source>Dark</source>
         <translation>Тёмная</translation>
     </message>
     <message>
-        <location filename="../ui/dialogs.cpp" line="538"/>
+        <location filename="../ui/dialogs.cpp" line="531"/>
         <source>%1 commits</source>
         <translation>%1 коммитов</translation>
     </message>
     <message>
-        <location filename="../ui/dialogs.cpp" line="540"/>
+        <location filename="../ui/dialogs.cpp" line="533"/>
         <source>Check remote repositories in the background</source>
         <translation>Проверять внешние репозитории в фоне</translation>
     </message>
     <message numerus="yes">
-        <location filename="../ui/dialogs.cpp" line="543"/>
+        <location filename="../ui/dialogs.cpp" line="536"/>
         <source>%n minute(s)</source>
         <translation>
             <numerusform>%n минута</numerusform>
@@ -1145,32 +1209,32 @@ Branch: %2</source>
         </translation>
     </message>
     <message>
-        <location filename="../ui/dialogs.cpp" line="556"/>
+        <location filename="../ui/dialogs.cpp" line="549"/>
         <source>Author name:</source>
         <translation>Имя автора:</translation>
     </message>
     <message>
-        <location filename="../ui/dialogs.cpp" line="558"/>
+        <location filename="../ui/dialogs.cpp" line="551"/>
         <source>Theme:</source>
         <translation>Тема оформления:</translation>
     </message>
     <message>
-        <location filename="../ui/dialogs.cpp" line="559"/>
+        <location filename="../ui/dialogs.cpp" line="552"/>
         <source>History depth:</source>
         <translation>Глубина истории:</translation>
     </message>
     <message>
-        <location filename="../ui/dialogs.cpp" line="561"/>
+        <location filename="../ui/dialogs.cpp" line="554"/>
         <source>Check interval:</source>
         <translation>Интервал проверки:</translation>
     </message>
     <message>
-        <location filename="../ui/dialogs.cpp" line="563"/>
+        <location filename="../ui/dialogs.cpp" line="556"/>
         <source>The name and e-mail are written to the local repository configuration.</source>
         <translation>Имя и e-mail записываются в локальную конфигурацию репозитория.</translation>
     </message>
     <message>
-        <location filename="../ui/dialogs.cpp" line="565"/>
+        <location filename="../ui/dialogs.cpp" line="558"/>
         <source>The background check runs &quot;git fetch&quot; and only updates the incoming counters. It never changes the working tree.</source>
         <translation>Фоновая проверка выполняет «git fetch» и лишь обновляет счётчики входящих изменений. Рабочий каталог она не трогает.</translation>
     </message>
@@ -1178,32 +1242,32 @@ Branch: %2</source>
 <context>
     <name>PushDialog</name>
     <message>
-        <location filename="../ui/dialogs.cpp" line="433"/>
+        <location filename="../ui/dialogs.cpp" line="426"/>
         <source>Repository:</source>
         <translation>Репозиторий:</translation>
     </message>
     <message>
-        <location filename="../ui/dialogs.cpp" line="436"/>
+        <location filename="../ui/dialogs.cpp" line="429"/>
         <source>Branches to push:</source>
         <translation>Ветки для отправки:</translation>
     </message>
     <message>
-        <location filename="../ui/dialogs.cpp" line="443"/>
+        <location filename="../ui/dialogs.cpp" line="436"/>
         <source>Tracks %1 (ahead %2, behind %3)</source>
         <translation>Отслеживает %1 (ahead %2, behind %3)</translation>
     </message>
     <message>
-        <location filename="../ui/dialogs.cpp" line="451"/>
+        <location filename="../ui/dialogs.cpp" line="444"/>
         <source>Track the branch in the remote repository</source>
         <translation>Отслеживать ветку в удалённом репозитории</translation>
     </message>
     <message>
-        <location filename="../ui/dialogs.cpp" line="453"/>
+        <location filename="../ui/dialogs.cpp" line="446"/>
         <source>Push tags</source>
         <translation>Отправить теги</translation>
     </message>
     <message>
-        <location filename="../ui/dialogs.cpp" line="454"/>
+        <location filename="../ui/dialogs.cpp" line="447"/>
         <source>Force (--force-with-lease)</source>
         <translation>Принудительно (--force-with-lease)</translation>
     </message>
@@ -1211,12 +1275,12 @@ Branch: %2</source>
 <context>
     <name>RemoteDialog</name>
     <message>
-        <location filename="../ui/dialogs.cpp" line="496"/>
+        <location filename="../ui/dialogs.cpp" line="489"/>
         <source>Add Remote</source>
         <translation>Добавить удалённый репозиторий</translation>
     </message>
     <message>
-        <location filename="../ui/dialogs.cpp" line="504"/>
+        <location filename="../ui/dialogs.cpp" line="497"/>
         <source>Name:</source>
         <translation>Имя:</translation>
     </message>
@@ -1224,203 +1288,203 @@ Branch: %2</source>
 <context>
     <name>RepositoryView</name>
     <message>
-        <location filename="../ui/repositoryview.cpp" line="627"/>
+        <location filename="../ui/repositoryview.cpp" line="652"/>
         <source>WORKSPACE</source>
         <translation>РАБОЧАЯ ОБЛАСТЬ</translation>
     </message>
     <message>
-        <location filename="../ui/repositoryview.cpp" line="277"/>
+        <location filename="../ui/repositoryview.cpp" line="287"/>
         <source>Modified</source>
         <translation>Изменён</translation>
     </message>
     <message>
-        <location filename="../ui/repositoryview.cpp" line="278"/>
+        <location filename="../ui/repositoryview.cpp" line="288"/>
         <source>Added</source>
         <translation>Добавлен</translation>
     </message>
     <message>
-        <location filename="../ui/repositoryview.cpp" line="279"/>
+        <location filename="../ui/repositoryview.cpp" line="289"/>
         <source>Deleted</source>
         <translation>Удалён</translation>
     </message>
     <message>
-        <location filename="../ui/repositoryview.cpp" line="280"/>
+        <location filename="../ui/repositoryview.cpp" line="290"/>
         <source>Renamed</source>
         <translation>Переименован</translation>
     </message>
     <message>
-        <location filename="../ui/repositoryview.cpp" line="281"/>
+        <location filename="../ui/repositoryview.cpp" line="291"/>
         <source>Copied</source>
         <translation>Скопирован</translation>
     </message>
     <message>
-        <location filename="../ui/repositoryview.cpp" line="282"/>
+        <location filename="../ui/repositoryview.cpp" line="292"/>
         <source>Conflict</source>
         <translation>Конфликт</translation>
     </message>
     <message>
-        <location filename="../ui/repositoryview.cpp" line="283"/>
+        <location filename="../ui/repositoryview.cpp" line="293"/>
         <source>Type changed</source>
         <translation>Изменён тип</translation>
     </message>
     <message>
-        <location filename="../ui/repositoryview.cpp" line="284"/>
+        <location filename="../ui/repositoryview.cpp" line="294"/>
         <source>New file</source>
         <translation>Новый файл</translation>
     </message>
     <message>
-        <location filename="../ui/repositoryview.cpp" line="285"/>
+        <location filename="../ui/repositoryview.cpp" line="295"/>
         <source>Unchanged</source>
         <translation>Без изменений</translation>
     </message>
     <message>
-        <location filename="../ui/repositoryview.cpp" line="549"/>
+        <location filename="../ui/repositoryview.cpp" line="574"/>
         <source>Continue</source>
         <translation>Продолжить</translation>
     </message>
     <message>
-        <location filename="../ui/repositoryview.cpp" line="550"/>
+        <location filename="../ui/repositoryview.cpp" line="575"/>
         <source>Abort</source>
         <translation>Прервать</translation>
     </message>
     <message>
-        <location filename="../ui/repositoryview.cpp" line="553"/>
+        <location filename="../ui/repositoryview.cpp" line="578"/>
         <source>Continuing the operation</source>
         <translation>Продолжение операции</translation>
     </message>
     <message>
-        <location filename="../ui/repositoryview.cpp" line="557"/>
+        <location filename="../ui/repositoryview.cpp" line="582"/>
         <source>Aborting the operation</source>
         <translation>Прерывание операции</translation>
     </message>
     <message>
-        <location filename="../ui/repositoryview.cpp" line="585"/>
+        <location filename="../ui/repositoryview.cpp" line="610"/>
         <source>File Status</source>
         <translation>Состояние файлов</translation>
     </message>
     <message>
-        <location filename="../ui/repositoryview.cpp" line="586"/>
+        <location filename="../ui/repositoryview.cpp" line="611"/>
         <source>History</source>
         <translation>История</translation>
     </message>
     <message>
-        <location filename="../ui/repositoryview.cpp" line="587"/>
+        <location filename="../ui/repositoryview.cpp" line="612"/>
         <source>Files</source>
         <translation>Файлы</translation>
     </message>
     <message>
-        <location filename="../ui/repositoryview.cpp" line="588"/>
-        <location filename="../ui/repositoryview.cpp" line="646"/>
+        <location filename="../ui/repositoryview.cpp" line="613"/>
+        <location filename="../ui/repositoryview.cpp" line="671"/>
         <source>Search</source>
         <translation>Поиск</translation>
     </message>
     <message>
-        <location filename="../ui/repositoryview.cpp" line="702"/>
+        <location filename="../ui/repositoryview.cpp" line="727"/>
         <source>Filter files…</source>
         <translation>Фильтр файлов…</translation>
     </message>
     <message>
-        <location filename="../ui/repositoryview.cpp" line="706"/>
+        <location filename="../ui/repositoryview.cpp" line="731"/>
         <source>Tree</source>
         <translation>Дерево</translation>
     </message>
     <message>
-        <location filename="../ui/repositoryview.cpp" line="708"/>
+        <location filename="../ui/repositoryview.cpp" line="733"/>
         <source>Show the files as a directory tree</source>
         <translation>Показать файлы деревом каталогов</translation>
     </message>
     <message>
-        <location filename="../ui/repositoryview.cpp" line="764"/>
+        <location filename="../ui/repositoryview.cpp" line="789"/>
         <source>UNSTAGED FILES</source>
         <translation>НЕПРОИНДЕКСИРОВАННЫЕ ФАЙЛЫ</translation>
     </message>
     <message>
-        <location filename="../ui/repositoryview.cpp" line="766"/>
+        <location filename="../ui/repositoryview.cpp" line="791"/>
         <source>Stage all</source>
         <translation>Индексировать всё</translation>
     </message>
     <message>
-        <location filename="../ui/repositoryview.cpp" line="767"/>
+        <location filename="../ui/repositoryview.cpp" line="792"/>
         <source>Stage</source>
         <translation>Индексировать</translation>
     </message>
     <message>
-        <location filename="../ui/repositoryview.cpp" line="769"/>
+        <location filename="../ui/repositoryview.cpp" line="795"/>
         <source>STAGED FILES</source>
         <translation>ПРОИНДЕКСИРОВАННЫЕ ФАЙЛЫ</translation>
     </message>
     <message>
-        <location filename="../ui/repositoryview.cpp" line="771"/>
+        <location filename="../ui/repositoryview.cpp" line="797"/>
         <source>Unstage all</source>
         <translation>Убрать всё</translation>
     </message>
     <message>
-        <location filename="../ui/repositoryview.cpp" line="772"/>
+        <location filename="../ui/repositoryview.cpp" line="798"/>
         <source>Unstage</source>
         <translation>Убрать</translation>
     </message>
     <message>
-        <location filename="../ui/repositoryview.cpp" line="784"/>
-        <location filename="../ui/repositoryview.cpp" line="1650"/>
+        <location filename="../ui/repositoryview.cpp" line="811"/>
+        <location filename="../ui/repositoryview.cpp" line="1654"/>
         <source>CHANGES</source>
         <translation>ИЗМЕНЕНИЯ</translation>
     </message>
     <message>
-        <location filename="../ui/repositoryview.cpp" line="788"/>
-        <location filename="../ui/repositoryview.cpp" line="1654"/>
+        <location filename="../ui/repositoryview.cpp" line="816"/>
+        <location filename="../ui/repositoryview.cpp" line="1658"/>
         <source>Select a file to see the changes</source>
         <translation>Выберите файл, чтобы увидеть изменения</translation>
     </message>
     <message>
-        <location filename="../ui/repositoryview.cpp" line="805"/>
+        <location filename="../ui/repositoryview.cpp" line="833"/>
         <source>Amend the previous commit</source>
         <translation>Исправить предыдущий коммит</translation>
     </message>
     <message>
-        <location filename="../ui/repositoryview.cpp" line="812"/>
+        <location filename="../ui/repositoryview.cpp" line="840"/>
         <source>Commit message</source>
         <translation>Сообщение коммита</translation>
     </message>
     <message>
-        <location filename="../ui/repositoryview.cpp" line="817"/>
+        <location filename="../ui/repositoryview.cpp" line="845"/>
         <source>Push right after the commit</source>
         <translation>Сразу отправить изменения</translation>
     </message>
     <message>
-        <location filename="../ui/repositoryview.cpp" line="818"/>
-        <location filename="../ui/repositoryview.cpp" line="853"/>
+        <location filename="../ui/repositoryview.cpp" line="846"/>
+        <location filename="../ui/repositoryview.cpp" line="881"/>
         <source>Commit</source>
         <translation>Зафиксировать</translation>
     </message>
     <message>
-        <location filename="../ui/repositoryview.cpp" line="852"/>
+        <location filename="../ui/repositoryview.cpp" line="880"/>
         <source>Amend commit</source>
         <translation>Исправить коммит</translation>
     </message>
     <message>
-        <location filename="../ui/repositoryview.cpp" line="903"/>
-        <location filename="../ui/repositoryview.cpp" line="1316"/>
+        <location filename="../ui/repositoryview.cpp" line="931"/>
+        <location filename="../ui/repositoryview.cpp" line="1317"/>
         <source>All branches</source>
         <translation>Все ветки</translation>
     </message>
     <message>
-        <location filename="../ui/repositoryview.cpp" line="905"/>
-        <location filename="../ui/repositoryview.cpp" line="1318"/>
+        <location filename="../ui/repositoryview.cpp" line="933"/>
+        <location filename="../ui/repositoryview.cpp" line="1319"/>
         <source>Current branch</source>
         <translation>Текущая ветка</translation>
     </message>
     <message>
-        <location filename="../ui/repositoryview.cpp" line="907"/>
+        <location filename="../ui/repositoryview.cpp" line="935"/>
         <source>Show remote branches</source>
         <translation>Показать внешние ветки</translation>
     </message>
     <message>
-        <location filename="../ui/repositoryview.cpp" line="912"/>
+        <location filename="../ui/repositoryview.cpp" line="940"/>
         <source>Sort by date</source>
         <translation>Сортировать по дате</translation>
     </message>
     <message>
-        <location filename="../ui/repositoryview.cpp" line="913"/>
+        <location filename="../ui/repositoryview.cpp" line="941"/>
         <source>Sort by ancestry</source>
         <translation>Сортировать по предкам</translation>
     </message>
@@ -1429,22 +1493,22 @@ Branch: %2</source>
         <translation type="vanished">Фильтр по описанию, автору или SHA…</translation>
     </message>
     <message>
-        <location filename="../ui/repositoryview.cpp" line="925"/>
+        <location filename="../ui/repositoryview.cpp" line="953"/>
         <source>Go to:</source>
         <translation>Перейти на:</translation>
     </message>
     <message>
-        <location filename="../ui/repositoryview.cpp" line="1061"/>
+        <location filename="../ui/repositoryview.cpp" line="1090"/>
         <source>Commit…</source>
         <translation>Коммит…</translation>
     </message>
     <message>
-        <location filename="../ui/repositoryview.cpp" line="1065"/>
+        <location filename="../ui/repositoryview.cpp" line="1094"/>
         <source>Go to commit</source>
         <translation>Перейти к коммиту</translation>
     </message>
     <message>
-        <location filename="../ui/repositoryview.cpp" line="1065"/>
+        <location filename="../ui/repositoryview.cpp" line="1094"/>
         <source>Commit SHA:</source>
         <translation>SHA коммита:</translation>
     </message>
@@ -1458,88 +1522,88 @@ Branch: %2</source>
         <translation>Граф</translation>
     </message>
     <message>
-        <location filename="../ui/repositoryview.cpp" line="1161"/>
-        <location filename="../ui/repositoryview.cpp" line="1182"/>
+        <location filename="../ui/repositoryview.cpp" line="1162"/>
+        <location filename="../ui/repositoryview.cpp" line="1183"/>
         <location filename="../ui/commitmodel.cpp" line="210"/>
         <source>Message</source>
         <translation>Описание</translation>
     </message>
     <message>
-        <location filename="../ui/repositoryview.cpp" line="1183"/>
+        <location filename="../ui/repositoryview.cpp" line="1184"/>
         <location filename="../ui/commitmodel.cpp" line="212"/>
         <source>Date</source>
         <translation>Дата</translation>
     </message>
     <message>
-        <location filename="../ui/repositoryview.cpp" line="1162"/>
-        <location filename="../ui/repositoryview.cpp" line="1184"/>
+        <location filename="../ui/repositoryview.cpp" line="1163"/>
+        <location filename="../ui/repositoryview.cpp" line="1185"/>
         <location filename="../ui/commitmodel.cpp" line="214"/>
         <source>Author</source>
         <translation>Автор</translation>
     </message>
     <message>
-        <location filename="../ui/repositoryview.cpp" line="1185"/>
-        <location filename="../ui/repositoryview.cpp" line="2333"/>
+        <location filename="../ui/repositoryview.cpp" line="1186"/>
+        <location filename="../ui/repositoryview.cpp" line="2521"/>
         <location filename="../ui/commitmodel.cpp" line="216"/>
         <source>Commit</source>
         <comment>noun</comment>
         <translation>Коммит</translation>
     </message>
     <message>
-        <location filename="../ui/repositoryview.cpp" line="1036"/>
-        <location filename="../ui/repositoryview.cpp" line="1120"/>
+        <location filename="../ui/repositoryview.cpp" line="1065"/>
+        <location filename="../ui/repositoryview.cpp" line="1929"/>
         <source>Select a file of the commit</source>
         <translation>Выберите файл коммита</translation>
     </message>
     <message>
-        <location filename="../ui/repositoryview.cpp" line="1752"/>
+        <location filename="../ui/repositoryview.cpp" line="1797"/>
         <source>Commit “%1” was not found in the loaded history.</source>
         <translation>Коммит «%1» не найден в загруженной истории.</translation>
     </message>
     <message>
-        <location filename="../ui/repositoryview.cpp" line="1163"/>
+        <location filename="../ui/repositoryview.cpp" line="1164"/>
         <source>File contents</source>
         <translation>Содержимое файлов</translation>
     </message>
     <message>
-        <location filename="../ui/repositoryview.cpp" line="916"/>
+        <location filename="../ui/repositoryview.cpp" line="944"/>
         <source>Author Name</source>
         <translation>Имя автора</translation>
     </message>
     <message>
-        <location filename="../ui/repositoryview.cpp" line="1025"/>
-        <location filename="../ui/repositoryview.cpp" line="2227"/>
+        <location filename="../ui/repositoryview.cpp" line="1053"/>
+        <location filename="../ui/repositoryview.cpp" line="2403"/>
         <source>File history</source>
         <translation>История файла</translation>
     </message>
     <message>
-        <location filename="../ui/repositoryview.cpp" line="1165"/>
+        <location filename="../ui/repositoryview.cpp" line="1166"/>
         <source>File path</source>
         <translation>Путь к файлу</translation>
     </message>
     <message>
-        <location filename="../ui/repositoryview.cpp" line="1167"/>
+        <location filename="../ui/repositoryview.cpp" line="1168"/>
         <source>Commit SHA</source>
         <translation>SHA коммита</translation>
     </message>
     <message>
-        <location filename="../ui/repositoryview.cpp" line="1169"/>
+        <location filename="../ui/repositoryview.cpp" line="1170"/>
         <source>What are we looking for?</source>
         <translation>Что ищем?</translation>
     </message>
     <message>
-        <location filename="../ui/repositoryview.cpp" line="1171"/>
+        <location filename="../ui/repositoryview.cpp" line="1172"/>
         <source>Search</source>
         <comment>button</comment>
         <translation>Искать</translation>
     </message>
     <message>
-        <location filename="../ui/repositoryview.cpp" line="1194"/>
+        <location filename="../ui/repositoryview.cpp" line="1195"/>
         <source>A double click on a result opens the commit in the history.</source>
         <translation>Двойной щелчок по результату откроет коммит в истории.</translation>
     </message>
     <message numerus="yes">
-        <location filename="../ui/repositoryview.cpp" line="1270"/>
+        <location filename="../ui/repositoryview.cpp" line="1271"/>
         <source>%n new commit(s) on %1</source>
         <translation>
             <numerusform>В %1 появился %n новый коммит</numerusform>
@@ -1548,12 +1612,12 @@ Branch: %2</source>
         </translation>
     </message>
     <message>
-        <location filename="../ui/repositoryview.cpp" line="1341"/>
+        <location filename="../ui/repositoryview.cpp" line="1342"/>
         <source>%1 — finish the operation or abort it</source>
         <translation>%1 — завершите операцию или прервите её</translation>
     </message>
     <message>
-        <location filename="../ui/repositoryview.cpp" line="1349"/>
+        <location filename="../ui/repositoryview.cpp" line="1350"/>
         <source>The author is not configured — set it in the settings</source>
         <translation>Автор не настроен — задайте его в настройках</translation>
     </message>
@@ -1566,111 +1630,111 @@ Branch: %2</source>
         <translation type="vanished">Рабочая копия  (%1)</translation>
     </message>
     <message>
-        <location filename="../ui/repositoryview.cpp" line="1376"/>
+        <location filename="../ui/repositoryview.cpp" line="1377"/>
         <source>Branches</source>
         <translation>Ветки</translation>
     </message>
     <message>
-        <location filename="../ui/repositoryview.cpp" line="1407"/>
+        <location filename="../ui/repositoryview.cpp" line="1408"/>
         <source>Not tracking</source>
         <translation>Без отслеживания</translation>
     </message>
     <message>
-        <location filename="../ui/repositoryview.cpp" line="1408"/>
+        <location filename="../ui/repositoryview.cpp" line="1409"/>
         <source>Tracks %1</source>
         <translation>Отслеживает %1</translation>
     </message>
     <message>
-        <location filename="../ui/repositoryview.cpp" line="1420"/>
+        <location filename="../ui/repositoryview.cpp" line="1421"/>
         <source>No branches</source>
         <translation>Нет веток</translation>
     </message>
     <message>
-        <location filename="../ui/repositoryview.cpp" line="1425"/>
+        <location filename="../ui/repositoryview.cpp" line="1426"/>
         <source>Tags</source>
         <translation>Метки</translation>
     </message>
     <message>
-        <location filename="../ui/repositoryview.cpp" line="1438"/>
+        <location filename="../ui/repositoryview.cpp" line="1439"/>
         <source>No tags</source>
         <translation>Нет меток</translation>
     </message>
     <message>
-        <location filename="../ui/repositoryview.cpp" line="1441"/>
+        <location filename="../ui/repositoryview.cpp" line="1442"/>
         <source>Remotes</source>
         <translation>Внешние ветки</translation>
     </message>
     <message>
-        <location filename="../ui/repositoryview.cpp" line="1462"/>
+        <location filename="../ui/repositoryview.cpp" line="1463"/>
         <source>No remotes</source>
         <translation>Нет внешних веток</translation>
     </message>
     <message>
-        <location filename="../ui/repositoryview.cpp" line="1466"/>
+        <location filename="../ui/repositoryview.cpp" line="1467"/>
         <source>Stashes</source>
         <translation>Скрытые изменения</translation>
     </message>
     <message>
-        <location filename="../ui/repositoryview.cpp" line="1485"/>
+        <location filename="../ui/repositoryview.cpp" line="1486"/>
         <source>No stashes</source>
         <translation>Нет скрытых изменений</translation>
     </message>
     <message>
-        <location filename="../ui/repositoryview.cpp" line="1491"/>
+        <location filename="../ui/repositoryview.cpp" line="1492"/>
         <source>Submodules</source>
         <translation>Подмодули</translation>
     </message>
     <message>
-        <location filename="../ui/repositoryview.cpp" line="1526"/>
+        <location filename="../ui/repositoryview.cpp" line="1527"/>
         <source>UNSTAGED FILES  (%1)</source>
         <translation>НЕПРОИНДЕКСИРОВАННЫЕ ФАЙЛЫ  (%1)</translation>
     </message>
     <message>
-        <location filename="../ui/repositoryview.cpp" line="1528"/>
+        <location filename="../ui/repositoryview.cpp" line="1529"/>
         <source>STAGED FILES  (%1)</source>
         <translation>ПРОИНДЕКСИРОВАННЫЕ ФАЙЛЫ  (%1)</translation>
     </message>
     <message>
-        <location filename="../ui/repositoryview.cpp" line="1602"/>
-        <location filename="../ui/repositoryview.cpp" line="1865"/>
+        <location filename="../ui/repositoryview.cpp" line="1603"/>
+        <location filename="../ui/repositoryview.cpp" line="2018"/>
         <source>
 Previously: %1</source>
         <translation>
 Ранее: %1</translation>
     </message>
     <message>
-        <location filename="../ui/repositoryview.cpp" line="1653"/>
+        <location filename="../ui/repositoryview.cpp" line="1657"/>
         <source>The working tree is clean — there are no changes</source>
         <translation>Рабочая копия чистая — изменений нет</translation>
     </message>
     <message>
-        <location filename="../ui/repositoryview.cpp" line="1661"/>
+        <location filename="../ui/repositoryview.cpp" line="1667"/>
         <source>STAGED</source>
         <translation>В ИНДЕКСЕ</translation>
     </message>
     <message>
-        <location filename="../ui/repositoryview.cpp" line="1662"/>
+        <location filename="../ui/repositoryview.cpp" line="1668"/>
         <source>WORKING TREE</source>
         <translation>РАБОЧАЯ КОПИЯ</translation>
     </message>
     <message>
-        <location filename="../ui/repositoryview.cpp" line="1676"/>
+        <location filename="../ui/repositoryview.cpp" line="1703"/>
         <source>Git returned no differences for this file.</source>
         <translation>Git не вернул различий для этого файла.</translation>
     </message>
     <message>
-        <location filename="../ui/repositoryview.cpp" line="1788"/>
+        <location filename="../ui/repositoryview.cpp" line="1837"/>
         <location filename="../ui/commitmodel.cpp" line="170"/>
         <source>Uncommitted changes</source>
         <translation>Незафиксированные изменения</translation>
     </message>
     <message>
-        <location filename="../ui/repositoryview.cpp" line="1709"/>
+        <location filename="../ui/repositoryview.cpp" line="1754"/>
         <source>The repository has no commits yet.</source>
         <translation>В репозитории пока нет коммитов.</translation>
     </message>
     <message>
-        <location filename="../ui/repositoryview.cpp" line="1778"/>
+        <location filename="../ui/repositoryview.cpp" line="1823"/>
         <source>Select a file</source>
         <translation>Выберите файл</translation>
     </message>
@@ -1679,500 +1743,535 @@ Previously: %1</source>
         <translation type="vanished">&lt;p&gt;&lt;b&gt;Незафиксированные изменения&lt;/b&gt;&lt;/p&gt;&lt;table cellspacing=&apos;0&apos; cellpadding=&apos;2&apos;&gt;&lt;tr&gt;&lt;td&gt;&lt;b&gt;Файлов:&amp;nbsp;&amp;nbsp;&lt;/b&gt;&lt;/td&gt;&lt;td&gt;%1&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;&lt;b&gt;Ветка:&amp;nbsp;&amp;nbsp;&lt;/b&gt;&lt;/td&gt;&lt;td&gt;%2&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;</translation>
     </message>
     <message>
-        <location filename="../ui/repositoryview.cpp" line="1789"/>
+        <location filename="../ui/repositoryview.cpp" line="1838"/>
         <source>Files:</source>
         <translation>Файлов:</translation>
     </message>
     <message>
-        <location filename="../ui/repositoryview.cpp" line="1790"/>
+        <location filename="../ui/repositoryview.cpp" line="1839"/>
         <source>Branch:</source>
         <translation>Ветка:</translation>
     </message>
     <message>
-        <location filename="../ui/repositoryview.cpp" line="1827"/>
+        <location filename="../ui/repositoryview.cpp" line="1876"/>
         <source>Commit:</source>
         <translation>Коммит:</translation>
     </message>
     <message>
-        <location filename="../ui/repositoryview.cpp" line="1831"/>
+        <location filename="../ui/repositoryview.cpp" line="1880"/>
         <source>Parents:</source>
         <translation>Родители:</translation>
     </message>
     <message>
-        <location filename="../ui/repositoryview.cpp" line="1834"/>
+        <location filename="../ui/repositoryview.cpp" line="1883"/>
         <source>Author:</source>
         <translation>Автор:</translation>
     </message>
     <message>
-        <location filename="../ui/repositoryview.cpp" line="1838"/>
+        <location filename="../ui/repositoryview.cpp" line="1887"/>
         <source>Date:</source>
         <translation>Дата:</translation>
     </message>
     <message>
-        <location filename="../ui/repositoryview.cpp" line="1840"/>
+        <location filename="../ui/repositoryview.cpp" line="1889"/>
         <source>Committer:</source>
         <translation>Коммитер:</translation>
     </message>
     <message>
-        <location filename="../ui/repositoryview.cpp" line="1843"/>
+        <location filename="../ui/repositoryview.cpp" line="1892"/>
         <source>Refs:</source>
         <translation>Ссылки:</translation>
     </message>
     <message>
-        <location filename="../ui/repositoryview.cpp" line="2042"/>
-        <location filename="../ui/repositoryview.cpp" line="2530"/>
+        <location filename="../ui/repositoryview.cpp" line="2149"/>
+        <source>Reading the stash…</source>
+        <translation>Чтение прячки…</translation>
+    </message>
+    <message>
+        <location filename="../ui/repositoryview.cpp" line="2197"/>
+        <location filename="../ui/repositoryview.cpp" line="2739"/>
         <source>Switch</source>
         <translation>Переключиться</translation>
     </message>
     <message>
-        <location filename="../ui/repositoryview.cpp" line="2045"/>
-        <location filename="../ui/repositoryview.cpp" line="2108"/>
-        <location filename="../ui/repositoryview.cpp" line="2438"/>
+        <location filename="../ui/repositoryview.cpp" line="2200"/>
+        <location filename="../ui/repositoryview.cpp" line="2278"/>
+        <location filename="../ui/repositoryview.cpp" line="2626"/>
         <source>Merge into the current branch</source>
         <translation>Влить в текущую ветку</translation>
     </message>
     <message>
-        <location filename="../ui/repositoryview.cpp" line="2048"/>
-        <location filename="../ui/repositoryview.cpp" line="2110"/>
-        <location filename="../ui/repositoryview.cpp" line="2440"/>
-        <location filename="../ui/repositoryview.cpp" line="2608"/>
-        <location filename="../ui/repositoryview.cpp" line="2622"/>
+        <location filename="../ui/repositoryview.cpp" line="2210"/>
+        <location filename="../ui/repositoryview.cpp" line="2280"/>
+        <location filename="../ui/repositoryview.cpp" line="2628"/>
+        <location filename="../ui/repositoryview.cpp" line="2817"/>
+        <location filename="../ui/repositoryview.cpp" line="2831"/>
         <source>Merge</source>
         <translation>Слияние</translation>
     </message>
     <message>
-        <location filename="../ui/repositoryview.cpp" line="2055"/>
+        <location filename="../ui/repositoryview.cpp" line="2216"/>
         <source>Rebase the current branch here</source>
         <translation>Перебазировать текущую ветку сюда</translation>
     </message>
     <message>
-        <location filename="../ui/repositoryview.cpp" line="2062"/>
+        <location filename="../ui/repositoryview.cpp" line="2223"/>
         <source>Rename…</source>
         <translation>Переименовать…</translation>
     </message>
     <message>
-        <location filename="../ui/repositoryview.cpp" line="2065"/>
+        <location filename="../ui/repositoryview.cpp" line="2226"/>
         <source>Rename branch</source>
         <translation>Переименовать ветку</translation>
     </message>
     <message>
-        <location filename="../ui/repositoryview.cpp" line="2065"/>
+        <location filename="../ui/repositoryview.cpp" line="2226"/>
         <source>New name:</source>
         <translation>Новое имя:</translation>
     </message>
     <message>
-        <location filename="../ui/repositoryview.cpp" line="2068"/>
+        <location filename="../ui/repositoryview.cpp" line="2229"/>
         <source>Renaming the branch</source>
         <translation>Переименование ветки</translation>
     </message>
     <message>
-        <location filename="../ui/repositoryview.cpp" line="2072"/>
+        <location filename="../ui/repositoryview.cpp" line="2235"/>
         <source>Push the branch</source>
         <translation>Отправить ветку</translation>
     </message>
     <message>
-        <location filename="../ui/repositoryview.cpp" line="2080"/>
-        <location filename="../ui/repositoryview.cpp" line="2083"/>
+        <location filename="../ui/repositoryview.cpp" line="2243"/>
+        <location filename="../ui/repositoryview.cpp" line="2246"/>
         <source>Delete branch</source>
         <translation>Удалить ветку</translation>
     </message>
     <message>
-        <location filename="../ui/repositoryview.cpp" line="2084"/>
+        <location filename="../ui/repositoryview.cpp" line="2247"/>
         <source>Delete the branch “%1”?</source>
         <translation>Удалить ветку «%1»?</translation>
     </message>
     <message>
-        <location filename="../ui/repositoryview.cpp" line="2088"/>
-        <location filename="../ui/repositoryview.cpp" line="2096"/>
-        <location filename="../ui/repositoryview.cpp" line="2128"/>
+        <location filename="../ui/repositoryview.cpp" line="2252"/>
+        <location filename="../ui/repositoryview.cpp" line="2267"/>
+        <location filename="../ui/repositoryview.cpp" line="2298"/>
         <source>Deleting the branch</source>
         <translation>Удаление ветки</translation>
     </message>
     <message>
-        <location filename="../ui/repositoryview.cpp" line="2093"/>
+        <location filename="../ui/repositoryview.cpp" line="2262"/>
         <source>The branch is not merged</source>
         <translation>Ветка не слита</translation>
     </message>
     <message>
-        <location filename="../ui/repositoryview.cpp" line="2094"/>
+        <location filename="../ui/repositoryview.cpp" line="2263"/>
         <source>Delete “%1” anyway?</source>
         <translation>Удалить «%1» принудительно?</translation>
     </message>
     <message>
-        <location filename="../ui/repositoryview.cpp" line="2106"/>
+        <location filename="../ui/repositoryview.cpp" line="2276"/>
         <source>Create a local branch and switch to it</source>
         <translation>Создать локальную ветку и переключиться</translation>
     </message>
     <message>
-        <location filename="../ui/repositoryview.cpp" line="2116"/>
+        <location filename="../ui/repositoryview.cpp" line="2286"/>
         <source>Delete the branch in the remote repository</source>
         <translation>Удалить ветку в удалённом репозитории</translation>
     </message>
     <message>
-        <location filename="../ui/repositoryview.cpp" line="2125"/>
+        <location filename="../ui/repositoryview.cpp" line="2295"/>
         <source>Delete remote branch</source>
         <translation>Удалить удалённую ветку</translation>
     </message>
     <message>
-        <location filename="../ui/repositoryview.cpp" line="2126"/>
+        <location filename="../ui/repositoryview.cpp" line="2296"/>
         <source>Delete “%1” in “%2”?</source>
         <translation>Удалить «%1» в «%2»?</translation>
     </message>
     <message>
-        <location filename="../ui/repositoryview.cpp" line="2136"/>
+        <location filename="../ui/repositoryview.cpp" line="2306"/>
         <source>Go to the tag</source>
         <translation>Перейти к тегу</translation>
     </message>
     <message>
-        <location filename="../ui/repositoryview.cpp" line="2141"/>
+        <location filename="../ui/repositoryview.cpp" line="2313"/>
         <source>Push the tag</source>
         <translation>Отправить тег</translation>
     </message>
     <message>
-        <location filename="../ui/repositoryview.cpp" line="2143"/>
+        <location filename="../ui/repositoryview.cpp" line="2315"/>
         <source>Pushing the tag</source>
         <translation>Push тега</translation>
     </message>
     <message>
-        <location filename="../ui/repositoryview.cpp" line="2148"/>
+        <location filename="../ui/repositoryview.cpp" line="2320"/>
         <source>Delete tag</source>
         <translation>Удалить тег</translation>
     </message>
     <message>
-        <location filename="../ui/repositoryview.cpp" line="2150"/>
+        <location filename="../ui/repositoryview.cpp" line="2322"/>
         <source>Deleting the tag</source>
         <translation>Удаление тега</translation>
     </message>
     <message>
-        <location filename="../ui/repositoryview.cpp" line="2155"/>
+        <location filename="../ui/repositoryview.cpp" line="2327"/>
         <source>Apply and drop</source>
         <translation>Применить и удалить</translation>
     </message>
     <message>
-        <location filename="../ui/repositoryview.cpp" line="2160"/>
+        <location filename="../ui/repositoryview.cpp" line="2334"/>
         <source>Apply and keep in the list</source>
         <translation>Применить, сохранив в списке</translation>
     </message>
     <message>
-        <location filename="../ui/repositoryview.cpp" line="2164"/>
+        <location filename="../ui/repositoryview.cpp" line="2338"/>
         <source>Delete</source>
         <translation>Удалить</translation>
     </message>
     <message>
-        <location filename="../ui/repositoryview.cpp" line="2170"/>
+        <location filename="../ui/repositoryview.cpp" line="2344"/>
         <source>Fetch</source>
         <translation>Получить изменения</translation>
     </message>
     <message>
-        <location filename="../ui/repositoryview.cpp" line="2176"/>
+        <location filename="../ui/repositoryview.cpp" line="2350"/>
         <source>Delete the remote</source>
         <translation>Удалить репозиторий</translation>
     </message>
     <message>
-        <location filename="../ui/repositoryview.cpp" line="2178"/>
+        <location filename="../ui/repositoryview.cpp" line="2352"/>
         <source>Deleting the remote</source>
         <translation>Удаление remote</translation>
     </message>
     <message>
-        <location filename="../ui/repositoryview.cpp" line="2182"/>
+        <location filename="../ui/repositoryview.cpp" line="2358"/>
         <source>New branch…</source>
         <translation>Новая ветка…</translation>
     </message>
     <message>
-        <location filename="../ui/repositoryview.cpp" line="2184"/>
+        <location filename="../ui/repositoryview.cpp" line="2360"/>
         <source>Add remote…</source>
         <translation>Добавить remote…</translation>
     </message>
     <message>
-        <location filename="../ui/repositoryview.cpp" line="2202"/>
+        <location filename="../ui/repositoryview.cpp" line="2378"/>
         <source>Unstage</source>
         <comment>context menu</comment>
         <translation>Убрать из индекса</translation>
     </message>
     <message>
-        <location filename="../ui/repositoryview.cpp" line="2204"/>
+        <location filename="../ui/repositoryview.cpp" line="2380"/>
         <source>Stage</source>
         <comment>context menu</comment>
         <translation>Добавить в индекс</translation>
     </message>
     <message>
-        <location filename="../ui/repositoryview.cpp" line="2205"/>
-        <location filename="../ui/repositoryview.cpp" line="2303"/>
-        <location filename="../ui/repositoryview.cpp" line="2353"/>
+        <location filename="../ui/repositoryview.cpp" line="2381"/>
+        <location filename="../ui/repositoryview.cpp" line="2479"/>
+        <location filename="../ui/repositoryview.cpp" line="2539"/>
         <source>Discard the changes</source>
         <translation>Откатить изменения</translation>
     </message>
     <message>
-        <location filename="../ui/repositoryview.cpp" line="2212"/>
+        <location filename="../ui/repositoryview.cpp" line="2388"/>
         <source>Resolve: keep our changes</source>
         <translation>Разрешить: оставить свои изменения</translation>
     </message>
     <message>
-        <location filename="../ui/repositoryview.cpp" line="2214"/>
-        <location filename="../ui/repositoryview.cpp" line="2220"/>
+        <location filename="../ui/repositoryview.cpp" line="2390"/>
+        <location filename="../ui/repositoryview.cpp" line="2396"/>
         <source>Resolving the conflict</source>
         <translation>Разрешение конфликта</translation>
     </message>
     <message>
-        <location filename="../ui/repositoryview.cpp" line="2218"/>
+        <location filename="../ui/repositoryview.cpp" line="2394"/>
         <source>Resolve: take their changes</source>
         <translation>Разрешить: принять чужие изменения</translation>
     </message>
     <message>
-        <location filename="../ui/repositoryview.cpp" line="2230"/>
+        <location filename="../ui/repositoryview.cpp" line="2406"/>
         <source>Open the file</source>
         <translation>Открыть файл</translation>
     </message>
     <message>
-        <location filename="../ui/repositoryview.cpp" line="2231"/>
+        <location filename="../ui/repositoryview.cpp" line="2407"/>
         <source>Show in the folder</source>
         <translation>Показать в папке</translation>
     </message>
     <message>
-        <location filename="../ui/repositoryview.cpp" line="2235"/>
+        <location filename="../ui/repositoryview.cpp" line="2411"/>
         <source>Copy the path</source>
         <translation>Скопировать путь</translation>
     </message>
     <message>
-        <location filename="../ui/repositoryview.cpp" line="2239"/>
+        <location filename="../ui/repositoryview.cpp" line="2415"/>
         <source>Add to .gitignore</source>
         <translation>Добавить в .gitignore</translation>
     </message>
     <message>
-        <location filename="../ui/repositoryview.cpp" line="2240"/>
+        <location filename="../ui/repositoryview.cpp" line="2416"/>
         <source>Updating .gitignore</source>
         <translation>Обновление .gitignore</translation>
     </message>
     <message>
-        <location filename="../ui/repositoryview.cpp" line="2261"/>
+        <location filename="../ui/repositoryview.cpp" line="2437"/>
         <source>Staging</source>
         <translation>Индексация</translation>
     </message>
     <message>
-        <location filename="../ui/repositoryview.cpp" line="2269"/>
+        <location filename="../ui/repositoryview.cpp" line="2445"/>
         <source>Unstaging</source>
         <translation>Удаление из индекса</translation>
     </message>
     <message>
-        <location filename="../ui/repositoryview.cpp" line="2274"/>
+        <location filename="../ui/repositoryview.cpp" line="2450"/>
         <source>Staging all files</source>
         <translation>Индексация всех файлов</translation>
     </message>
     <message>
-        <location filename="../ui/repositoryview.cpp" line="2278"/>
+        <location filename="../ui/repositoryview.cpp" line="2454"/>
         <source>Clearing the index</source>
         <translation>Очистка индекса</translation>
     </message>
     <message>
-        <location filename="../ui/repositoryview.cpp" line="2297"/>
+        <location filename="../ui/repositoryview.cpp" line="2473"/>
         <source>Select files in the list of unstaged files.</source>
         <translation>Выберите файлы в списке непроиндексированных.</translation>
     </message>
     <message>
-        <location filename="../ui/repositoryview.cpp" line="2304"/>
+        <location filename="../ui/repositoryview.cpp" line="2480"/>
         <source>The changes in %1 file(s) will be lost irreversibly. Continue?</source>
         <translation>Изменения в %1 файл(ах) будут потеряны безвозвратно. Продолжить?</translation>
     </message>
     <message>
-        <location filename="../ui/repositoryview.cpp" line="2312"/>
+        <location filename="../ui/repositoryview.cpp" line="2504"/>
         <source>Discarding the changes</source>
         <translation>Откат изменений</translation>
     </message>
     <message>
-        <location filename="../ui/repositoryview.cpp" line="2316"/>
+        <location filename="../ui/repositoryview.cpp" line="2490"/>
         <source>Deleting the new files</source>
         <translation>Удаление новых файлов</translation>
     </message>
     <message>
-        <location filename="../ui/repositoryview.cpp" line="2328"/>
+        <location filename="../ui/repositoryview.cpp" line="1676"/>
+        <location filename="../ui/repositoryview.cpp" line="1949"/>
+        <source>Reading the changes…</source>
+        <translation>Чтение изменений…</translation>
+    </message>
+    <message>
+        <location filename="../ui/repositoryview.cpp" line="2516"/>
         <source>There are no staged changes.</source>
         <translation>Нет проиндексированных изменений.</translation>
     </message>
     <message>
-        <location filename="../ui/repositoryview.cpp" line="2341"/>
+        <location filename="../ui/repositoryview.cpp" line="2526"/>
         <source>The commit was created</source>
         <translation>Коммит создан</translation>
     </message>
     <message>
-        <location filename="../ui/repositoryview.cpp" line="2354"/>
+        <location filename="../ui/repositoryview.cpp" line="2540"/>
         <source>The selected lines will be removed from the working tree. Continue?</source>
         <translation>Выбранные строки будут удалены из рабочей копии. Продолжить?</translation>
     </message>
     <message>
-        <location filename="../ui/repositoryview.cpp" line="2362"/>
+        <location filename="../ui/repositoryview.cpp" line="2548"/>
         <source>Staging the fragment</source>
         <translation>Индексация фрагмента</translation>
     </message>
     <message>
-        <location filename="../ui/repositoryview.cpp" line="2364"/>
+        <location filename="../ui/repositoryview.cpp" line="2550"/>
         <source>Unstaging the fragment</source>
         <translation>Удаление фрагмента из индекса</translation>
     </message>
     <message>
-        <location filename="../ui/repositoryview.cpp" line="2365"/>
+        <location filename="../ui/repositoryview.cpp" line="2551"/>
         <source>Discarding the fragment</source>
         <translation>Откат фрагмента</translation>
     </message>
     <message>
-        <location filename="../ui/repositoryview.cpp" line="2387"/>
+        <location filename="../ui/repositoryview.cpp" line="2573"/>
         <source>Go to the commit</source>
         <translation>Перейти к коммиту</translation>
     </message>
     <message>
-        <location filename="../ui/repositoryview.cpp" line="2389"/>
+        <location filename="../ui/repositoryview.cpp" line="2575"/>
         <source>Stash the changes…</source>
         <translation>Спрятать изменения…</translation>
     </message>
     <message>
-        <location filename="../ui/repositoryview.cpp" line="2403"/>
+        <location filename="../ui/repositoryview.cpp" line="2589"/>
         <source>Go to this commit</source>
         <translation>Перейти к этому коммиту</translation>
     </message>
     <message>
-        <location filename="../ui/repositoryview.cpp" line="2407"/>
+        <location filename="../ui/repositoryview.cpp" line="2593"/>
         <source>Switch to a detached HEAD state?</source>
         <translation>Перейти в состояние отсоединённого HEAD?</translation>
     </message>
     <message>
-        <location filename="../ui/repositoryview.cpp" line="2413"/>
+        <location filename="../ui/repositoryview.cpp" line="2601"/>
         <source>Create a branch from here…</source>
         <translation>Создать ветку отсюда…</translation>
     </message>
     <message>
-        <location filename="../ui/repositoryview.cpp" line="2415"/>
+        <location filename="../ui/repositoryview.cpp" line="2603"/>
         <source>commit %1</source>
         <translation>коммита %1</translation>
     </message>
     <message>
-        <location filename="../ui/repositoryview.cpp" line="2419"/>
-        <location filename="../ui/repositoryview.cpp" line="2585"/>
+        <location filename="../ui/repositoryview.cpp" line="2607"/>
+        <location filename="../ui/repositoryview.cpp" line="2794"/>
         <source>Creating the branch</source>
         <translation>Создание ветки</translation>
     </message>
     <message>
-        <location filename="../ui/repositoryview.cpp" line="2425"/>
+        <location filename="../ui/repositoryview.cpp" line="2613"/>
         <source>Create a tag…</source>
         <translation>Создать тег…</translation>
     </message>
     <message>
-        <location filename="../ui/repositoryview.cpp" line="2431"/>
-        <location filename="../ui/repositoryview.cpp" line="2640"/>
+        <location filename="../ui/repositoryview.cpp" line="2619"/>
+        <location filename="../ui/repositoryview.cpp" line="2849"/>
         <source>Creating the tag</source>
         <translation>Создание тега</translation>
     </message>
     <message>
-        <location filename="../ui/repositoryview.cpp" line="2448"/>
+        <location filename="../ui/repositoryview.cpp" line="2638"/>
         <source>Revert the commit</source>
         <translation>Откатить коммит (revert)</translation>
     </message>
     <message>
-        <location filename="../ui/repositoryview.cpp" line="2454"/>
+        <location filename="../ui/repositoryview.cpp" line="2644"/>
         <source>Reset the current branch here…</source>
         <translation>Сбросить текущую ветку сюда…</translation>
     </message>
     <message>
-        <location filename="../ui/repositoryview.cpp" line="2464"/>
+        <location filename="../ui/repositoryview.cpp" line="2656"/>
         <source>Copy the SHA</source>
         <translation>Скопировать SHA</translation>
     </message>
     <message>
-        <location filename="../ui/repositoryview.cpp" line="2468"/>
+        <location filename="../ui/repositoryview.cpp" line="2660"/>
         <source>Copy the message</source>
         <translation>Скопировать описание</translation>
     </message>
     <message>
-        <location filename="../ui/repositoryview.cpp" line="2505"/>
+        <location filename="../ui/repositoryview.cpp" line="2686"/>
+        <source>Searching…</source>
+        <translation>Поиск…</translation>
+    </message>
+    <message>
+        <location filename="../ui/repositoryview.cpp" line="2714"/>
         <source>Commits found: %1</source>
         <translation>Найдено коммитов: %1</translation>
     </message>
     <message>
-        <location filename="../ui/repositoryview.cpp" line="2524"/>
+        <location filename="../ui/repositoryview.cpp" line="2733"/>
         <source>There are no branches or tags available.</source>
         <translation>Нет доступных веток или тегов.</translation>
     </message>
     <message>
-        <location filename="../ui/repositoryview.cpp" line="2530"/>
+        <location filename="../ui/repositoryview.cpp" line="2739"/>
         <source>Branch or tag:</source>
         <translation>Ветка или тег:</translation>
     </message>
     <message>
-        <location filename="../ui/repositoryview.cpp" line="2549"/>
+        <location filename="../ui/repositoryview.cpp" line="2758"/>
         <source>Switching the branch</source>
         <translation>Переключение ветки</translation>
     </message>
     <message>
-        <location filename="../ui/repositoryview.cpp" line="2562"/>
+        <location filename="../ui/repositoryview.cpp" line="2771"/>
         <source>Local branch</source>
         <translation>Локальная ветка</translation>
     </message>
     <message>
-        <location filename="../ui/repositoryview.cpp" line="2563"/>
+        <location filename="../ui/repositoryview.cpp" line="2772"/>
         <source>Name of the local branch for %1:</source>
         <translation>Имя локальной ветки для %1:</translation>
     </message>
     <message>
-        <location filename="../ui/repositoryview.cpp" line="2577"/>
+        <location filename="../ui/repositoryview.cpp" line="2786"/>
         <source>branch %1</source>
         <translation>ветки %1</translation>
     </message>
     <message>
-        <location filename="../ui/repositoryview.cpp" line="2602"/>
+        <location filename="../ui/repositoryview.cpp" line="2811"/>
         <source>There are no branches to merge.</source>
         <translation>Нет веток для слияния.</translation>
     </message>
     <message>
-        <location filename="../ui/repositoryview.cpp" line="2608"/>
+        <location filename="../ui/repositoryview.cpp" line="2817"/>
         <source>Merge branch:</source>
         <translation>Влить ветку:</translation>
     </message>
     <message>
-        <location filename="../ui/repositoryview.cpp" line="2646"/>
+        <location filename="../ui/repositoryview.cpp" line="2857"/>
         <source>There are no changes to stash.</source>
         <translation>Нет изменений для stash.</translation>
     </message>
     <message>
-        <location filename="../ui/repositoryview.cpp" line="2665"/>
+        <location filename="../ui/repositoryview.cpp" line="2876"/>
         <source>The stash list is empty.</source>
         <translation>Список stash пуст.</translation>
     </message>
     <message>
-        <location filename="../ui/repositoryview.cpp" line="2683"/>
+        <location filename="../ui/repositoryview.cpp" line="2900"/>
         <source>There are no remote repositories</source>
         <translation>Нет удалённых репозиториев</translation>
     </message>
     <message>
-        <location filename="../ui/repositoryview.cpp" line="2684"/>
+        <location filename="../ui/repositoryview.cpp" line="2901"/>
         <source>Add a remote repository now?</source>
         <translation>Добавить удалённый репозиторий сейчас?</translation>
     </message>
     <message>
-        <location filename="../ui/repositoryview.cpp" line="2702"/>
+        <location filename="../ui/repositoryview.cpp" line="2919"/>
         <source>No branch is selected.</source>
         <translation>Не выбрано ни одной ветки.</translation>
     </message>
     <message>
-        <location filename="../ui/repositoryview.cpp" line="2721"/>
+        <location filename="../ui/repositoryview.cpp" line="2939"/>
         <source>Adding the remote</source>
         <translation>Добавление remote</translation>
     </message>
     <message>
-        <location filename="../ui/repositoryview.cpp" line="2727"/>
+        <location filename="../ui/repositoryview.cpp" line="2945"/>
         <source>The terminal could not be started.</source>
         <translation>Не удалось запустить терминал.</translation>
     </message>
     <message>
-        <location filename="../ui/repositoryview.cpp" line="2784"/>
-        <location filename="../ui/repositoryview.cpp" line="2819"/>
+        <location filename="../ui/repositoryview.cpp" line="2983"/>
+        <source>Another operation is still running.</source>
+        <translation>Другая операция ещё выполняется.</translation>
+    </message>
+    <message>
+        <location filename="../ui/repositoryview.cpp" line="3012"/>
+        <source>Stopping %1…</source>
+        <translation>Остановка: %1…</translation>
+    </message>
+    <message>
+        <location filename="../ui/repositoryview.cpp" line="3032"/>
         <source>%1: done</source>
         <translation>%1: готово</translation>
     </message>
     <message>
-        <location filename="../ui/repositoryview.cpp" line="2804"/>
+        <location filename="../ui/repositoryview.cpp" line="2995"/>
         <source>%1 is running…</source>
         <translation>%1 выполняется…</translation>
     </message>
     <message>
-        <location filename="../ui/repositoryview.cpp" line="2880"/>
+        <location filename="../ui/repositoryview.cpp" line="3038"/>
+        <source>%1 was cancelled.</source>
+        <translation>%1: операция отменена.</translation>
+    </message>
+    <message>
+        <location filename="../ui/repositoryview.cpp" line="3111"/>
+        <source>Exit code: %1</source>
+        <translation>Код возврата: %1</translation>
+    </message>
+    <message>
+        <location filename="../ui/repositoryview.cpp" line="3118"/>
         <source>The git command failed.</source>
         <translation>Команда git завершилась с ошибкой.</translation>
     </message>
@@ -2180,37 +2279,37 @@ Previously: %1</source>
 <context>
     <name>ResetDialog</name>
     <message>
-        <location filename="../ui/dialogs.cpp" line="382"/>
+        <location filename="../ui/dialogs.cpp" line="375"/>
         <source>Reset Current Branch</source>
         <translation>Сбросить текущую ветку</translation>
     </message>
     <message>
-        <location filename="../ui/dialogs.cpp" line="386"/>
+        <location filename="../ui/dialogs.cpp" line="379"/>
         <source>Move the current branch to %1</source>
         <translation>Переместить текущую ветку на %1</translation>
     </message>
     <message>
-        <location filename="../ui/dialogs.cpp" line="389"/>
+        <location filename="../ui/dialogs.cpp" line="382"/>
         <source>Soft — keep the changes staged</source>
         <translation>Soft — оставить изменения в индексе</translation>
     </message>
     <message>
-        <location filename="../ui/dialogs.cpp" line="390"/>
+        <location filename="../ui/dialogs.cpp" line="383"/>
         <source>Mixed — keep the changes in the working tree</source>
         <translation>Mixed — оставить изменения в рабочей копии</translation>
     </message>
     <message>
-        <location filename="../ui/dialogs.cpp" line="391"/>
+        <location filename="../ui/dialogs.cpp" line="384"/>
         <source>Hard — discard all local changes</source>
         <translation>Hard — удалить все локальные изменения</translation>
     </message>
     <message>
-        <location filename="../ui/dialogs.cpp" line="396"/>
+        <location filename="../ui/dialogs.cpp" line="389"/>
         <source>A hard reset irreversibly deletes uncommitted changes in the working tree.</source>
         <translation>Hard-сброс необратимо удаляет несохранённые изменения в рабочей копии.</translation>
     </message>
     <message>
-        <location filename="../ui/dialogs.cpp" line="400"/>
+        <location filename="../ui/dialogs.cpp" line="393"/>
         <source>Reset</source>
         <translation>Сбросить</translation>
     </message>
@@ -2218,32 +2317,32 @@ Previously: %1</source>
 <context>
     <name>StashDialog</name>
     <message>
-        <location filename="../ui/dialogs.cpp" line="344"/>
+        <location filename="../ui/dialogs.cpp" line="337"/>
         <source>Stash Changes</source>
         <translation>Спрятать изменения</translation>
     </message>
     <message>
-        <location filename="../ui/dialogs.cpp" line="350"/>
+        <location filename="../ui/dialogs.cpp" line="343"/>
         <source>Stash description</source>
         <translation>Описание stash&apos;а</translation>
     </message>
     <message>
-        <location filename="../ui/dialogs.cpp" line="351"/>
+        <location filename="../ui/dialogs.cpp" line="344"/>
         <source>Message:</source>
         <translation>Сообщение:</translation>
     </message>
     <message>
-        <location filename="../ui/dialogs.cpp" line="354"/>
+        <location filename="../ui/dialogs.cpp" line="347"/>
         <source>Keep the staged changes</source>
         <translation>Оставить проиндексированные изменения</translation>
     </message>
     <message>
-        <location filename="../ui/dialogs.cpp" line="355"/>
+        <location filename="../ui/dialogs.cpp" line="348"/>
         <source>Include untracked files</source>
         <translation>Включить неотслеживаемые файлы</translation>
     </message>
     <message>
-        <location filename="../ui/dialogs.cpp" line="361"/>
+        <location filename="../ui/dialogs.cpp" line="354"/>
         <source>Stash</source>
         <translation>Спрятать</translation>
     </message>
@@ -2251,32 +2350,32 @@ Previously: %1</source>
 <context>
     <name>TagDialog</name>
     <message>
-        <location filename="../ui/dialogs.cpp" line="307"/>
+        <location filename="../ui/dialogs.cpp" line="300"/>
         <source>New Tag</source>
         <translation>Новый тег</translation>
     </message>
     <message>
-        <location filename="../ui/dialogs.cpp" line="315"/>
+        <location filename="../ui/dialogs.cpp" line="308"/>
         <source>Optional description (annotated tag)</source>
         <translation>Необязательное описание (annotated tag)</translation>
     </message>
     <message>
-        <location filename="../ui/dialogs.cpp" line="316"/>
+        <location filename="../ui/dialogs.cpp" line="309"/>
         <source>Tag name:</source>
         <translation>Имя тега:</translation>
     </message>
     <message>
-        <location filename="../ui/dialogs.cpp" line="317"/>
+        <location filename="../ui/dialogs.cpp" line="310"/>
         <source>Message:</source>
         <translation>Сообщение:</translation>
     </message>
     <message>
-        <location filename="../ui/dialogs.cpp" line="318"/>
+        <location filename="../ui/dialogs.cpp" line="311"/>
         <source>Commit:</source>
         <translation>Коммит:</translation>
     </message>
     <message>
-        <location filename="../ui/dialogs.cpp" line="322"/>
+        <location filename="../ui/dialogs.cpp" line="315"/>
         <source>Create Tag</source>
         <translation>Создать тег</translation>
     </message>
