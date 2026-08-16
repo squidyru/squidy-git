@@ -84,6 +84,7 @@ class FilesPage final : public QWidget {
 
 public:
     explicit FilesPage(const QString &repositoryRoot, QWidget *parent = nullptr);
+    ~FilesPage() override;
 
     /// Refills the revision selector, keeping the current choice when it survives.
     void setReferences(const QList<GitBranchInfo> &branches, const QList<GitTagInfo> &tags);
@@ -107,6 +108,8 @@ private:
     // --- Tree -------------------------------------------------------------
     [[nodiscard]] QString currentRevision() const;
     void reloadTree();
+    /// A copy of the client for a worker, bound to the shutdown flag.
+    [[nodiscard]] GitClient workerClient() const;
     void requestDirectory(const QString &directory);
     /// Runs one directory read at a time so quick expansions are not dropped.
     void startNextDirectory();
@@ -154,6 +157,9 @@ private:
     PdfPreview *pdfView_ = nullptr;
     SyntaxHighlighter *highlighter_ = nullptr;
 
+    /// Cancelled when the page goes away, so no worker is left running a Git
+    /// process once there is no application to serve it.
+    GitCancellationPtr shutdownCancellation_;
     QFutureWatcher<FileTreeLoad> *treeWatcher_ = nullptr;
     QFutureWatcher<FileListingLoad> *listingWatcher_ = nullptr;
     QFutureWatcher<FileHistoryLoad> *historyWatcher_ = nullptr;

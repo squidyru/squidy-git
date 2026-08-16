@@ -32,6 +32,8 @@
 #include <QVBoxLayout>
 #include <QtConcurrentRun>
 
+#include <memory>
+
 namespace {
 
 constexpr int PathRole = Qt::UserRole + 1;
@@ -165,7 +167,8 @@ FilesPage::FilesPage(const QString &repositoryRoot, QWidget *parent)
       treeWatcher_(new QFutureWatcher<FileTreeLoad>(this)),
       listingWatcher_(new QFutureWatcher<FileListingLoad>(this)),
       historyWatcher_(new QFutureWatcher<FileHistoryLoad>(this)),
-      viewerWatcher_(new QFutureWatcher<FileViewerLoad>(this)) {
+      viewerWatcher_(new QFutureWatcher<FileViewerLoad>(this)),
+      shutdownCancellation_(std::make_shared<GitCancellation>()) {
     setObjectName(QStringLiteral("filesPage"));
     const bool opened = git_.openRepository(repositoryRoot).succeeded();
 
@@ -215,6 +218,24 @@ FilesPage::FilesPage(const QString &repositoryRoot, QWidget *parent)
     if (opened) {
         reloadTree();
     }
+}
+
+FilesPage::~FilesPage() {
+    // A worker holds its own client and runs a Git process through it, so it
+    // must not outlive the application that serves the process.
+    shutdownCancellation_->cancel();
+    const QList<QFutureWatcherBase *> watchers{
+        treeWatcher_, listingWatcher_, historyWatcher_, viewerWatcher_
+    };
+    for (QFutureWatcherBase *watcher : watchers) {
+        watcher->waitForFinished();
+    }
+}
+
+GitClient FilesPage::workerClient() const {
+    GitClient git = git_;
+    git.setCancellation(shutdownCancellation_);
+    return git;
 }
 
 QWidget *FilesPage::buildToolRow() {
@@ -488,7 +509,7 @@ void FilesPage::startNextDirectory() {
     const QString directory = directoryQueue_.takeFirst();
     const QString revision = currentRevision();
     const quint64 generation = treeGeneration_;
-    const GitClient git = git_;
+    const GitClient git = workerClient();
 
     treeWatcher_->setFuture(QtConcurrent::run([git, revision, directory, generation] {
         FileTreeLoad load;
@@ -518,7 +539,7 @@ void FilesPage::runFilter() {
     ++listingGeneration_;
     const QString revision = currentRevision();
     const quint64 generation = listingGeneration_;
-    const GitClient git = git_;
+    const GitClient git = workerClient();
 
     listingWatcher_->setFuture(QtConcurrent::run([git, revision, generation] {
         FileListingLoad load;
@@ -750,7 +771,7 @@ void FilesPage::requestHistory(const QString &path) {
 
     const QString revision = currentRevision();
     const quint64 generation = historyGeneration_;
-    const GitClient git = git_;
+    const GitClient git = workerClient();
 
     historyWatcher_->setFuture(QtConcurrent::run([git, path, revision, generation] {
         FileHistoryLoad load;
@@ -853,7 +874,7 @@ void FilesPage::requestViewer() {
     const GitFileRevision revision = *selected;
     const quint64 generation = viewerGeneration_;
     const auto mode = static_cast<ViewerMode>(viewerMode_->currentData().toInt());
-    const GitClient git = git_;
+    const GitClient git = workerClient();
     // The current version is the one at the revision the tree is showing; the
     // working copy has no blob to compare against.
     const QString treeRevision = currentRevision().isEmpty() ? QStringLiteral("HEAD")

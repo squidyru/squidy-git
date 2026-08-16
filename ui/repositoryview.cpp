@@ -57,6 +57,8 @@
 #include <QWidgetAction>
 #include <QtConcurrentRun>
 
+#include <memory>
+
 namespace {
 
 constexpr int PathRole = Qt::UserRole + 20;
@@ -435,6 +437,7 @@ QTreeWidgetItem *firstLeaf(QTreeWidgetItem *item) {
 RepositoryView::RepositoryView(const QString &path, QWidget *parent)
     : QWidget(parent),
       operationWatcher_(new QFutureWatcher<GitCommandResult>(this)),
+      shutdownCancellation_(std::make_shared<GitCancellation>()),
       diffWatcher_(new QFutureWatcher<PatchLoad>(this)),
       commitPatchWatcher_(new QFutureWatcher<PatchLoad>(this)),
       commitDetailsWatcher_(new QFutureWatcher<CommitDetailsLoad>(this)),
@@ -560,6 +563,25 @@ bool RepositoryView::hasStagedChanges() const {
 }
 
 /// A banner that only appears while a merge, rebase or cherry-pick is unfinished.
+RepositoryView::~RepositoryView() {
+    // A worker holds its own client and runs a Git process through it. Left to
+    // outlive the view it would still be running when the thread pools are
+    // torn down, with no application left to serve the process. Stopping the
+    // commands first keeps the wait below short.
+    if (operationCancellation_ != nullptr) {
+        operationCancellation_->cancel();
+    }
+    shutdownCancellation_->cancel();
+
+    const QList<QFutureWatcherBase *> watchers{
+        operationWatcher_, diffWatcher_, commitPatchWatcher_, commitDetailsWatcher_,
+        stashWatcher_, searchWatcher_, autoFetchWatcher_, snapshotWatcher_
+    };
+    for (QFutureWatcherBase *watcher : watchers) {
+        watcher->waitForFinished();
+    }
+}
+
 QWidget *RepositoryView::buildStateBanner() {
     stateBanner_ = new QWidget;
     stateBanner_->setObjectName(QStringLiteral("stateBanner"));
@@ -1258,7 +1280,7 @@ void RepositoryView::refreshAll() {
     }
 
     ++snapshotGeneration_;
-    snapshotWatcher_->setFuture(QtConcurrent::run(collectRepositorySnapshot, git_,
+    snapshotWatcher_->setFuture(QtConcurrent::run(collectRepositorySnapshot, workerClient(),
                                                   currentHistoryOptions(),
                                                   snapshotGeneration_));
 }
@@ -1694,7 +1716,7 @@ void RepositoryView::refreshWorkingTreeDiff() {
     diffView_->setPlaceholderMessage(QString());
     showLoadingLater(diffWatcher_, diffView_, tr("Reading the changes…"));
 
-    GitClient git = git_;
+    GitClient git = workerClient();
     diffWatcher_->setFuture(QtConcurrent::run([git, request]() mutable {
         const GitCommandResult result = git.diff(request.path, request.staged,
                                                  request.untracked);
@@ -1727,7 +1749,7 @@ void RepositoryView::applyWorkingTreeDiff(const PatchLoad &load) {
 
 DiffView::FullPatchProvider RepositoryView::fullDiffProvider(const PatchLoad &request) const {
     // The client is copied into the loader, which runs long after this call.
-    GitClient git = git_;
+    GitClient git = workerClient();
     return [git, request] {
         return QtConcurrent::run([git, request] {
             const GitCommandResult result =
@@ -1926,7 +1948,7 @@ void RepositoryView::refreshCommitDetails() {
     // every arrow press through the history.
     commitDetailsHash_ = hash;
     const bool needsRawDetails = commit == nullptr;
-    GitClient git = git_;
+    GitClient git = workerClient();
     commitDetailsWatcher_->setFuture(QtConcurrent::run([git, hash, needsRawDetails] {
         CommitDetailsLoad load;
         load.hash = hash;
@@ -1967,7 +1989,7 @@ void RepositoryView::refreshCommitFileDiff() {
     commitDiffView_->setPlaceholderMessage(QString());
     showLoadingLater(commitPatchWatcher_, commitDiffView_, tr("Reading the changes…"));
 
-    GitClient git = git_;
+    GitClient git = workerClient();
     commitPatchWatcher_->setFuture(QtConcurrent::run([git, request]() mutable {
         const GitCommandResult result =
             request.hash.isEmpty()
@@ -2007,7 +2029,7 @@ void RepositoryView::applyStash(const StashLoad &load) {
         fileItem->setData(0, PathRole, file.path);
     }
 
-    GitClient git = git_;
+    GitClient git = workerClient();
     const int index = load.index;
     commitDiffView_->setPatch(load.patch, [git, index] {
         return QtConcurrent::run([git, index] {
@@ -2167,7 +2189,7 @@ void RepositoryView::activateNavigationItem(QTreeWidgetItem *item) {
             commitDiffView_->setPlaceholderMessage(QString());
             showLoadingLater(stashWatcher_, commitDiffView_, tr("Reading the stash…"));
 
-            GitClient git = git_;
+            GitClient git = workerClient();
             stashWatcher_->setFuture(QtConcurrent::run([git, index] {
                 StashLoad load;
                 load.index = index;
@@ -2704,7 +2726,7 @@ void RepositoryView::runSearch() {
     // runs for minutes on a large repository.
     Q_EMIT messagePosted(tr("Searching…"), 0);
 
-    GitClient git = git_;
+    GitClient git = workerClient();
     searchWatcher_->setFuture(QtConcurrent::run([git, request]() mutable {
         request.commits = git.search(request.mode, request.query, 500, &request.error);
         return request;
@@ -3101,7 +3123,7 @@ void RepositoryView::runAutoFetch() {
     autoFetchBehind_ = behind_;
     updateWatcherSuspension();
 
-    GitClient git = git_;
+    GitClient git = workerClient();
     autoFetchWatcher_->setFuture(QtConcurrent::run(autoFetchPool(), [git] {
         return git.fetch({}, true, true, AutoFetchTimeoutMs);
     }));
@@ -3113,6 +3135,12 @@ void RepositoryView::finishAutoFetch() {
     autoFetchRunning_ = false;
     updateWatcherSuspension();
     refreshAll();
+}
+
+GitClient RepositoryView::workerClient() const {
+    GitClient git = git_;
+    git.setCancellation(shutdownCancellation_);
+    return git;
 }
 
 void RepositoryView::updateWatcherSuspension() {
