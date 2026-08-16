@@ -199,7 +199,8 @@ QString Theme::styleSheet() const {
         QWidget {
             background: %(window);
             color: %(text);
-            font-size: 13px;
+            font-size: 12px;
+            font-family: "Noto Sans";
         }
         QMainWindow::separator { background: %(border); width: 1px; height: 1px; }
         QToolBar#mainToolbar {
@@ -230,7 +231,7 @@ QString Theme::styleSheet() const {
         QLabel#tabCommitBadge, QLabel#tabPushBadge, QLabel#tabPullBadge {
             border-radius: 4px;
             font-size: 10px;
-            font-weight: 700;
+            font-weight: 400;
         }
         QLabel#tabCommitBadge, QLabel#tabPushBadge, QLabel#tabPullBadge {
             padding: 0 6px;
@@ -371,7 +372,7 @@ QString Theme::styleSheet() const {
             background: %(removedBackground);
             border-bottom: 1px solid %(border);
         }
-        QLabel#stateBadge { color: %(removedText); font-weight: 600; }
+        QLabel#stateBadge { color: %(removedText); font-weight: 400; }
         QWidget#viewSwitcher { background: %(window); border: none; }
         QWidget#workspaceHeader { min-height: 30px; background: transparent; }
         QLabel#workspaceTitle { min-height: 30px; color: %(sectionText); font-size: 12px; font-weight: 600; }
@@ -486,8 +487,8 @@ QString Theme::styleSheet() const {
             border-color: %(accent);
         }
         QTextBrowser#commitDetails {
-            padding: 0;
-            font-family: "Arial";
+            padding: 3px;
+            font-family: "Noto Sans";
             font-size: 12px;
         }
         QPlainTextEdit#diffView, QPlainTextEdit#fileContents { padding: 0; }
@@ -579,7 +580,7 @@ QString Theme::styleSheet() const {
             background: %(surface);
             alternate-background-color: %(rowStripe);
             color: %(text);
-            font-family: "Arial";
+            font-family: "Noto Sans";
             font-size: 12px;
         }
         QTreeView#historyTree::item, QTreeView#fileTimeline::item, QTreeView#fileTree::item {

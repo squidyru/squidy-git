@@ -17,6 +17,8 @@ file(COPY "${PROJECT_SOURCE_DIR}/LICENSE" DESTINATION "${payload_dir}")
 file(RENAME "${payload_dir}/LICENSE" "${payload_dir}/LICENSE.txt")
 file(COPY "${PROJECT_SOURCE_DIR}/installer/windows/THIRD-PARTY-NOTICES.txt"
      DESTINATION "${payload_dir}/licenses")
+file(COPY "${PROJECT_SOURCE_DIR}/resources/fonts/Noto-Sans-OFL.txt"
+     DESTINATION "${payload_dir}/licenses")
 
 # Copy the executable, Qt DLLs, compiler runtime and plugin directories that
 # windeployqt placed in the build directory. Build-system files are excluded.

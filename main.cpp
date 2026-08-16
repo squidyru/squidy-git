@@ -8,11 +8,28 @@
 
 #include <QApplication>
 #include <QCoreApplication>
+#include <QFontDatabase>
 #include <QLibraryInfo>
 #include <QLocale>
 #include <QSettings>
 #include <QStyleFactory>
 #include <QTranslator>
+
+namespace {
+
+void registerBundledFonts() {
+    const QStringList fontResources{
+        QStringLiteral(":/branding/fonts/NotoSans-Regular.ttf"),
+        QStringLiteral(":/branding/fonts/NotoSans-SemiBold.ttf"),
+        QStringLiteral(":/branding/fonts/NotoSans-Bold.ttf")
+    };
+
+    for (const QString &fontResource : fontResources) {
+        static_cast<void>(QFontDatabase::addApplicationFont(fontResource));
+    }
+}
+
+} // namespace
 
 int main(int argc, char *argv[]) {
     // Git and ssh run this same binary to ask for a credential, passing the
@@ -26,6 +43,7 @@ int main(int argc, char *argv[]) {
     }
 
     QApplication app(argc, argv);
+    registerBundledFonts();
 
     QCoreApplication::setOrganizationName(QStringLiteral("SquidyGit"));
     QCoreApplication::setApplicationName(QStringLiteral("SquidyGit"));

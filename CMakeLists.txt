@@ -134,7 +134,10 @@ qt_add_resources(squidygit_ui "branding"
         BASE resources
         FILES
             resources/logo/logo.svg
-            resources/logo/logo_ghost.svg)
+            resources/logo/logo_ghost.svg
+            resources/fonts/NotoSans-Regular.ttf
+            resources/fonts/NotoSans-SemiBold.ttf
+            resources/fonts/NotoSans-Bold.ttf)
 
 add_executable(SquidyGit main.cpp)
 target_link_libraries(SquidyGit PRIVATE squidygit_ui)
@@ -289,6 +292,8 @@ if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
     install(FILES LICENSE
             DESTINATION ${CMAKE_INSTALL_DATADIR}/doc/squidygit
             RENAME copyright)
+    install(FILES resources/fonts/Noto-Sans-OFL.txt
+            DESTINATION ${CMAKE_INSTALL_DATADIR}/doc/squidygit/licenses)
     install(FILES README.md README.ru.md README.zh-CN.md
             DESTINATION ${CMAKE_INSTALL_DATADIR}/doc/squidygit)
 

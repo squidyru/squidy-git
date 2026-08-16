@@ -19,6 +19,8 @@ file(COPY "${PROJECT_SOURCE_DIR}/README.md"
      DESTINATION "${STAGING_DIR}")
 file(COPY "${PROJECT_SOURCE_DIR}/installer/windows/THIRD-PARTY-NOTICES.txt"
      DESTINATION "${STAGING_DIR}/licenses")
+file(COPY "${PROJECT_SOURCE_DIR}/resources/fonts/Noto-Sans-OFL.txt"
+     DESTINATION "${STAGING_DIR}/licenses")
 file(WRITE "${STAGING_DIR}/portable.marker" "SquidyGit portable edition\n")
 
 file(GLOB runtime_files "${RUNTIME_DIR}/*.exe" "${RUNTIME_DIR}/*.dll")

@@ -17,3 +17,12 @@ The Qt libraries may be replaced with a compatible build by the user. SquidyGit
 does not modify Qt.
 
 Additional libraries copied by windeployqt retain their respective licenses.
+
+Noto Sans
+---------
+Copyright 2022 The Noto Project Authors
+(https://github.com/notofonts/latin-greek-cyrillic)
+
+The bundled Noto Sans font files are licensed under the SIL Open Font
+License, Version 1.1. The full license text is distributed as
+licenses/Noto-Sans-OFL.txt.
