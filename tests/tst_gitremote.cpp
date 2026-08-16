@@ -99,9 +99,13 @@ private:
     [[nodiscard]] QString startServer(const QString &repositoryRoot,
                                       const QString &credentials = {});
     /// Creates a bare repository holding one commit.
-    void createRemote(const QString &directory) const;
+    void createRemote(const QString &directory);
 
     QTemporaryDir *root_ = nullptr;
+    /// Why startServer() gave up, so a skip can say something useful.
+    QString serverError_;
+    /// The branch createRemote() seeded, whatever Git named it.
+    QString seededBranch_;
     std::unique_ptr<QProcess> server_;
 };
 
@@ -134,7 +138,7 @@ QString TestGitRemote::path(const QString &name) const {
     return QDir(root_->path()).filePath(name);
 }
 
-void TestGitRemote::createRemote(const QString &directory) const {
+void TestGitRemote::createRemote(const QString &directory) {
     const QString work = path(QStringLiteral("seed"));
     QVERIFY(GitClient::initRepository(directory, true).succeeded());
     QVERIFY(GitClient::initRepository(work, false).succeeded());
@@ -148,7 +152,9 @@ void TestGitRemote::createRemote(const QString &directory) const {
     QVERIFY(git.stage({QStringLiteral("README.md")}).succeeded());
     QVERIFY(git.commit(QStringLiteral("First commit"), false).succeeded());
     QVERIFY(git.addRemote(QStringLiteral("origin"), directory).succeeded());
-    QVERIFY(git.push(QStringLiteral("origin"), {git.currentBranch()}, true, false, false)
+    seededBranch_ = git.currentBranch();
+    QVERIFY(!seededBranch_.isEmpty());
+    QVERIFY(git.push(QStringLiteral("origin"), {seededBranch_}, true, false, false)
                 .succeeded());
 
     // http-backend refuses a push unless the repository opts into it.
@@ -160,6 +166,7 @@ void TestGitRemote::createRemote(const QString &directory) const {
 QString TestGitRemote::startServer(const QString &repositoryRoot, const QString &credentials) {
     const QString script = QStringLiteral(SQUIDYGIT_TEST_DATA_DIR "/githttpserver.py");
     if (!QFile::exists(script)) {
+        serverError_ = QStringLiteral("the bridge script is missing: %1").arg(script);
         return {};
     }
 
@@ -172,17 +179,21 @@ QString TestGitRemote::startServer(const QString &repositoryRoot, const QString 
     server_->setArguments(arguments);
     server_->start();
     if (!server_->waitForStarted(10'000)) {
+        serverError_ = QStringLiteral("python3 did not start: %1").arg(server_->errorString());
         server_.reset();
         return {};
     }
 
     // The first line is the port the operating system handed out.
     if (!server_->waitForReadyRead(10'000)) {
+        serverError_ = QStringLiteral("the bridge printed no port: %1")
+                           .arg(QString::fromUtf8(server_->readAllStandardError()).trimmed());
         server_.reset();
         return {};
     }
     const QString port = QString::fromUtf8(server_->readLine()).trimmed();
     if (port.isEmpty() || port.toInt() == 0) {
+        serverError_ = QStringLiteral("the bridge printed \"%1\" instead of a port").arg(port);
         server_.reset();
         return {};
     }
@@ -223,8 +234,11 @@ void TestGitRemote::wiresTheHelperWhenOneIsConfigured() {
 void TestGitRemote::answersThroughTheHelperProtocol() {
     QLocalServer server;
     server.setSocketOptions(QLocalServer::UserAccessOption);
-    QVERIFY(server.listen(QStringLiteral("squidygit-test-%1")
-                              .arg(QUuid::createUuid().toString(QUuid::Id128))));
+    // Short on purpose: the resulting path has to fit the platform limit on a
+    // socket address, which the temporary directory already eats into.
+    const QString socketName = QStringLiteral("sqg-t-%1")
+                                   .arg(QUuid::createUuid().toString(QUuid::Id128).left(12));
+    QVERIFY2(server.listen(socketName), qPrintable(server.errorString()));
 
     QString received;
     connect(&server, &QLocalServer::newConnection, &server, [&server, &received] {
@@ -281,7 +295,7 @@ void TestGitRemote::clonesFetchesAndPushesOverHttp() {
 
     const QString base = startServer(hosted);
     if (base.isEmpty()) {
-        QSKIP("python3 is not available, the HTTP suite cannot run");
+        QSKIP(qPrintable(QStringLiteral("no HTTP bridge: %1").arg(serverError_)));
     }
     const QString url = base + QStringLiteral("/repo.git");
 
@@ -295,7 +309,8 @@ void TestGitRemote::clonesFetchesAndPushesOverHttp() {
     QVERIFY(git.addRemote(QStringLiteral("origin"), url).succeeded());
     QVERIFY(git.fetch(QStringLiteral("origin"), false, true).succeeded());
 
-    const QString branch = QStringLiteral("master");
+    // Not hard coded: init.defaultBranch differs between installations.
+    const QString branch = seededBranch_;
     const QString remoteBranch = QStringLiteral("origin/") + branch;
     QVERIFY(git.checkoutRemoteBranch(remoteBranch, branch).succeeded());
     QVERIFY(QFile::exists(QDir(clone).filePath(QStringLiteral("README.md"))));
@@ -320,7 +335,7 @@ void TestGitRemote::authenticatesOverHttpThroughAskPass() {
                                          QString::fromLatin1(BasicPassword));
     const QString base = startServer(hosted, credentials);
     if (base.isEmpty()) {
-        QSKIP("python3 is not available, the HTTP suite cannot run");
+        QSKIP(qPrintable(QStringLiteral("no HTTP bridge: %1").arg(serverError_)));
     }
 
     // The user name travels in the URL, so only the password is asked for.

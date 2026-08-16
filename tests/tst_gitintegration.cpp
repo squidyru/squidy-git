@@ -30,9 +30,16 @@ void configureIdentity(const GitClient &git) {
                            QStringLiteral("test@example.com")}).succeeded());
 }
 
+// macOS stores names decomposed and hands them back that way, so the same name
+// can arrive spelled differently from the one that was written. The round trip
+// is what matters here, not which form the filesystem chose.
+[[nodiscard]] QString normalized(const QString &path) {
+    return path.normalized(QString::NormalizationForm_C);
+}
+
 [[nodiscard]] GitFileStatus findStatus(const QList<GitFileStatus> &files, const QString &path) {
     for (const GitFileStatus &file : files) {
-        if (file.path == path) {
+        if (normalized(file.path) == normalized(path)) {
             return file;
         }
     }
@@ -355,10 +362,15 @@ void TestGitIntegration::readsAwkwardFileNames_data() {
     QTest::newRow("space") << QStringLiteral("a file.txt");
     QTest::newRow("cyrillic") << QStringLiteral("файл.txt");
     QTest::newRow("emoji") << QStringLiteral("report 🐙.txt");
+    QTest::newRow("dash prefix") << QStringLiteral("-leading-dash.txt");
+    QTest::newRow("combining") << QStringLiteral("отчёт 🚀.txt");
+
+#ifndef Q_OS_WIN
+    // Windows forbids these outright, so there is nothing for Git to report.
     QTest::newRow("quote") << QStringLiteral("say \"hello\".txt");
     QTest::newRow("backslash") << QStringLiteral("back\\slash.txt");
-    QTest::newRow("dash prefix") << QStringLiteral("-leading-dash.txt");
     QTest::newRow("mixed") << QStringLiteral("отчёт \"v2\" 🚀.txt");
+#endif
 }
 
 void TestGitIntegration::readsAwkwardFileNames() {
@@ -370,7 +382,7 @@ void TestGitIntegration::readsAwkwardFileNames() {
     // Untracked, then staged, then committed: the path must survive each step
     // exactly as written, with no quoting and no escapes.
     const GitFileStatus untracked = findStatus(git.status(), name);
-    QCOMPARE(untracked.path, name);
+    QCOMPARE(normalized(untracked.path), normalized(name));
     QVERIFY(untracked.isUntracked());
 
     QVERIFY(git.stage({name}).succeeded());
@@ -381,7 +393,7 @@ void TestGitIntegration::readsAwkwardFileNames() {
 
     const QList<GitChangedFile> changed = git.commitFiles(git.headHash());
     QCOMPARE(changed.size(), 1);
-    QCOMPARE(changed.constFirst().path, name);
+    QCOMPARE(normalized(changed.constFirst().path), normalized(name));
     QCOMPARE(changed.constFirst().status, u'A');
 }
 
@@ -400,7 +412,7 @@ void TestGitIntegration::reportsRenamesWithTheOriginalPath() {
 
     const GitFileStatus status = findStatus(git.status(), renamed);
     QCOMPARE(status.indexStatus, u'R');
-    QCOMPARE(status.originalPath, original);
+    QCOMPARE(normalized(status.originalPath), normalized(original));
 }
 
 void TestGitIntegration::stopsACommandThroughTheCancellationToken() {

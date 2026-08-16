@@ -150,8 +150,10 @@ bool CredentialPrompter::start() {
     // Reachable by this user alone.
     server_->setSocketOptions(QLocalServer::UserAccessOption);
 
-    const QString name = QStringLiteral("squidygit-askpass-%1")
-                             .arg(QUuid::createUuid().toString(QUuid::Id128));
+    // Kept short: the socket lives under the temporary directory, and the path
+    // it forms has to fit the limit the platform puts on a socket address.
+    const QString name = QStringLiteral("sqg-%1")
+                             .arg(QUuid::createUuid().toString(QUuid::Id128).left(12));
     if (!server_->listen(name)) {
         delete server_;
         server_ = nullptr;
