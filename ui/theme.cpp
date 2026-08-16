@@ -231,7 +231,7 @@ QString Theme::styleSheet() const {
         QLabel#tabCommitBadge, QLabel#tabPushBadge, QLabel#tabPullBadge {
             border-radius: 4px;
             font-size: 10px;
-            font-weight: 400;
+            font-weight: 800;
         }
         QLabel#tabCommitBadge, QLabel#tabPushBadge, QLabel#tabPullBadge {
             padding: 0 6px;
@@ -608,14 +608,14 @@ QString Theme::styleSheet() const {
         QTreeView#fileTree QScrollBar:vertical {
             background: %(historyScrollTrack);
             border-left: 1px solid %(border);
-            width: 16px;
+            width: 14px;
         }
         QTreeView#historyTree QScrollBar:horizontal,
         QTreeView#fileTimeline QScrollBar:horizontal,
         QTreeView#fileTree QScrollBar:horizontal {
             background: %(historyScrollTrack);
             border-top: 1px solid %(border);
-            height: 16px;
+            height: 14px;
         }
         QTreeView#historyTree QScrollBar::handle:vertical,
         QTreeView#historyTree QScrollBar::handle:horizontal,
@@ -695,14 +695,14 @@ QString Theme::styleSheet() const {
             background: %(historyScrollTrack);
             border: none;
             border-left: 1px solid %(border);
-            width: 16px;
+            width: 14px;
             margin: 0;
         }
         QScrollBar:horizontal {
             background: %(historyScrollTrack);
             border: none;
             border-top: 1px solid %(border);
-            height: 16px;
+            height: 14px;
             margin: 0;
         }
         QScrollBar::handle:vertical, QScrollBar::handle:horizontal {
