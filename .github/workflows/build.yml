@@ -61,6 +61,16 @@ jobs:
       - name: Test
         run: ctest --test-dir build --build-config Release --output-on-failure
 
+      # ctest hands back an empty log for the widget suite when it fails on
+      # Windows, so it is run again here with nothing in between to swallow
+      # what it prints.
+      - name: Report the widget suite
+        if: failure() && runner.os == 'Windows'
+        continue-on-error: true
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: build\tests\Release\tst_repositoryview.exe
+
       - name: Verify installation
         run: cmake --install build --config Release
 

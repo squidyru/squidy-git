@@ -14,6 +14,10 @@ namespace {
 constexpr int GitStartTimeoutMs = 5'000;
 // How long the wait loop sleeps between looks at the cancellation flag.
 constexpr int CancellationPollMs = 100;
+// Reaping a killed process waits on its pipes, which stay open while anything
+// it spawned still holds them. Bounded, because the default is half a minute
+// and the command is already on its way out.
+constexpr int KilledProcessReapMs = 2'000;
 }
 
 void GitCancellation::cancel() {
@@ -102,7 +106,7 @@ GitCommandResult GitProcess::run(const QString &workingDirectory, const QStringL
         }
 
         process.kill();
-        process.waitForFinished();
+        process.waitForFinished(KilledProcessReapMs);
         result.cancelled = cancelled;
         result.processError = cancelled
                                   ? tr("The operation was cancelled.")
