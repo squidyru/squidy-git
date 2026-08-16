@@ -7,7 +7,8 @@
 </p>
 
 <p align="center">
-  A fast native desktop Git client for Linux and Windows, built with C++20 and Qt 6.
+  A fast native desktop Git client for Linux and Windows, with experimental macOS
+  packages, built with C++20 and Qt 6.
 </p>
 
 <p align="center">
@@ -29,16 +30,16 @@ So I started writing the client I wanted to use every day: a familiar layout, na
 code, no account to create, no telemetry, and an MIT licence.
 
 SquidyGit keeps the common Git operations visible instead of wrapping them in its own
-vocabulary. It drives the `git` executable already installed on your system and writes
-every command it runs into the built-in log, so nothing happens that you cannot inspect
-or repeat in a terminal yourself.
+vocabulary. It drives the `git` executable already installed on your system. Operations
+inside an open repository appear in the built-in session log with their result; cloning
+shows its command and live output in the clone dialog.
 
 ## What makes it different
 
-- Every Git command the application runs is shown in the command log together with its
-  output
+- The repository command log shows the Git command and whether it succeeded, with a
+  short output excerpt for failures; cloning has its own live progress log
 - SquidyGit calls the system `git` binary and carries no embedded Git implementation, so
-  behaviour matches your own configuration, hooks and aliases
+  behaviour matches your own configuration and hooks
 - C++20 and Qt 6, without Electron, a bundled runtime or a background service
 - MIT licence, no sign-in, no telemetry, no feature gates and no licence reminders
 - English, Russian and Simplified Chinese cover the whole interface, not just a handful
@@ -133,10 +134,16 @@ Open an existing repository, clone a remote project or initialize a new one.
 - Repository tabs, bookmarks and automatic session restoration
 - Background remote checks keep incoming commit counters current without pressing
   Fetch
+- External Git metadata and index changes trigger a debounced refresh; ordinary
+  working-tree edits are discovered on the next refresh
 - Light and dark themes
 - English, Russian and Simplified Chinese, with a manual language selector
+- Per-repository author name and e-mail settings
 - Quick access to a terminal and to the repository folder
-- Built-in log of every executed Git command
+- Automatic and manual update checks with SHA-256 verification before a release package
+  is opened or installed
+- Built-in session log for repository Git commands, including result status and a short
+  failure summary; clone progress and output remain visible in the clone dialog
 
 ## What is planned
 
@@ -147,7 +154,8 @@ intent, not a schedule.
 
 - Credential handling: a built-in prompt for HTTPS passwords and SSH key passphrases,
   so private repositories work without preparing a credential helper first
-- Automatic refresh when the repository changes outside the application
+- Complete automatic refresh for ordinary working-tree edits and harden refresh for
+  large repositories
 - External diff and merge tools, including conflict resolution through Meld, KDiff3 and
   similar utilities
 - Blame with per-line authorship
@@ -157,10 +165,10 @@ intent, not a schedule.
 - Git Flow: initialization and the feature, release and hotfix operations
 - Interactive rebase with reordering, squashing and message editing
 - Undo for the last operation, based on `git reflog`
-- Repository profiles: per-repository name, e-mail and key, with a warning before
+- Reusable repository profiles with an identity and key, plus a warning before
   committing as the wrong author
-- Exporting the command log as a runnable shell script, so a sequence performed in the
-  interface can be moved into a terminal or a CI job
+- A persistent Flight Recorder with duration, exit status, complete output, secret
+  redaction and shell-safe export to a terminal or CI job
 - Submodule operations, `git clean`, creating and applying patches
 - Faster history on large repositories through lazy loading
 - Custom actions: user-defined commands available from the menus
@@ -169,7 +177,6 @@ intent, not a schedule.
 
 - Git LFS support
 - Pull request integration with the common hosting services
-- macOS builds
 
 ## Contributing
 
@@ -203,6 +210,19 @@ generic fallback for unsupported hosts; the core and UI do not contain OS-specif
 branches.
 
 No runtime is bundled, and there is no embedded Git implementation.
+
+## Packages and updates
+
+[GitHub Releases](https://github.com/squidyru/squidy-git/releases) currently publish:
+
+- DEB and AppImage packages for x86-64 Linux
+- an installer and a portable ZIP archive for x64 Windows
+- experimental DMG packages for Apple silicon and Intel Macs
+
+SquidyGit can check GitHub Releases automatically or on demand. Before opening an
+update, it verifies the selected package against a SHA-256 digest published with the
+release. macOS packages remain experimental while native integration, signing,
+notarization and release testing are being validated.
 
 ## Build
 
@@ -261,6 +281,27 @@ SquidyGit into `Program Files`, creates Start menu and desktop shortcuts, and in
 an uninstaller. Administrator permission is requested during installation. A newer
 installer upgrades the existing installation in place, which is what the built-in
 update check uses.
+
+To create the portable ZIP archive instead, run:
+
+```powershell
+cmake --build build --target windows_portable
+```
+
+### macOS (experimental)
+
+Install a C++20 compiler, CMake, Git and Qt 6. When Qt was installed with Homebrew, a
+local build can be created with:
+
+```bash
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release \
+  -DCMAKE_PREFIX_PATH="$(brew --prefix qt)"
+cmake --build build --parallel
+open build/SquidyGit.app
+```
+
+Release CI deploys the required Qt libraries and creates separate DMG packages for
+Apple silicon and Intel Macs.
 
 ## Safety and current limits
 
