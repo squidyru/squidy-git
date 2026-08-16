@@ -7,6 +7,7 @@
 #include "ui/repositoryview.h"
 
 #include <QAbstractItemModel>
+#include <QApplication>
 #include <QDir>
 #include <QFile>
 #include <QSignalSpy>
@@ -16,6 +17,8 @@
 #include <QTextStream>
 #include <QTreeView>
 #include <QTreeWidget>
+
+#include <cstdio>
 
 // RepositoryView integration tests.
 class TestRepositoryView final : public QObject {
@@ -398,6 +401,14 @@ void TestRepositoryView::listsCommitFilesWithoutBlocking() {
     QCOMPARE(files->topLevelItem(0)->text(0), QStringLiteral("first.txt"));
 }
 
-QTEST_MAIN(TestRepositoryView)
+// Not QTEST_MAIN: the plain text logger buffers its output, and a run that
+// ends abnormally takes the whole buffer with it, leaving nothing to read.
+// Unbuffered, whatever was reached is on the record.
+int main(int argc, char *argv[]) {
+    setvbuf(stdout, nullptr, _IONBF, 0);
+    QApplication application(argc, argv);
+    TestRepositoryView test;
+    return QTest::qExec(&test, argc, argv);
+}
 
 #include "tst_repositoryview.moc"
