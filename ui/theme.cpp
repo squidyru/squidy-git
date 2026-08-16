@@ -407,8 +407,14 @@ QString Theme::styleSheet() const {
             border-radius: 0;
             padding: 0;
         }
-        QTreeWidget#navigationTree::item:hover { background: %(hover); }
+        QTreeWidget#navigationTree::item:hover {
+            border-radius: 0;
+            padding: 0;
+            background: %(hover);
+        }
         QTreeWidget#navigationTree::item:selected {
+            border-radius: 0;
+            padding: 0;
             background: %(sidebarSelection);
             color: %(selectionText);
         }
@@ -567,9 +573,18 @@ QString Theme::styleSheet() const {
             selection-background-color: %(selection);
             selection-color: %(selectionText);
         }
+        /* Every state repeats the metrics. A state rule that names only its
+           colours leaves Qt to lay the row out with the metrics of the native
+           style instead, and the content jumps as the pointer passes over. */
         QTreeWidget::item, QListWidget::item { min-height: 18px; padding: 0 3px; }
-        QTreeWidget::item:hover, QListWidget::item:hover { background: %(hover); }
+        QTreeWidget::item:hover, QListWidget::item:hover {
+            min-height: 18px;
+            padding: 0 3px;
+            background: %(hover);
+        }
         QTreeWidget::item:selected, QListWidget::item:selected {
+            min-height: 18px;
+            padding: 0 3px;
             background: %(selection);
             color: %(selectionText);
         }
