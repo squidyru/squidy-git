@@ -12,7 +12,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-0.0.1-2d5d8c" alt="Версия 0.0.1">
+  <img src="https://img.shields.io/badge/version-0.0.2-2d5d8c" alt="Версия 0.0.2">
 </p>
 
 <p align="center">
@@ -275,7 +275,7 @@ cmake --build build --parallel
 cmake --build build --target windows_installer
 ```
 
-Готовый файл появится по пути `build/dist/SquidyGit-0.0.1-windows-x64.exe`. Установщик
+Готовый файл появится по пути `build/dist/SquidyGit-0.0.2-windows-x64.exe`. Установщик
 устанавливает SquidyGit в `Program Files`, создаёт ярлыки на рабочем столе и в меню «Пуск»,
 а также добавляет программу удаления. Во время установки Windows запросит права администратора.
 Более новый установщик обновляет уже установленную программу на месте — на этом построена

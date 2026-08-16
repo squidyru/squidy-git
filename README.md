@@ -12,7 +12,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-0.0.1-2d5d8c" alt="Version 0.0.1">
+  <img src="https://img.shields.io/badge/version-0.0.2-2d5d8c" alt="Version 0.0.2">
 </p>
 
 <p align="center">
@@ -276,7 +276,7 @@ To build the Windows installer, install Inno Setup 6.3 or newer and run:
 cmake --build build --target windows_installer
 ```
 
-The installer is written to `build/dist/SquidyGit-0.0.1-windows-x64.exe`. It installs
+The installer is written to `build/dist/SquidyGit-0.0.2-windows-x64.exe`. It installs
 SquidyGit into `Program Files`, creates Start menu and desktop shortcuts, and includes
 an uninstaller. Administrator permission is requested during installation. A newer
 installer upgrades the existing installation in place, which is what the built-in

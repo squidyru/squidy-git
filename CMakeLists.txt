@@ -2,7 +2,7 @@
 
 cmake_minimum_required(VERSION 3.16)
 
-project(SquidyGit VERSION 0.0.1 LANGUAGES CXX)
+project(SquidyGit VERSION 0.0.2 LANGUAGES CXX)
 
 set(SQUIDYGIT_BUILD_VERSION "${PROJECT_VERSION}" CACHE STRING
         "Version displayed by the application and used by the update checker")
@@ -297,15 +297,15 @@ if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
     install(FILES README.md README.ru.md README.zh-CN.md
             DESTINATION ${CMAKE_INSTALL_DATADIR}/doc/squidygit)
 
-    # beta.4 was published as revision 1, so revision 2 is the new stable
-    # packaging line. A prerelease sorts after revision 1 but before revision 2:
-    # 0.0.1-1 < 0.0.1-2~beta.5 < 0.0.1-2.
-    set(SQUIDYGIT_DEBIAN_RELEASE 2)
+    # A packaging revision counts within one upstream version, so 0.0.2 starts
+    # over at 1. A prerelease sorts before the release it leads to, and any
+    # 0.0.2 sorts after every 0.0.1: 0.0.1-2 < 0.0.2-1~beta.1 < 0.0.2-1.
+    set(SQUIDYGIT_DEBIAN_RELEASE 1)
     if (SQUIDYGIT_BUILD_VERSION MATCHES "^[0-9]+[.][0-9]+[.][0-9]+-(.+)$")
         set(SQUIDYGIT_DEBIAN_PRERELEASE "${CMAKE_MATCH_1}")
         string(REPLACE "-" "." SQUIDYGIT_DEBIAN_PRERELEASE
                 "${SQUIDYGIT_DEBIAN_PRERELEASE}")
-        set(SQUIDYGIT_DEBIAN_RELEASE "2~${SQUIDYGIT_DEBIAN_PRERELEASE}")
+        set(SQUIDYGIT_DEBIAN_RELEASE "1~${SQUIDYGIT_DEBIAN_PRERELEASE}")
     endif ()
     set(SQUIDYGIT_DEBIAN_FULL_VERSION
             "${PROJECT_VERSION}-${SQUIDYGIT_DEBIAN_RELEASE}")
