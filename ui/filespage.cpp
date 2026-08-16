@@ -164,11 +164,11 @@ private:
 
 FilesPage::FilesPage(const QString &repositoryRoot, QWidget *parent)
     : QWidget(parent),
+      shutdownCancellation_(std::make_shared<GitCancellation>()),
       treeWatcher_(new QFutureWatcher<FileTreeLoad>(this)),
       listingWatcher_(new QFutureWatcher<FileListingLoad>(this)),
       historyWatcher_(new QFutureWatcher<FileHistoryLoad>(this)),
-      viewerWatcher_(new QFutureWatcher<FileViewerLoad>(this)),
-      shutdownCancellation_(std::make_shared<GitCancellation>()) {
+      viewerWatcher_(new QFutureWatcher<FileViewerLoad>(this)) {
     setObjectName(QStringLiteral("filesPage"));
     const bool opened = git_.openRepository(repositoryRoot).succeeded();
 

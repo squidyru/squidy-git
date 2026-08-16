@@ -73,7 +73,26 @@ if (MSVC)
 else ()
     target_compile_options(tst_repositoryview PRIVATE -Wall -Wextra -Wpedantic)
 endif ()
-add_test(NAME repositoryview COMMAND tst_repositoryview)
-set_tests_properties(repositoryview PROPERTIES
-        LABELS integration
-        ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
+# Registered one function per entry rather than as a single run. Each gets its
+# own process, so no state carries between them, and a failure names itself in
+# the ctest summary even when the run leaves no output behind. Keep the list in
+# step with the private slots of TestRepositoryView.
+set(REPOSITORY_VIEW_CASES
+        appliesFirstSnapshot
+        refreshesAfterExternalIndexChange
+        feedsTheHistoryViewFromTheModel
+        countsIncomingCommitsWithoutUserAction
+        checksEveryOpenTabAndNotJustTheActiveOne
+        keepsTheInterfaceLiveWhileAnOperationRuns
+        refusesToStartASecondOperation
+        keepsEveryPaneReachable
+        readsTheWorkingTreeDiffOffTheUiThread
+        dropsADiffTheSelectionHasMovedPast
+        listsCommitFilesWithoutBlocking)
+
+foreach (case IN LISTS REPOSITORY_VIEW_CASES)
+    add_test(NAME repositoryview.${case} COMMAND tst_repositoryview ${case})
+    set_tests_properties(repositoryview.${case} PROPERTIES
+            LABELS integration
+            ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
+endforeach ()
