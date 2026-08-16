@@ -572,6 +572,12 @@ RepositoryView::~RepositoryView() {
         operationCancellation_->cancel();
     }
     shutdownCancellation_->cancel();
+    for (const GitCancellationPtr &token : {diffToken_, commitPatchToken_,
+                                            commitDetailsToken_, stashToken_, searchToken_}) {
+        if (token != nullptr) {
+            token->cancel();
+        }
+    }
 
     const QList<QFutureWatcherBase *> watchers{
         operationWatcher_, diffWatcher_, commitPatchWatcher_, commitDetailsWatcher_,
@@ -1716,7 +1722,7 @@ void RepositoryView::refreshWorkingTreeDiff() {
     diffView_->setPlaceholderMessage(QString());
     showLoadingLater(diffWatcher_, diffView_, tr("Reading the changes…"));
 
-    GitClient git = workerClient();
+    GitClient git = restartRead(diffToken_);
     diffWatcher_->setFuture(QtConcurrent::run([git, request]() mutable {
         const GitCommandResult result = git.diff(request.path, request.staged,
                                                  request.untracked);
@@ -1948,7 +1954,7 @@ void RepositoryView::refreshCommitDetails() {
     // every arrow press through the history.
     commitDetailsHash_ = hash;
     const bool needsRawDetails = commit == nullptr;
-    GitClient git = workerClient();
+    GitClient git = restartRead(commitDetailsToken_);
     commitDetailsWatcher_->setFuture(QtConcurrent::run([git, hash, needsRawDetails] {
         CommitDetailsLoad load;
         load.hash = hash;
@@ -1989,7 +1995,7 @@ void RepositoryView::refreshCommitFileDiff() {
     commitDiffView_->setPlaceholderMessage(QString());
     showLoadingLater(commitPatchWatcher_, commitDiffView_, tr("Reading the changes…"));
 
-    GitClient git = workerClient();
+    GitClient git = restartRead(commitPatchToken_);
     commitPatchWatcher_->setFuture(QtConcurrent::run([git, request]() mutable {
         const GitCommandResult result =
             request.hash.isEmpty()
@@ -2189,7 +2195,7 @@ void RepositoryView::activateNavigationItem(QTreeWidgetItem *item) {
             commitDiffView_->setPlaceholderMessage(QString());
             showLoadingLater(stashWatcher_, commitDiffView_, tr("Reading the stash…"));
 
-            GitClient git = workerClient();
+            GitClient git = restartRead(stashToken_);
             stashWatcher_->setFuture(QtConcurrent::run([git, index] {
                 StashLoad load;
                 load.index = index;
@@ -2726,7 +2732,7 @@ void RepositoryView::runSearch() {
     // runs for minutes on a large repository.
     Q_EMIT messagePosted(tr("Searching…"), 0);
 
-    GitClient git = workerClient();
+    GitClient git = restartRead(searchToken_);
     searchWatcher_->setFuture(QtConcurrent::run([git, request]() mutable {
         request.commits = git.search(request.mode, request.query, 500, &request.error);
         return request;
@@ -3135,6 +3141,16 @@ void RepositoryView::finishAutoFetch() {
     autoFetchRunning_ = false;
     updateWatcherSuspension();
     refreshAll();
+}
+
+GitClient RepositoryView::restartRead(GitCancellationPtr &token) {
+    if (token != nullptr) {
+        token->cancel();
+    }
+    token = std::make_shared<GitCancellation>();
+    GitClient git = git_;
+    git.setCancellation(token);
+    return git;
 }
 
 GitClient RepositoryView::workerClient() const {

@@ -212,6 +212,10 @@ private:
     void updateWatcherSuspension();
     /// A copy of the client for a worker, bound to the shutdown flag.
     [[nodiscard]] GitClient workerClient() const;
+    /// Stops whatever @p token was still running and returns a client bound to
+    /// a fresh one. A read the selection has moved past is stopped rather than
+    /// left to finish, so two Git processes never work one repository at once.
+    [[nodiscard]] GitClient restartRead(GitCancellationPtr &token);
 
     void reportError(const QString &title, const GitCommandResult &result);
     [[nodiscard]] QString selectedCommitHash() const;
@@ -297,6 +301,12 @@ private:
     /// Cancelled when the view goes away, so no worker is left running a Git
     /// process once there is no application to serve it.
     GitCancellationPtr shutdownCancellation_;
+    // One per pane that a moving selection can supersede.
+    GitCancellationPtr diffToken_;
+    GitCancellationPtr commitPatchToken_;
+    GitCancellationPtr commitDetailsToken_;
+    GitCancellationPtr stashToken_;
+    GitCancellationPtr searchToken_;
 
     QFutureWatcher<PatchLoad> *diffWatcher_ = nullptr;
     QFutureWatcher<PatchLoad> *commitPatchWatcher_ = nullptr;
