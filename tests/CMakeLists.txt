@@ -12,6 +12,16 @@ foreach (suite IN ITEMS diffdocument gitparse graphlayout)
     add_test(NAME ${suite} COMMAND tst_${suite})
 endforeach ()
 
+# Platform contract tests do not need the Git/core library.
+add_executable(tst_platformservices tst_platformservices.cpp)
+target_link_libraries(tst_platformservices PRIVATE squidygit_platform Qt6::Test)
+if (MSVC)
+    target_compile_options(tst_platformservices PRIVATE /W4 /utf-8)
+else ()
+    target_compile_options(tst_platformservices PRIVATE -Wall -Wextra -Wpedantic)
+endif ()
+add_test(NAME platformservices COMMAND tst_platformservices)
+
 # Git integration tests
 add_executable(tst_gitclient tst_gitclient.cpp)
 target_link_libraries(tst_gitclient PRIVATE squidygit_core Qt6::Test)

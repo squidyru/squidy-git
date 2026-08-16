@@ -2,10 +2,11 @@
 
 #include "updatechecker.h"
 
+#include "platform/platformservices.h"
+
 #include <QApplication>
 #include <QCryptographicHash>
 #include <QDateTime>
-#include <QDesktopServices>
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
@@ -24,20 +25,10 @@
 #include <QSaveFile>
 #include <QSettings>
 #include <QSharedPointer>
-#include <QStandardPaths>
-#include <QSysInfo>
 #include <QUrl>
 #include <QVersionNumber>
 
 #include <optional>
-
-#if defined(Q_OS_WIN)
-#define WIN32_LEAN_AND_MEAN
-#define NOMINMAX
-#include <windows.h>
-
-#include <shellapi.h>
-#endif
 
 namespace {
 constexpr auto ReleasesApiUrl =
@@ -175,51 +166,6 @@ int compareVersions(const SemanticVersion &left, const SemanticVersion &right) {
     return left.prerelease.size() < right.prerelease.size() ? -1 : 1;
 }
 
-QString wantedAssetSuffix() {
-#if defined(Q_OS_WIN)
-    const bool portable = QFileInfo::exists(
-        QDir(QApplication::applicationDirPath()).filePath(QStringLiteral("portable.marker")));
-    return portable ? QStringLiteral("-windows-x64-portable.zip")
-                    : QStringLiteral("-windows-x64.exe");
-#elif defined(Q_OS_MACOS)
-    const QString architecture = QSysInfo::currentCpuArchitecture().toLower();
-    if (architecture == QStringLiteral("arm64")
-        || architecture == QStringLiteral("aarch64")) {
-        return QStringLiteral("-macos-arm64.dmg");
-    }
-    if (architecture == QStringLiteral("x86_64") || architecture == QStringLiteral("amd64")) {
-        return QStringLiteral("-macos-x86_64.dmg");
-    }
-    return {};
-#elif defined(Q_OS_LINUX)
-    const QString architecture = QSysInfo::currentCpuArchitecture().toLower();
-    if (architecture != QStringLiteral("x86_64") && architecture != QStringLiteral("amd64")) {
-        return {};
-    }
-    if (!qEnvironmentVariableIsEmpty("APPIMAGE")
-        || !QFileInfo::exists(QStringLiteral("/etc/debian_version"))) {
-        return QStringLiteral("-linux-x86_64.AppImage");
-    }
-    return QStringLiteral(".deb");
-#else
-    return {};
-#endif
-}
-
-#if defined(Q_OS_LINUX)
-QString installedPackageVersion() {
-    QProcess query;
-    query.start(QStringLiteral("dpkg-query"),
-                {QStringLiteral("-W"), QStringLiteral("-f=${Version}"),
-                 QStringLiteral("squidygit")});
-    if (!query.waitForFinished(5000) || query.exitStatus() != QProcess::NormalExit
-        || query.exitCode() != 0) {
-        return {};
-    }
-    return QString::fromLocal8Bit(query.readAllStandardOutput()).trimmed();
-}
-#endif
-
 struct DownloadState {
     explicit DownloadState(const QString &path)
         : file(path), hash(QCryptographicHash::Sha256) {}
@@ -334,7 +280,7 @@ void UpdateChecker::checkForUpdates(const bool userInitiated) {
             return;
         }
 
-        const QString suffix = wantedAssetSuffix();
+        const QString suffix = PlatformServices::instance().updateAssetSuffix();
         if (suffix.isEmpty()) {
             finishWithError(
                 tr("There is no build for this architecture yet.\n%1")
@@ -438,11 +384,7 @@ void UpdateChecker::requestChecksums(const ReleaseAsset &asset,
 }
 
 void UpdateChecker::downloadAsset(const ReleaseAsset &asset) {
-    QString downloadDirectory =
-        QStandardPaths::writableLocation(QStandardPaths::DownloadLocation);
-    if (downloadDirectory.isEmpty()) {
-        downloadDirectory = QDir::tempPath();
-    }
+    const QString downloadDirectory = PlatformServices::instance().downloadDirectory();
     if (!QDir().mkpath(downloadDirectory)) {
         finishWithError(tr("The download folder could not be created."), true);
         return;
@@ -547,32 +489,25 @@ void UpdateChecker::downloadAsset(const ReleaseAsset &asset) {
 }
 
 void UpdateChecker::openDownloadedPackage(const QString &path) {
-    const QFileInfo fileInfo(path);
-#if defined(Q_OS_LINUX)
-    if (path.endsWith(QStringLiteral(".deb"), Qt::CaseInsensitive)) {
-        installDebPackage(path);
+    PlatformServices &platform = PlatformServices::instance();
+    const UpdatePackageKind kind = platform.updatePackageKind(path);
+    if (kind == UpdatePackageKind::SystemInstaller) {
+        installSystemPackage(path);
         return;
     }
-#elif defined(Q_OS_WIN)
-    if (path.endsWith(QStringLiteral(".exe"), Qt::CaseInsensitive)) {
-        installWindowsPackage(path);
+    if (kind == UpdatePackageKind::NativeInstaller) {
+        installNativePackage(path);
         return;
     }
-#endif
 
-    // The AppImage and the portable archive are unpacked by hand, so the file
-    // manager is opened on the containing directory instead of the file.
-    const bool isAppImage = path.endsWith(QStringLiteral(".AppImage"), Qt::CaseInsensitive);
-    const bool isArchive = path.endsWith(QStringLiteral(".zip"), Qt::CaseInsensitive);
-    if (isAppImage) {
-        QFile::setPermissions(path, QFile::permissions(path) | QFileDevice::ExeOwner
-                                        | QFileDevice::ExeGroup | QFileDevice::ExeOther);
-    }
+    platform.prepareDownloadedPackage(path);
+    const bool manualExecutable = kind == UpdatePackageKind::ManualExecutable;
+    const bool manualArchive = kind == UpdatePackageKind::ManualArchive;
 
     QString hint = tr("The standard installer of your system is about to open.");
-    if (isAppImage) {
+    if (manualExecutable) {
         hint = tr("Replace the current AppImage with this file and start it.");
-    } else if (isArchive) {
+    } else if (manualArchive) {
         hint = tr("Unpack the archive over the current program folder.");
     }
 
@@ -580,20 +515,20 @@ void UpdateChecker::openDownloadedPackage(const QString &path) {
                              tr("The package is verified and saved to:\n%1\n\n%2")
                                  .arg(path, hint));
 
-    const QUrl target =
-        QUrl::fromLocalFile(isAppImage || isArchive ? fileInfo.absolutePath() : path);
-    if (!QDesktopServices::openUrl(target)) {
+    const bool opened = manualExecutable || manualArchive
+                            ? platform.revealInFileManager(path)
+                            : platform.openPath(path);
+    if (!opened) {
         QMessageBox::warning(dialogParent_, tr("SquidyGit Update"),
                              tr("The package could not be opened. It is saved to:\n%1")
                                  .arg(path));
     }
 }
 
-#if defined(Q_OS_WIN)
-void UpdateChecker::installWindowsPackage(const QString &path) {
+void UpdateChecker::installNativePackage(const QString &path) {
     const QMessageBox::StandardButton answer = QMessageBox::question(
         dialogParent_, tr("Install update"),
-        tr("The package is verified and ready to install:\n%1\n\nWindows will ask for "
+        tr("The package is verified and ready to install:\n%1\n\nThe system will ask for "
            "administrator rights. SquidyGit closes for the installation and starts again "
            "afterwards. Install the update now?")
             .arg(path),
@@ -602,52 +537,37 @@ void UpdateChecker::installWindowsPackage(const QString &path) {
         return;
     }
 
-    // The installer replaces the files of the running application, so it closes
-    // and restarts SquidyGit through the Restart Manager. ShellExecuteEx is used
-    // instead of QProcess because starting an elevated process needs the shell.
-    const QString nativePath = QDir::toNativeSeparators(path);
-    const QString arguments = QStringLiteral("/SILENT /CLOSEAPPLICATIONS");
-
-    SHELLEXECUTEINFOW request{};
-    request.cbSize = sizeof(request);
-    request.fMask = SEE_MASK_NOASYNC | SEE_MASK_FLAG_NO_UI;
-    request.lpVerb = L"runas";
-    request.lpFile = reinterpret_cast<const wchar_t *>(nativePath.utf16());
-    request.lpParameters = reinterpret_cast<const wchar_t *>(arguments.utf16());
-    request.nShow = SW_SHOWNORMAL;
-
-    if (ShellExecuteExW(&request)) {
+    const InstallerLaunchResult result =
+        PlatformServices::instance().launchUpdateInstaller(path);
+    if (result == InstallerLaunchResult::Started) {
         return;
     }
 
-    const DWORD error = GetLastError();
     QMessageBox::warning(
         dialogParent_, tr("SquidyGit Update"),
-        error == ERROR_CANCELLED
+        result == InstallerLaunchResult::Cancelled
             ? tr("The installation was cancelled. The package is saved to:\n%1").arg(path)
             : tr("The update installation could not be started.\nThe package is saved "
                  "to:\n%1")
                   .arg(path));
 }
-#endif
 
-#if defined(Q_OS_LINUX)
-void UpdateChecker::installDebPackage(const QString &path) {
+void UpdateChecker::installSystemPackage(const QString &path) {
     if (packageInstaller_ != nullptr) {
         QMessageBox::information(dialogParent_, tr("SquidyGit Update"),
                                  tr("An update installation is already running."));
         return;
     }
 
-    const QString pkexec = QStandardPaths::findExecutable(QStringLiteral("pkexec"));
-    const QString aptGet = QStandardPaths::findExecutable(QStringLiteral("apt-get"));
-    if (pkexec.isEmpty() || aptGet.isEmpty()) {
+    const std::optional<PlatformCommand> command =
+        PlatformServices::instance().systemPackageInstaller(path);
+    if (!command) {
         QMessageBox::information(
             dialogParent_, tr("Update downloaded"),
-            tr("The package is verified and saved to:\n%1\n\nThe apt system installer was "
+            tr("The package is verified and saved to:\n%1\n\nThe system package installer was "
                "not found. The package will be opened manually.")
                 .arg(path));
-        if (!QDesktopServices::openUrl(QUrl::fromLocalFile(path))) {
+        if (!PlatformServices::instance().openPath(path)) {
             QMessageBox::warning(dialogParent_, tr("SquidyGit Update"),
                                  tr("The package could not be opened. It is saved to:\n%1")
                                      .arg(path));
@@ -657,8 +577,8 @@ void UpdateChecker::installDebPackage(const QString &path) {
 
     const QMessageBox::StandardButton answer = QMessageBox::question(
         dialogParent_, tr("Install update"),
-        tr("The package is verified and ready to install:\n%1\n\nUbuntu will ask for the "
-           "administrator password. Install the update now?")
+        tr("The package is verified and ready to install:\n%1\n\nThe system will ask for "
+           "administrator rights. Install the update now?")
             .arg(path),
         QMessageBox::Yes | QMessageBox::No, QMessageBox::Yes);
     if (answer != QMessageBox::Yes) {
@@ -666,14 +586,14 @@ void UpdateChecker::installDebPackage(const QString &path) {
     }
 
     auto *progress = new QProgressDialog(
-        tr("Ubuntu is installing the update…"), QString(), 0, 0, dialogParent_);
+        tr("The system is installing the update…"), QString(), 0, 0, dialogParent_);
     progress->setWindowTitle(tr("SquidyGit Update"));
     progress->setWindowModality(Qt::WindowModal);
     progress->setCancelButton(nullptr);
     progress->setMinimumDuration(0);
     progress->show();
 
-    const QString previousVersion = installedPackageVersion();
+    const QString previousVersion = PlatformServices::instance().installedPackageVersion();
 
     auto *process = new QProcess(this);
     packageInstaller_ = process;
@@ -681,7 +601,10 @@ void UpdateChecker::installDebPackage(const QString &path) {
     process->setProcessChannelMode(QProcess::MergedChannels);
 
     QProcessEnvironment environment = QProcessEnvironment::systemEnvironment();
-    environment.insert(QStringLiteral("DEBIAN_FRONTEND"), QStringLiteral("noninteractive"));
+    for (auto iterator = command->environment.cbegin();
+         iterator != command->environment.cend(); ++iterator) {
+        environment.insert(iterator.key(), iterator.value());
+    }
     process->setProcessEnvironment(environment);
 
     connect(process, &QProcess::errorOccurred, this,
@@ -714,10 +637,8 @@ void UpdateChecker::installDebPackage(const QString &path) {
                 process->deleteLater();
 
                 if (exitStatus != QProcess::NormalExit || exitCode != 0) {
-                    // pkexec reports a dismissed or rejected authorization
-                    // dialog with 126 and 127.
                     QString message =
-                        exitCode == 126 || exitCode == 127
+                        PlatformServices::instance().isSystemInstallerCancellation(exitCode)
                             ? tr("The installation was cancelled: administrator rights "
                                  "were not granted.")
                             : tr("The installation failed.");
@@ -729,9 +650,8 @@ void UpdateChecker::installDebPackage(const QString &path) {
                     return;
                 }
 
-                // apt exits successfully when it decides that nothing has to be
-                // done, so the result is confirmed against the package database.
-                const QString currentVersion = installedPackageVersion();
+                const QString currentVersion =
+                    PlatformServices::instance().installedPackageVersion();
                 if (!currentVersion.isEmpty() && currentVersion == previousVersion) {
                     QMessageBox::warning(
                         dialogParent_, tr("SquidyGit Update"),
@@ -749,12 +669,7 @@ void UpdateChecker::installDebPackage(const QString &path) {
                     return;
                 }
 
-                QStringList arguments = QCoreApplication::arguments();
-                if (!arguments.isEmpty()) {
-                    arguments.removeFirst();
-                }
-                if (QProcess::startDetached(QCoreApplication::applicationFilePath(), arguments,
-                                            QDir::currentPath())) {
+                if (PlatformServices::instance().restartApplication()) {
                     QApplication::quit();
                 } else {
                     QMessageBox::warning(
@@ -764,10 +679,8 @@ void UpdateChecker::installDebPackage(const QString &path) {
                 }
             });
 
-    process->start(pkexec,
-                   {aptGet, QStringLiteral("install"), QStringLiteral("--yes"), path});
+    process->start(command->program, command->arguments);
 }
-#endif
 
 void UpdateChecker::finishWithError(const QString &message, const bool showMessage) {
     busy_ = false;

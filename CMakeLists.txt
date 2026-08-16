@@ -31,6 +31,27 @@ find_package(Qt6 REQUIRED COMPONENTS Concurrent Core Gui LinguistTools Network S
 # PDF preview is optional; without it the Files page uses a byte dump.
 find_package(Qt6 QUIET COMPONENTS PdfWidgets)
 
+set(SQUIDYGIT_PLATFORM_IMPLEMENTATION platform/platformservices_generic.cpp)
+if (WIN32)
+    set(SQUIDYGIT_PLATFORM_IMPLEMENTATION platform/platformservices_windows.cpp)
+elseif (APPLE)
+    set(SQUIDYGIT_PLATFORM_IMPLEMENTATION platform/platformservices_macos.cpp)
+elseif (CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    set(SQUIDYGIT_PLATFORM_IMPLEMENTATION platform/platformservices_linux.cpp)
+endif ()
+
+add_library(squidygit_platform STATIC
+        platform/platformservices.cpp
+        platform/platformservices.h
+        ${SQUIDYGIT_PLATFORM_IMPLEMENTATION})
+target_include_directories(squidygit_platform PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+target_link_libraries(squidygit_platform
+        PUBLIC Qt6::Core
+        PRIVATE Qt6::Gui)
+if (WIN32)
+    target_link_libraries(squidygit_platform PRIVATE shell32)
+endif ()
+
 # Core code must remain independent of Qt Widgets.
 add_library(squidygit_core STATIC
         core/gitclient.cpp
@@ -48,7 +69,9 @@ add_library(squidygit_core STATIC
         core/repositorysnapshot.h)
 
 target_include_directories(squidygit_core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
-target_link_libraries(squidygit_core PUBLIC Qt6::Core)
+target_link_libraries(squidygit_core
+        PUBLIC Qt6::Core
+        PRIVATE squidygit_platform)
 
 add_library(squidygit_ui STATIC
         ui/mainwindow.cpp
@@ -85,6 +108,7 @@ add_library(squidygit_ui STATIC
 
 target_link_libraries(squidygit_ui PUBLIC
         squidygit_core
+        squidygit_platform
         Qt6::Concurrent
         Qt6::Gui
         Qt6::Network
@@ -109,7 +133,8 @@ qt_add_resources(squidygit_ui "branding"
 add_executable(SquidyGit main.cpp)
 target_link_libraries(SquidyGit PRIVATE squidygit_ui)
 
-foreach (squidygit_target IN ITEMS squidygit_core squidygit_ui SquidyGit)
+foreach (squidygit_target IN ITEMS
+        squidygit_platform squidygit_core squidygit_ui SquidyGit)
     target_compile_definitions(${squidygit_target} PRIVATE
             SQUIDYGIT_VERSION="${SQUIDYGIT_BUILD_VERSION}")
     if (MSVC)
@@ -155,9 +180,6 @@ if (WIN32)
     set_property(SOURCE ${CMAKE_CURRENT_BINARY_DIR}/squidygit.rc
             APPEND PROPERTY OBJECT_DEPENDS ${SQUIDYGIT_ICON_FILE})
     target_sources(SquidyGit PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/squidygit.rc)
-
-    # ShellExecuteEx starts the downloaded installer with a UAC prompt.
-    target_link_libraries(SquidyGit PRIVATE shell32)
 
     find_program(WINDEPLOYQT_EXECUTABLE windeployqt
             HINTS "${Qt6_DIR}/../../../bin"
@@ -220,7 +242,7 @@ install(TARGETS SquidyGit
 # Desktop integration. GNOME shows a Dock icon only for windows it can match to
 # an installed .desktop file, so the entry is written with an absolute Exec path
 # and the icons are checked in as PNG (rendered from Icons::applicationPixmap).
-if (UNIX AND NOT APPLE)
+if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
     foreach (icon_size IN ITEMS 16 32 48 64 128 256 512)
         install(FILES resources/squidygit-${icon_size}.png
                 DESTINATION ${CMAKE_INSTALL_DATADIR}/icons/hicolor/${icon_size}x${icon_size}/apps

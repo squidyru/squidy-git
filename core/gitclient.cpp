@@ -3,6 +3,7 @@
 #include "gitclient.h"
 
 #include "gitparse.h"
+#include "platform/platformservices.h"
 
 #include <QDir>
 #include <QFile>
@@ -823,7 +824,7 @@ GitCommandResult GitClient::diff(const QString &path, const bool staged, const b
             QStringLiteral("--no-index"),
             QStringLiteral("--unified=%1").arg(qMax(0, contextLines)),
             QStringLiteral("--"),
-            QStringLiteral("/dev/null"),
+            PlatformServices::instance().nullDevicePath(),
             path
         });
         if (patch.exitCode == 1 && patch.processError.isEmpty() && !patch.output.isEmpty()) {

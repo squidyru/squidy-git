@@ -22,8 +22,7 @@
 
 我想要一款把历史、暂存和分支放在同一个窗口里的桌面客户端，而在 Linux 上一直没有找到
 合适的。有些工具功能过于有限，有些相对于它们所做的事情又过于笨重，而那些打磨得不错的，
-要么是商业软件，要么根本没有发布 Linux 版本。我在其他系统上用惯的 SourceTree，
-就只有 macOS 和 Windows 版本。
+要么是商业软件，要么根本没有发布 Linux 版本。
 
 于是我开始编写自己想每天使用的客户端：熟悉的布局、原生代码、无需注册账号、
 没有遥测数据，并采用 MIT 许可证。
@@ -60,6 +59,24 @@ SquidyGit 让常用的 Git 操作保持可见，而不是用自己的一套说�
 
 <p align="center">
   <img src="resources/screenshots/zh-CN/history.png" alt="简体中文提交历史和可视化提交图">
+</p>
+
+### 仓库文件与文件历史
+
+可以浏览工作副本、分支、标签或提交中的文件树，并在同一界面查看所选文件的
+时间线和带语法高亮的历史内容。
+
+<p align="center">
+  <img src="resources/screenshots/zh-CN/files-source.png" alt="简体中文仓库文件浏览、文件历史和 C++ 语法高亮">
+</p>
+
+### 图片与 PDF 文档
+
+同一只读工作区无需解压文件或检出其他版本，即可预览已跟踪图片和多页 PDF 文档。
+
+<p align="center">
+  <img src="resources/screenshots/zh-CN/files-image.png" width="49%" alt="简体中文仓库历史中的图片预览">
+  <img src="resources/screenshots/zh-CN/files-pdf.png" width="49%" alt="简体中文仓库历史中的 PDF 预览">
 </p>
 
 ### 仓库列表
@@ -161,6 +178,10 @@ SquidyGit 是一款使用 C++20 构建的原生应用，依赖：
 - Qt 6：Core、Gui、Widgets、Concurrent、Network 和 SVG；PDF/PdfWidgets 为可选模块
 - CMake 3.16 或更高版本
 - 系统 Git 命令行客户端
+
+查找 Git、打开终端和文件管理器、重新启动应用以及安装更新等平台相关操作，
+统一隔离在 `PlatformServices` 接口之后。CMake 会为 Linux、Windows、macOS
+或尚未支持的通用平台选择对应实现；core 和 UI 中不包含操作系统专用分支。
 
 应用不捆绑运行时，也不包含嵌入式 Git 实现。
 

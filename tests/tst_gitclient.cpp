@@ -114,14 +114,17 @@ bool TestGitClient::openTemporaryRepository() {
 
 void TestGitClient::writeFile(const QString &name, const QString &contents) const {
     QFile file(QDir(git_.repositoryRoot()).filePath(name));
-    QVERIFY(file.open(QIODevice::WriteOnly | QIODevice::Text));
+    // Keep fixtures byte-for-byte identical on every host. QIODevice::Text
+    // expands line endings to CRLF on Windows, which makes blob and working
+    // tree size assertions depend on the platform running the test.
+    QVERIFY(file.open(QIODevice::WriteOnly));
     QTextStream stream(&file);
     stream << contents;
 }
 
 QString TestGitClient::readFile(const QString &name) const {
     QFile file(QDir(git_.repositoryRoot()).filePath(name));
-    if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+    if (!file.open(QIODevice::ReadOnly)) {
         return {};
     }
     return QString::fromUtf8(file.readAll());

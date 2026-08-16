@@ -6,6 +6,7 @@
 #include "core/gitclient.h"
 #include "core/gitprocess.h"
 #include "icons.h"
+#include "platform/platformservices.h"
 #include "repositoryview.h"
 #include "theme.h"
 #include "updatechecker.h"
@@ -34,7 +35,6 @@
 #include <QMessageBox>
 #include <QMouseEvent>
 #include <QPlainTextEdit>
-#include <QProcess>
 #include <QProgressBar>
 #include <QPushButton>
 #include <QResizeEvent>
@@ -946,12 +946,7 @@ void MainWindow::selectLanguage(const QString &language) {
     // repositories that are on screen right now.
     saveSession();
     settings.sync();
-    QStringList arguments = QCoreApplication::arguments();
-    if (!arguments.isEmpty()) {
-        arguments.removeFirst();
-    }
-    if (QProcess::startDetached(QCoreApplication::applicationFilePath(), arguments,
-                                QDir::currentPath())) {
+    if (PlatformServices::instance().restartApplication()) {
         QApplication::quit();
     } else {
         QMessageBox::warning(this, tr("Language"),

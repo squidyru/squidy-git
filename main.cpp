@@ -3,6 +3,7 @@
 #include "ui/icons.h"
 #include "ui/mainwindow.h"
 #include "ui/theme.h"
+#include "platform/platformservices.h"
 
 #include <QApplication>
 #include <QCoreApplication>
@@ -38,7 +39,7 @@ int main(int argc, char *argv[]) {
     }
 
     QApplication::setWindowIcon(Icons::applicationIcon());
-    QApplication::setDesktopFileName(QStringLiteral("squidygit"));
+    PlatformServices::instance().configureApplication();
 
     if (QStyleFactory::keys().contains(QStringLiteral("Fusion"))) {
         QApplication::setStyle(QStringLiteral("Fusion"));

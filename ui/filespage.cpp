@@ -7,6 +7,7 @@
 #include "flatcombobox.h"
 #include "icons.h"
 #include "pdfpreview.h"
+#include "platform/platformservices.h"
 #include "sourceview.h"
 #include "syntaxhighlighter.h"
 #include "theme.h"
@@ -14,7 +15,6 @@
 #include <QApplication>
 #include <QClipboard>
 #include <QComboBox>
-#include <QDesktopServices>
 #include <QDir>
 #include <QFileInfo>
 #include <QHBoxLayout>
@@ -29,7 +29,6 @@
 #include <QStackedWidget>
 #include <QTimer>
 #include <QTreeWidget>
-#include <QUrl>
 #include <QVBoxLayout>
 #include <QtConcurrentRun>
 
@@ -722,7 +721,8 @@ void FilesPage::showTreeContextMenu(const QPoint &position) {
     const QString absolute = QDir(git_.repositoryRoot()).filePath(path);
     if (QFileInfo::exists(absolute)) {
         menu.addAction(tr("Show in file manager"), this, [absolute] {
-            QDesktopServices::openUrl(QUrl::fromLocalFile(QFileInfo(absolute).absolutePath()));
+            static_cast<void>(
+                PlatformServices::instance().revealInFileManager(absolute));
         });
     }
 

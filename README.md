@@ -23,8 +23,7 @@
 I wanted the kind of desktop client that keeps history, staging and branches in one
 window, and on Linux I could not find one that fit. Some tools were too limited, some
 were too heavy for what they did, and the polished ones were either commercial or simply
-never released for Linux. SourceTree, whose layout I had been comfortable with elsewhere,
-is available only for macOS and Windows.
+never released for Linux.
 
 So I started writing the client I wanted to use every day: a familiar layout, native
 code, no account to create, no telemetry, and an MIT licence.
@@ -65,6 +64,25 @@ commit details and a diff preview.
 
 <p align="center">
   <img src="resources/screenshots/en/history.png" alt="English commit history and visual graph">
+</p>
+
+### Repository files and file history
+
+Browse the tracked tree at the working copy, branch, tag or commit. The selected file's
+timeline and syntax-highlighted historical contents remain visible together.
+
+<p align="center">
+  <img src="resources/screenshots/en/files-source.png" alt="English repository browser with file history and C++ syntax highlighting">
+</p>
+
+### Images and PDF documents
+
+The same read-only workspace previews tracked images and multi-page PDF documents
+without extracting them or checking out another revision.
+
+<p align="center">
+  <img src="resources/screenshots/en/files-image.png" width="49%" alt="English repository browser showing an image revision">
+  <img src="resources/screenshots/en/files-pdf.png" width="49%" alt="English repository browser showing a PDF revision">
 </p>
 
 ### Repository list
@@ -177,6 +195,12 @@ SquidyGit is a native C++20 application built with:
 - Qt 6: Core, Gui, Widgets, Concurrent, Network and SVG; PDF/PdfWidgets is optional
 - CMake 3.16 or newer
 - The system Git command-line client
+
+Platform-dependent behavior—locating Git, opening terminals and file managers,
+restarting the application, and installing updates—is isolated behind
+`PlatformServices`. CMake selects the Linux, Windows or macOS implementation, with a
+generic fallback for unsupported hosts; the core and UI do not contain OS-specific
+branches.
 
 No runtime is bundled, and there is no embedded Git implementation.
 

@@ -2,9 +2,10 @@
 
 #include "gitprocess.h"
 
+#include "platform/platformservices.h"
+
 #include <QProcess>
 #include <QProcessEnvironment>
-#include <QStandardPaths>
 
 namespace {
 constexpr int GitStartTimeoutMs = 5'000;
@@ -13,8 +14,7 @@ constexpr int GitStartTimeoutMs = 5'000;
 GitProcessRunner::~GitProcessRunner() = default;
 
 QString GitProcess::executable() {
-    static const QString executable = QStandardPaths::findExecutable(QStringLiteral("git"));
-    return executable;
+    return PlatformServices::instance().gitExecutable();
 }
 
 GitCommandResult GitProcess::run(const QString &workingDirectory, const QStringList &arguments,

@@ -9,6 +9,7 @@
 #include "filespage.h"
 #include "flatcombobox.h"
 #include "icons.h"
+#include "platform/platformservices.h"
 #include "repositorywatcher.h"
 #include "theme.h"
 
@@ -19,9 +20,7 @@
 #include <QClipboard>
 #include <QComboBox>
 #include <QCryptographicHash>
-#include <QDesktopServices>
 #include <QDir>
-#include <QFileInfo>
 #include <QFontDatabase>
 #include <QGuiApplication>
 #include <QHBoxLayout>
@@ -37,7 +36,6 @@
 #include <QPaintEvent>
 #include <QPainterPath>
 #include <QPlainTextEdit>
-#include <QProcess>
 #include <QPushButton>
 #include <QFrame>
 #include <QSettings>
@@ -55,22 +53,9 @@
 #include <QTreeView>
 #include <QToolButton>
 #include <QTreeWidget>
-#include <QUrl>
 #include <QVBoxLayout>
 #include <QWidgetAction>
 #include <QtConcurrentRun>
-
-#if defined(Q_OS_WIN)
-#ifndef WIN32_LEAN_AND_MEAN
-#define WIN32_LEAN_AND_MEAN
-#endif
-#ifndef NOMINMAX
-#define NOMINMAX
-#endif
-#include <windows.h>
-
-#include <shellapi.h>
-#endif
 
 namespace {
 
@@ -2036,8 +2021,8 @@ void RepositoryView::handleNavigationDoubleClick(QTreeWidgetItem *item) {
     } else if (kind == NavigationRemoteBranch) {
         checkoutRemoteBranch(value);
     } else if (kind == NavigationSubmodule) {
-        QDesktopServices::openUrl(
-            QUrl::fromLocalFile(QDir(git_.repositoryRoot()).filePath(value)));
+        static_cast<void>(PlatformServices::instance().openPath(
+            QDir(git_.repositoryRoot()).filePath(value)));
     }
 }
 
@@ -2244,8 +2229,8 @@ void RepositoryView::showFileContextMenu(QTreeWidget *tree, const bool staged,
     });
     menu.addAction(tr("Open the file"), this, [this, tree] { openSelectedFile(tree); });
     menu.addAction(tr("Show in the folder"), this, [this, paths] {
-        const QFileInfo info(QDir(git_.repositoryRoot()).filePath(paths.constFirst()));
-        QDesktopServices::openUrl(QUrl::fromLocalFile(info.absolutePath()));
+        static_cast<void>(PlatformServices::instance().revealInFileManager(
+            QDir(git_.repositoryRoot()).filePath(paths.constFirst())));
     });
     menu.addAction(tr("Copy the path"), this, [paths] {
         QGuiApplication::clipboard()->setText(paths.join(u'\n'));
@@ -2264,8 +2249,8 @@ void RepositoryView::openSelectedFile(QTreeWidget *tree) {
     if (paths.isEmpty()) {
         return;
     }
-    QDesktopServices::openUrl(
-        QUrl::fromLocalFile(QDir(git_.repositoryRoot()).filePath(paths.constFirst())));
+    static_cast<void>(PlatformServices::instance().openPath(
+        QDir(git_.repositoryRoot()).filePath(paths.constFirst())));
 }
 
 void RepositoryView::stageSelected() {
@@ -2738,86 +2723,13 @@ void RepositoryView::addRemoteInteractive() {
 }
 
 void RepositoryView::openTerminal() {
-    const QString directory = QDir::toNativeSeparators(git_.repositoryRoot());
-
-#if defined(Q_OS_WIN)
-    const auto launchTerminal = [&directory](const QString &program,
-                                              const QString &arguments) {
-        SHELLEXECUTEINFOW request{};
-        request.cbSize = sizeof(request);
-        request.fMask = SEE_MASK_NOASYNC | SEE_MASK_FLAG_NO_UI;
-        request.lpVerb = L"open";
-        request.lpFile = reinterpret_cast<const wchar_t *>(program.utf16());
-        request.lpParameters = arguments.isEmpty()
-                                   ? nullptr
-                                   : reinterpret_cast<const wchar_t *>(arguments.utf16());
-        request.lpDirectory = reinterpret_cast<const wchar_t *>(directory.utf16());
-        request.nShow = SW_SHOWNORMAL;
-        return ShellExecuteExW(&request) != FALSE;
-    };
-
-    // Prefer Windows Terminal, then fall back to Windows PowerShell.
-    const QString powerShell = QStringLiteral("powershell.exe");
-    const QString terminalArguments =
-        QStringLiteral("-d \"%1\" %2 -NoExit").arg(directory, powerShell);
-    if (launchTerminal(QStringLiteral("wt.exe"), terminalArguments)) {
-        return;
+    if (!PlatformServices::instance().openTerminal(git_.repositoryRoot())) {
+        Q_EMIT messagePosted(tr("The terminal could not be started."), 5'000);
     }
-
-    if (launchTerminal(powerShell, QStringLiteral("-NoExit"))) {
-        return;
-    }
-#elif defined(Q_OS_MACOS)
-    if (QProcess::startDetached(QStringLiteral("/usr/bin/open"),
-                                {QStringLiteral("-a"),
-                                 QStringLiteral("Terminal"),
-                                 directory},
-                                directory)) {
-        return;
-    }
-#else
-    struct TerminalCommand {
-        QString program;
-        QStringList arguments;
-    };
-
-    // Pass the path explicitly because single-instance terminals may ignore cwd.
-    const QList<TerminalCommand> candidates{
-        {QStringLiteral("ptyxis"),
-         {QStringLiteral("--new-window"),
-          QStringLiteral("--working-directory"),
-          directory}},
-        {QStringLiteral("gnome-terminal"),
-         {QStringLiteral("--working-directory=%1").arg(directory)}},
-        {QStringLiteral("konsole"),
-         {QStringLiteral("--workdir"), directory}},
-        {QStringLiteral("xfce4-terminal"),
-         {QStringLiteral("--working-directory"), directory}},
-        {QStringLiteral("mate-terminal"),
-         {QStringLiteral("--working-directory=%1").arg(directory)}},
-        {QStringLiteral("tilix"),
-         {QStringLiteral("--working-directory=%1").arg(directory)}},
-        {QStringLiteral("alacritty"),
-         {QStringLiteral("--working-directory"), directory}},
-        {QStringLiteral("kitty"),
-         {QStringLiteral("--directory"), directory}},
-        {QStringLiteral("xterm"), {}},
-        {QStringLiteral("x-terminal-emulator"), {}}
-    };
-    for (const TerminalCommand &candidate : candidates) {
-        if (QProcess::startDetached(candidate.program,
-                                    candidate.arguments,
-                                    directory)) {
-            return;
-        }
-    }
-#endif
-
-    Q_EMIT messagePosted(tr("The terminal could not be started."), 5'000);
 }
 
 void RepositoryView::openFileManager() {
-    QDesktopServices::openUrl(QUrl::fromLocalFile(git_.repositoryRoot()));
+    static_cast<void>(PlatformServices::instance().openPath(git_.repositoryRoot()));
 }
 
 void RepositoryView::showPreferences() {
