@@ -608,10 +608,14 @@ QList<GitTreeEntry> GitClient::treeEntries(const QString &revision, const QStrin
 
 QList<GitTreeEntry> GitClient::workingCopyEntries(const QString &directory,
                                                   QString *errorMessage) const {
+    // Tracked and untracked-but-not-ignored files, so the listing matches what
+    // is actually sitting in the folder rather than just the index.
     QStringList arguments{
         QStringLiteral("ls-files"),
         QStringLiteral("-z"),
-        QStringLiteral("--cached")
+        QStringLiteral("--cached"),
+        QStringLiteral("--others"),
+        QStringLiteral("--exclude-standard")
     };
     if (!directory.isEmpty()) {
         arguments.append(QStringLiteral("--"));
@@ -673,10 +677,14 @@ QList<GitTreeEntry> GitClient::allFiles(const QString &revision,
     }
 
     if (revision.isEmpty()) {
+        // Tracked and untracked-but-not-ignored files, so the listing matches
+        // what is actually sitting in the folder rather than just the index.
         const GitCommandResult result = run({
             QStringLiteral("ls-files"),
             QStringLiteral("-z"),
-            QStringLiteral("--cached")
+            QStringLiteral("--cached"),
+            QStringLiteral("--others"),
+            QStringLiteral("--exclude-standard")
         });
         if (!result.succeeded()) {
             if (errorMessage != nullptr) {

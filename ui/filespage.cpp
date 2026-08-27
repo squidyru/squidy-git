@@ -248,7 +248,7 @@ QWidget *FilesPage::buildToolRow() {
     revision_ = new FlatComboBox;
     revision_->setObjectName(QStringLiteral("fileRevision"));
     revision_->setMinimumWidth(220);
-    revision_->addItem(tr("Working copy"), QString());
+    revision_->addItem(tr("Local copy"), QString());
     revision_->addItem(tr("HEAD"), QStringLiteral("HEAD"));
 
     connect(revision_, &QComboBox::currentIndexChanged, this, [this] {
@@ -405,7 +405,7 @@ void FilesPage::setReferences(const QList<GitBranchInfo> &branches,
 
     const QSignalBlocker blocker(revision_);
     revision_->clear();
-    revision_->addItem(tr("Working copy"), QString());
+    revision_->addItem(tr("Local copy"), QString());
     revision_->addItem(tr("HEAD"), QStringLiteral("HEAD"));
 
     if (!branches.isEmpty()) {

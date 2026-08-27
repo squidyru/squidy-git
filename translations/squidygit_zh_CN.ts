@@ -304,10 +304,10 @@ Cloning failed (code %1).</source>
         <translation>版本：</translation>
     </message>
     <message>
-        <location filename="../ui/filespage.cpp" line="218"/>
-        <location filename="../ui/filespage.cpp" line="375"/>
-        <source>Working copy</source>
-        <translation>工作副本</translation>
+        <location filename="../ui/filespage.cpp" line="251"/>
+        <location filename="../ui/filespage.cpp" line="408"/>
+        <source>Local copy</source>
+        <translation>本地副本</translation>
     </message>
     <message>
         <location filename="../ui/filespage.cpp" line="219"/>
