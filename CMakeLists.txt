@@ -174,6 +174,27 @@ set_target_properties(SquidyGit PROPERTIES
         WIN32_EXECUTABLE TRUE
         MACOSX_BUNDLE TRUE)
 
+# Without an explicit identifier CMake's Info.plist template leaves the
+# bundle fields blank, and a bundle with no identity breaks things quietly —
+# notably the Open/Save panel, whose out-of-process picker needs one to work
+# at all.
+if (APPLE)
+    set(SQUIDYGIT_MACOS_ICON "${CMAKE_CURRENT_SOURCE_DIR}/resources/macos/squidygit.icns")
+    target_sources(SquidyGit PRIVATE "${SQUIDYGIT_MACOS_ICON}")
+    set_source_files_properties("${SQUIDYGIT_MACOS_ICON}" PROPERTIES
+            MACOSX_PACKAGE_LOCATION "Resources")
+
+    set_target_properties(SquidyGit PROPERTIES
+            MACOSX_BUNDLE_INFO_PLIST "${CMAKE_CURRENT_SOURCE_DIR}/resources/macos/Info.plist.in"
+            MACOSX_BUNDLE_BUNDLE_NAME "SquidyGit"
+            MACOSX_BUNDLE_GUI_IDENTIFIER "ru.squidy.SquidyGit"
+            MACOSX_BUNDLE_BUNDLE_VERSION "${SQUIDYGIT_BUILD_VERSION}"
+            MACOSX_BUNDLE_SHORT_VERSION_STRING "${SQUIDYGIT_BUILD_VERSION}"
+            MACOSX_BUNDLE_LONG_VERSION_STRING "SquidyGit ${SQUIDYGIT_BUILD_VERSION}"
+            MACOSX_BUNDLE_COPYRIGHT "© 2026 Sergey Yakunin"
+            MACOSX_BUNDLE_ICON_FILE "squidygit.icns")
+endif ()
+
 # On Windows, copy the Qt runtime and plugins next to the executable so it can
 # be launched directly from CLion. This block is ignored on Linux and macOS.
 if (WIN32)

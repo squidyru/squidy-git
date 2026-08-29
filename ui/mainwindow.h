@@ -82,6 +82,8 @@ private:
 
     void runOnCurrent(void (RepositoryView::*slot)());
 
+    // False on macOS, which keeps its native title bar and traffic lights.
+    bool useCustomChrome_ = true;
     QWidget *titleBar_ = nullptr;
     QWidget *windowFrame_ = nullptr;
     QGraphicsDropShadowEffect *windowShadow_ = nullptr;

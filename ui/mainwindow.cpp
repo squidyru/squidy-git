@@ -174,26 +174,32 @@ MainWindow::MainWindow(QWidget *parent)
     resize(1360, 860);
     setMinimumSize(960, 620);
 
-    // Draw a custom title bar: the menu and the window buttons share
-    // one band, with the repository tabs directly underneath.
-    setWindowFlag(Qt::FramelessWindowHint, true);
-    setAttribute(Qt::WA_TranslucentBackground, true);
-    setAutoFillBackground(false);
-    const int framedMargin = WindowShadowMargin + WindowFrameBorderWidth;
-    setContentsMargins(framedMargin, framedMargin, framedMargin, framedMargin);
-    setMouseTracking(true);
+    useCustomChrome_ = PlatformServices::instance().kind() != PlatformKind::MacOS;
+
+    if (useCustomChrome_) {
+        // Draw a custom title bar: the menu and the window buttons share
+        // one band, with the repository tabs directly underneath.
+        setWindowFlag(Qt::FramelessWindowHint, true);
+        setAttribute(Qt::WA_TranslucentBackground, true);
+        setAutoFillBackground(false);
+        const int framedMargin = WindowShadowMargin + WindowFrameBorderWidth;
+        setContentsMargins(framedMargin, framedMargin, framedMargin, framedMargin);
+        setMouseTracking(true);
+    }
 
     updateChecker_ = new UpdateChecker(this);
 
-    windowFrame_ = new QWidget(this);
-    windowFrame_->setObjectName(QStringLiteral("windowShadowFrame"));
-    windowFrame_->setAttribute(Qt::WA_TransparentForMouseEvents, true);
-    windowShadow_ = new QGraphicsDropShadowEffect(windowFrame_);
-    windowShadow_->setBlurRadius(26.0);
-    windowShadow_->setOffset(0.0, 3.0);
-    windowShadow_->setColor(QColor(0, 0, 0, 145));
-    windowFrame_->setGraphicsEffect(windowShadow_);
-    windowFrame_->lower();
+    if (useCustomChrome_) {
+        windowFrame_ = new QWidget(this);
+        windowFrame_->setObjectName(QStringLiteral("windowShadowFrame"));
+        windowFrame_->setAttribute(Qt::WA_TransparentForMouseEvents, true);
+        windowShadow_ = new QGraphicsDropShadowEffect(windowFrame_);
+        windowShadow_->setBlurRadius(26.0);
+        windowShadow_->setOffset(0.0, 3.0);
+        windowShadow_->setColor(QColor(0, 0, 0, 145));
+        windowFrame_->setGraphicsEffect(windowShadow_);
+        windowFrame_->lower();
+    }
 
     buildInterface();
     // A frameless window owns its resize cursor. Watching application-wide
@@ -202,8 +208,10 @@ MainWindow::MainWindow(QWidget *parent)
     qApp->installEventFilter(this);
     restoreSession();
     QTimer::singleShot(0, this, [this] { updateTabMetrics(); });
-    updateWindowButtons();
-    updateWindowFrame();
+    if (useCustomChrome_) {
+        updateWindowButtons();
+        updateWindowFrame();
+    }
     updateActions();
 
     QTimer::singleShot(1500, this, [this] {
@@ -217,7 +225,13 @@ MainWindow::MainWindow(QWidget *parent)
 void MainWindow::buildInterface() {
     buildToolbar();
     buildMenus();
-    setMenuWidget(buildTitleBar());
+    if (useCustomChrome_) {
+        setMenuWidget(buildTitleBar());
+    } else {
+        // No custom title row here: QMainWindow's own menuBar() slot is what
+        // lets Qt promote the menu to the native bar on macOS.
+        setMenuBar(menuBar_);
+    }
 
     auto *workspace = new QWidget;
     workspace->setObjectName(QStringLiteral("workspace"));
@@ -497,6 +511,9 @@ void MainWindow::toggleMaximized() {
 }
 
 void MainWindow::updateWindowButtons() {
+    if (!useCustomChrome_) {
+        return;
+    }
     const bool maximized = isMaximized();
     if (maximizeButton_ != nullptr) {
         maximizeButton_->setIcon(Icons::icon(maximized ? Icons::Glyph::WindowRestore
@@ -541,7 +558,9 @@ Qt::Edges MainWindow::resizeEdgesAt(const QPoint &position) const {
 }
 
 void MainWindow::mouseMoveEvent(QMouseEvent *event) {
-    updateResizeCursor(event->position().toPoint());
+    if (useCustomChrome_) {
+        updateResizeCursor(event->position().toPoint());
+    }
     QMainWindow::mouseMoveEvent(event);
 }
 
@@ -562,11 +581,14 @@ void MainWindow::updateResizeCursor(const QPoint &position) {
 }
 
 void MainWindow::mousePressEvent(QMouseEvent *event) {
-    const Qt::Edges edges = resizeEdgesAt(event->position().toPoint());
-    if (event->button() == Qt::LeftButton && edges != Qt::Edges() && windowHandle() != nullptr) {
-        windowHandle()->startSystemResize(edges);
-        event->accept();
-        return;
+    if (useCustomChrome_) {
+        const Qt::Edges edges = resizeEdgesAt(event->position().toPoint());
+        if (event->button() == Qt::LeftButton && edges != Qt::Edges()
+            && windowHandle() != nullptr) {
+            windowHandle()->startSystemResize(edges);
+            event->accept();
+            return;
+        }
     }
     QMainWindow::mousePressEvent(event);
 }
@@ -578,15 +600,17 @@ void MainWindow::resizeEvent(QResizeEvent *event) {
 }
 
 bool MainWindow::eventFilter(QObject *watched, QEvent *event) {
-    if (event->type() == QEvent::MouseMove) {
-        auto *mouseEvent = static_cast<QMouseEvent *>(event);
-        updateResizeCursor(mapFromGlobal(mouseEvent->globalPosition().toPoint()));
-    } else if (event->type() == QEvent::Enter || event->type() == QEvent::Leave) {
-        updateResizeCursor(mapFromGlobal(QCursor::pos()));
-    } else if (event->type() == QEvent::MouseButtonRelease
-               || event->type() == QEvent::NonClientAreaMouseButtonRelease) {
-        // The native resize loop may finish without another move event.
-        unsetCursor();
+    if (useCustomChrome_) {
+        if (event->type() == QEvent::MouseMove) {
+            auto *mouseEvent = static_cast<QMouseEvent *>(event);
+            updateResizeCursor(mapFromGlobal(mouseEvent->globalPosition().toPoint()));
+        } else if (event->type() == QEvent::Enter || event->type() == QEvent::Leave) {
+            updateResizeCursor(mapFromGlobal(QCursor::pos()));
+        } else if (event->type() == QEvent::MouseButtonRelease
+                   || event->type() == QEvent::NonClientAreaMouseButtonRelease) {
+            // The native resize loop may finish without another move event.
+            unsetCursor();
+        }
     }
 
     if (watched == titleBar_) {
@@ -656,7 +680,11 @@ void MainWindow::updateTabCloseButtons(const int hoveredTab) {
 
 void MainWindow::buildMenus() {
     menuBar_ = new QMenuBar;
-    menuBar_->setNativeMenuBar(false);
+    // Cocoa doesn't paint an in-window QMenuBar, so on macOS it is left to
+    // promote itself to the native bar instead.
+    if (useCustomChrome_) {
+        menuBar_->setNativeMenuBar(false);
+    }
     menuBar_->setSizePolicy(QSizePolicy::Maximum, QSizePolicy::Preferred);
     menuBar_->setFont(topBarFont());
 
