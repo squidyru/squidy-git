@@ -18,6 +18,7 @@ concurrency:
 
 env:
   QT_VERSION: '6.11.2'
+  AQT_WINDOWS_SOURCE: 'git+https://github.com/miurahr/aqtinstall.git@9e49c82edc6d946db376dec907cca5b4b486eec5'
 
 jobs:
   build:
@@ -45,6 +46,7 @@ jobs:
         uses: jurplel/install-qt-action@v4
         with:
           version: ${{ env.QT_VERSION }}
+          aqtsource: ${{ runner.os == 'Windows' && env.AQT_WINDOWS_SOURCE || '' }}
           cache: true
 
       - name: Install Inno Setup
@@ -59,17 +61,19 @@ jobs:
         run: cmake --build build --config Release --parallel
 
       - name: Test
+        id: test
         run: ctest --test-dir build --build-config Release --output-on-failure
 
       # ctest hands back an empty log for the widget suite when it fails on
       # Windows, so it is run again here with nothing in between to swallow
       # what it prints.
       - name: Report the widget suite
-        if: failure() && runner.os == 'Windows'
+        if: failure() && runner.os == 'Windows' && steps.test.outcome == 'failure'
         continue-on-error: true
         env:
           QT_QPA_PLATFORM: offscreen
-        run: build\tests\Release\tst_repositoryview.exe
+        shell: pwsh
+        run: '& .\build\tests\Release\tst_repositoryview.exe'
 
       - name: Verify installation
         run: cmake --install build --config Release

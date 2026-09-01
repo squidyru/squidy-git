@@ -16,6 +16,7 @@ concurrency:
 
 env:
   QT_VERSION: '6.11.2'
+  AQT_WINDOWS_SOURCE: 'git+https://github.com/miurahr/aqtinstall.git@9e49c82edc6d946db376dec907cca5b4b486eec5'
 
 jobs:
   validate:
@@ -180,6 +181,7 @@ jobs:
           version: ${{ env.QT_VERSION }}
           arch: win64_mingw
           tools: tools_mingw1310,qt.tools.win64_mingw1310
+          aqtsource: ${{ env.AQT_WINDOWS_SOURCE }}
           cache: true
 
       - name: Install Inno Setup
