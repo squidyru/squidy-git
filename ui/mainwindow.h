@@ -82,8 +82,10 @@ private:
 
     void runOnCurrent(void (RepositoryView::*slot)());
 
-    // False on macOS, which keeps its native title bar and traffic lights.
+    // False on macOS, which keeps its native frame and traffic lights while
+    // expanding the Qt client area into the title bar.
     bool useCustomChrome_ = true;
+    bool useExpandedMacChrome_ = false;
     QWidget *titleBar_ = nullptr;
     QWidget *windowFrame_ = nullptr;
     QGraphicsDropShadowEffect *windowShadow_ = nullptr;

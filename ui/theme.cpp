@@ -298,6 +298,7 @@ QString Theme::styleSheet() const {
         QMenuBar::item:pressed { background: rgba(255, 255, 255, 70); border-radius: 3px; }
 
         QWidget#workspace { background: %(window); }
+        QWidget#macTitleBar { background: %(chrome); }
         QWidget#repositoryTabStrip { background: %(chrome); }
         QStackedWidget#repositoryPages { background: %(window); }
         QTabBar#repositoryTabBar { background: %(chrome); qproperty-drawBase: 0; }

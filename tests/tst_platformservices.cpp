@@ -62,6 +62,10 @@ void TestPlatformServices::classifiesUpdatePackagesForTheCurrentPlatform() {
             QVERIFY(!services.isSystemInstallerCancellation(126));
             break;
         case PlatformKind::MacOS:
+            QCOMPARE(services.updatePackageKind(QStringLiteral("release.dmg")),
+                     UpdatePackageKind::NativeInstaller);
+            QVERIFY(!services.isSystemInstallerCancellation(126));
+            break;
         case PlatformKind::Other:
             QCOMPARE(services.updatePackageKind(QStringLiteral("release.dmg")),
                      UpdatePackageKind::OpenWithSystem);

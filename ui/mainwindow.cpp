@@ -56,6 +56,10 @@ constexpr int MaximumBookmarks = 40;
 constexpr int MaximumLogLines = 500;
 /// Height of the combined menu/title row.
 constexpr int TitleBarHeight = Icons::WindowControlButtonHeight;
+/// macOS keeps its native traffic lights in a dedicated top row, with the
+/// repository tabs directly below it inside the same dark chrome area.
+constexpr int MacTrafficLightRowHeight = 38;
+constexpr int RepositoryTabStripHeight = 26;
 /// Transparent space reserved around the custom frame for its compositor-like
 /// drop shadow. It is also a convenient resize target.
 constexpr int WindowShadowMargin = 14;
@@ -174,7 +178,24 @@ MainWindow::MainWindow(QWidget *parent)
     resize(1360, 860);
     setMinimumSize(960, 620);
 
-    useCustomChrome_ = PlatformServices::instance().kind() != PlatformKind::MacOS;
+    useExpandedMacChrome_ = PlatformServices::instance().kind() == PlatformKind::MacOS;
+    useCustomChrome_ = !useExpandedMacChrome_;
+
+    if (useExpandedMacChrome_) {
+        // Qt 6.9+ maps these hints to NSWindowStyleMaskFullSizeContentView and
+        // a transparent native title bar. AppKit continues to own the frame,
+        // shadow, fullscreen behavior and traffic-light buttons.
+        setWindowFlag(Qt::ExpandedClientAreaHint, true);
+        setWindowFlag(Qt::NoTitleBarBackgroundHint, true);
+        // QWidget layouts respect QWindow::safeAreaMargins() by default,
+        // which would put the whole central widget back below the title bar.
+        // The strip handles the traffic-light exclusion itself, so let the
+        // main-window layout occupy the complete expanded client rectangle.
+        setAttribute(Qt::WA_ContentsMarginsRespectsSafeArea, false);
+        // The active repository is already visible in the selected tab. An
+        // empty native caption keeps it from being painted over those tabs.
+        setWindowTitle(QString());
+    }
 
     if (useCustomChrome_) {
         // Draw a custom title bar: the menu and the window buttons share
@@ -239,9 +260,21 @@ void MainWindow::buildInterface() {
     workspaceLayout->setContentsMargins(0, 0, 0, 0);
     workspaceLayout->setSpacing(0);
 
+    QWidget *macTitleBar = nullptr;
+    if (useExpandedMacChrome_) {
+        macTitleBar = new QWidget;
+        macTitleBar->setObjectName(QStringLiteral("macTitleBar"));
+        macTitleBar->setFixedHeight(MacTrafficLightRowHeight);
+        // This row deliberately has no Qt controls: AppKit draws the native
+        // traffic lights over its left side, and the rest is a generous drag
+        // target like the title area in other native macOS applications.
+        titleBar_ = macTitleBar;
+        titleBar_->installEventFilter(this);
+    }
+
     auto *tabStrip = new QWidget;
     tabStrip->setObjectName(QStringLiteral("repositoryTabStrip"));
-    tabStrip->setFixedHeight(26);
+    tabStrip->setFixedHeight(RepositoryTabStripHeight);
     auto *tabStripLayout = new QHBoxLayout(tabStrip);
     tabStripLayout->setContentsMargins(8, 0, 4, 0);
     tabStripLayout->setSpacing(0);
@@ -249,7 +282,7 @@ void MainWindow::buildInterface() {
     tabs_ = new RepositoryTabBar;
     tabs_->setObjectName(QStringLiteral("repositoryTabBar"));
     tabs_->setFont(topBarFont());
-    tabs_->setFixedHeight(26);
+    tabs_->setFixedHeight(RepositoryTabStripHeight);
     tabs_->setDocumentMode(true);
     tabs_->setMovable(true);
     tabs_->setTabsClosable(true);
@@ -277,7 +310,7 @@ void MainWindow::buildInterface() {
 
     addTabButton_ = new QToolButton;
     addTabButton_->setObjectName(QStringLiteral("addTabButton"));
-    addTabButton_->setFixedHeight(26);
+    addTabButton_->setFixedHeight(RepositoryTabStripHeight);
     addTabButton_->setIcon(Icons::icon(Icons::Glyph::Add, Qt::white));
     addTabButton_->setIconSize(QSize(18, 18));
     addTabButton_->setFixedWidth(28);
@@ -292,6 +325,9 @@ void MainWindow::buildInterface() {
     // The vertical order is title/menu, repository tabs, actions,
     // repository content. Keeping these as explicit widgets avoids the native
     // QMainWindow toolbar area placing the actions above the tabs.
+    if (macTitleBar != nullptr) {
+        workspaceLayout->addWidget(macTitleBar);
+    }
     workspaceLayout->addWidget(tabStrip);
     workspaceLayout->addWidget(mainToolbar_);
     workspaceLayout->addWidget(tabPages_, 1);
@@ -473,8 +509,8 @@ QWidget *MainWindow::buildTitleBar() {
     layout->addWidget(menuBar_, 0, Qt::AlignVCenter);
     layout->addStretch(1);
 
-    const auto addWindowButton = [this, layout](const Icons::Glyph glyph, const QString &tip,
-                                                const bool danger) {
+    const auto addWindowButton = [layout](const Icons::Glyph glyph, const QString &tip,
+                                          const bool danger) {
         auto *button = new QToolButton;
         button->setObjectName(danger ? QStringLiteral("windowCloseButton")
                                      : QStringLiteral("windowButton"));
@@ -1444,8 +1480,10 @@ void MainWindow::updateActions() {
     pushAction_->setIcon(Icons::icon(Icons::Glyph::Push));
 
     if (hasRepository) {
-        setWindowTitle(QStringLiteral("%1 — %2 — SquidyGit")
-                           .arg(view->repositoryName(), view->currentBranchName()));
+        if (!useExpandedMacChrome_) {
+            setWindowTitle(QStringLiteral("%1 — %2 — SquidyGit")
+                               .arg(view->repositoryName(), view->currentBranchName()));
+        }
         statusLabel_->setText(tr("%1  ·  branch %2  ·  changes: %3  ·  ↑%4 ↓%5")
                                   .arg(QDir::toNativeSeparators(view->repositoryRoot()),
                                        view->currentBranchName())
@@ -1453,7 +1491,9 @@ void MainWindow::updateActions() {
                                   .arg(view->aheadCount())
                                   .arg(view->behindCount()));
     } else {
-        setWindowTitle(QStringLiteral("SquidyGit"));
+        if (!useExpandedMacChrome_) {
+            setWindowTitle(QStringLiteral("SquidyGit"));
+        }
         statusLabel_->setText(tr("Open or clone a repository"));
     }
 }

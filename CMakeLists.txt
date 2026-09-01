@@ -26,10 +26,10 @@ set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)
 
-find_package(Qt6 REQUIRED COMPONENTS Concurrent Core Gui LinguistTools Network Svg Widgets)
+find_package(Qt6 6.11.1 REQUIRED COMPONENTS Concurrent Core Gui LinguistTools Network Svg Widgets)
 
 # PDF preview is optional; without it the Files page uses a byte dump.
-find_package(Qt6 QUIET COMPONENTS PdfWidgets)
+find_package(Qt6 6.11.1 QUIET COMPONENTS PdfWidgets)
 
 set(SQUIDYGIT_PLATFORM_IMPLEMENTATION platform/platformservices_generic.cpp)
 if (WIN32)
@@ -165,7 +165,7 @@ qt_add_translations(
 
 option(SQUIDYGIT_BUILD_TESTS "Build the test suites" ON)
 if (SQUIDYGIT_BUILD_TESTS)
-    find_package(Qt6 REQUIRED COMPONENTS Test)
+    find_package(Qt6 6.11.1 REQUIRED COMPONENTS Test)
     enable_testing()
     add_subdirectory(tests)
 endif ()

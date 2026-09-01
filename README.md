@@ -199,7 +199,8 @@ language is applied after the application restarts.
 
 SquidyGit is a native C++20 application built with:
 
-- Qt 6: Core, Gui, Widgets, Concurrent, Network and SVG; PDF/PdfWidgets is optional
+- Qt 6.11.1 or newer: Core, Gui, Widgets, Concurrent, Network and SVG;
+  PDF/PdfWidgets is optional
 - CMake 3.16 or newer
 - The system Git command-line client
 
@@ -228,7 +229,7 @@ notarization and release testing are being validated.
 
 ### Linux
 
-Install a C++20 compiler, CMake, Git and the Qt 6 development packages, including the
+Install a C++20 compiler, CMake, Git and the Qt 6.11.1 (or newer) development packages, including the
 Qt Linguist tools (`qt6-l10n-tools` and `qt6-tools-dev` on Debian and Ubuntu), then run:
 
 ```bash
@@ -259,7 +260,7 @@ tool window and build the target. The resulting package is written to `build/dis
 
 ### Windows
 
-Install Qt 6 with MinGW, then point CMake to your Qt installation:
+Install Qt 6.11.1 or newer with MinGW, then point CMake to your Qt installation:
 
 ```powershell
 cmake -S . -B build -DCMAKE_PREFIX_PATH=C:/Qt/6.x.x/mingw_64
@@ -290,7 +291,7 @@ cmake --build build --target windows_portable
 
 ### macOS (experimental)
 
-Install a C++20 compiler, CMake, Git and Qt 6. When Qt was installed with Homebrew, a
+Install a C++20 compiler, CMake, Git and Qt 6.11.1 or newer. When Qt was installed with Homebrew, a
 local build can be created with:
 
 ```bash
