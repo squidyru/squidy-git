@@ -250,9 +250,19 @@ jobs:
           PACKAGE_VERSION: ${{ needs.validate.outputs.version }}
           MAC_ARCH: ${{ matrix.arch }}
         run: |
-          macdeployqt SquidyGit.app -dmg -always-overwrite
+          macdeployqt SquidyGit.app -always-overwrite -codesign=-
+          codesign --force --deep --sign - SquidyGit.app
+          codesign --verify --deep --strict --verbose=2 SquidyGit.app
+
           mkdir -p dist
-          mv SquidyGit.dmg "dist/SquidyGit-${PACKAGE_VERSION}-macos-${MAC_ARCH}.dmg"
+          dmg_root="dist/dmg-root-${MAC_ARCH}"
+          mkdir -p "$dmg_root"
+          ditto SquidyGit.app "$dmg_root/SquidyGit.app"
+          ln -s /Applications "$dmg_root/Applications"
+
+          dmg="dist/SquidyGit-${PACKAGE_VERSION}-macos-${MAC_ARCH}.dmg"
+          hdiutil create -volname SquidyGit -srcfolder "$dmg_root" -ov -format UDZO "$dmg"
+          hdiutil verify "$dmg"
 
       - name: Upload DMG
         uses: actions/upload-artifact@v7
