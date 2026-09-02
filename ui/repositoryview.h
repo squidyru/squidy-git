@@ -231,6 +231,10 @@ private:
     QPushButton *abortButton_ = nullptr;
 
     QTreeWidget *navigationTree_ = nullptr;
+    QLabel *repositoryNameLabel_ = nullptr;
+    QLabel *repositoryBranchLabel_ = nullptr;
+    QLabel *repositorySyncLabel_ = nullptr;
+    QLabel *repositoryStateLabel_ = nullptr;
     QStackedWidget *pages_ = nullptr;
     QSplitter *workspaceSplitter_ = nullptr;
     QPushButton *fileStatusButton_ = nullptr;

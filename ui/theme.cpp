@@ -10,26 +10,26 @@ namespace {
 
 ThemePalette lightPalette() {
     ThemePalette palette;
-    palette.window = QColor(QStringLiteral("#F4F6F9"));
-    palette.chrome = QColor(QStringLiteral("#10162E"));
-    palette.chromeText = QColor(QStringLiteral("#E8ECF6"));
-    palette.tabInactive = QColor(QStringLiteral("#E4E8F0"));
-    palette.sidebarSelection = QColor(QStringLiteral("#3A4C82"));
-    palette.toolbar = QColor(QStringLiteral("#F4F6F9"));
-    palette.sidebar = QColor(QStringLiteral("#F4F6F9"));
+    palette.window = QColor(QStringLiteral("#FFFFFF"));
+    palette.chrome = QColor(QStringLiteral("#0B3A5B"));
+    palette.chromeText = QColor(QStringLiteral("#EDF7FD"));
+    palette.tabInactive = QColor(QStringLiteral("#245777"));
+    palette.sidebarSelection = QColor(QStringLiteral("#347FD3"));
+    palette.toolbar = QColor(QStringLiteral("#FBFCFE"));
+    palette.sidebar = QColor(QStringLiteral("#123F5B"));
     palette.surface = QColor(QStringLiteral("#FFFFFF"));
     palette.surfaceAlternate = QColor(QStringLiteral("#FAFBFD"));
-    palette.rowStripe = QColor(QStringLiteral("#F2F5FA"));
-    palette.border = QColor(QStringLiteral("#CDD4E0"));
+    palette.rowStripe = QColor(QStringLiteral("#F7F9FC"));
+    palette.border = QColor(QStringLiteral("#DCE3EA"));
     palette.text = QColor(QStringLiteral("#1E2333"));
     palette.mutedText = QColor(QStringLiteral("#6E7488"));
     palette.sectionText = QColor(QStringLiteral("#6E7488"));
-    palette.accent = QColor(QStringLiteral("#D02B44"));
-    palette.accentHover = QColor(QStringLiteral("#E8455C"));
+    palette.accent = QColor(QStringLiteral("#3478F6"));
+    palette.accentHover = QColor(QStringLiteral("#4B8BFA"));
     palette.accentText = QColor(QStringLiteral("#FFFFFF"));
-    palette.selection = QColor(QStringLiteral("#2C3A66"));
-    palette.selectionText = QColor(QStringLiteral("#FFFFFF"));
-    palette.hover = QColor(QStringLiteral("#E9EDF4"));
+    palette.selection = QColor(QStringLiteral("#DFEAFE"));
+    palette.selectionText = QColor(QStringLiteral("#172033"));
+    palette.hover = QColor(QStringLiteral("#EDF3FA"));
     palette.success = QColor(QStringLiteral("#1A7F4B"));
     palette.warning = QColor(QStringLiteral("#B0730B"));
     palette.danger = QColor(QStringLiteral("#9B1B2E"));
@@ -177,7 +177,7 @@ void Theme::applyToApplication() const {
 QString Theme::styleSheet() const {
     const ThemePalette &p = palette_;
     const QColor sidebarText = mode_ == Mode::Light
-                                   ? QColor(QStringLiteral("#3A4257"))
+                                   ? QColor(QStringLiteral("#EAF5FC"))
                                    : p.text;
     const QColor historyControl = mode_ == Mode::Light
                                       ? QColor(QStringLiteral("#E8EBF1"))
@@ -207,13 +207,15 @@ QString Theme::styleSheet() const {
             background: %(toolbar);
             border: none;
             border-bottom: 1px solid %(border);
-            spacing: 0px;
-            padding: 3px 8px 4px 8px;
+            border-top-left-radius: 14px;
+            border-top-right-radius: 14px;
+            spacing: 2px;
+            padding: 5px 10px 5px 10px;
         }
         QToolBar#mainToolbar QToolButton {
             background: transparent;
             border: 1px solid transparent;
-            border-radius: 2px;
+            border-radius: 8px;
             color: %(text);
             font-family: "Arial";
             font-size: 12px;
@@ -297,73 +299,86 @@ QString Theme::styleSheet() const {
         QMenuBar::item:selected { background: rgba(255, 255, 255, 40); border-radius: 3px; }
         QMenuBar::item:pressed { background: rgba(255, 255, 255, 70); border-radius: 3px; }
 
-        QWidget#workspace { background: %(window); }
-        QWidget#macTitleBar { background: %(chrome); }
-        QWidget#repositoryTabStrip { background: %(chrome); }
-        QStackedWidget#repositoryPages { background: %(window); }
-        QTabBar#repositoryTabBar { background: %(chrome); qproperty-drawBase: 0; }
+        QWidget#workspace {
+            background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
+                        stop:0 rgba(12, 62, 91, 244),
+                        stop:0.62 rgba(20, 82, 116, 238),
+                        stop:1 rgba(10, 45, 72, 246));
+        }
+        QWidget#repositoryTabStrip {
+            background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+                        stop:0 rgba(11, 52, 78, 246),
+                        stop:0.7 rgba(20, 77, 110, 240),
+                        stop:1 rgba(12, 48, 75, 246));
+        }
+        QWidget#toolbarShelf { background: transparent; }
+        QWidget#sidebarToolbarBackdrop { background: rgba(14, 57, 82, 218); }
+        QStackedWidget#repositoryPages { background: transparent; }
+        QWidget#repositoryView { background: transparent; }
+        QStackedWidget#repositoryContentPages { background: %(surface); }
+        QTabBar#repositoryTabBar { background: transparent; qproperty-drawBase: 0; }
         QTabBar#repositoryTabBar::tab {
             background: %(tabInactive);
-            color: %(text);
-            border: none;
-            border-left: 1px solid %(chrome);
-            border-bottom: 1px solid %(border);
-            border-top-left-radius: 1px;
-            border-top-right-radius: 1px;
-            min-height: 24px;
-            max-height: 24px;
-            padding: 1px 8px 0 8px;
-            margin: 0;
-            min-width: 120px;
-            max-width: 280px;
+            color: %(chromeText);
+            border: 1px solid rgba(255, 255, 255, 16);
+            border-radius: 9px;
+            min-height: 34px;
+            max-height: 34px;
+            padding: 1px 10px 0 10px;
+            margin: 0 2px 4px 0;
+            min-width: 118px;
+            max-width: 250px;
         }
-        QTabBar#repositoryTabBar::tab:first { border-left: none; }
         QTabBar#repositoryTabBar::tab:selected {
             background: %(toolbar);
-            border-left: 1px solid %(chrome);
-            /* Preserve the separator when the selected tab overlaps its neighbour. */
-            border-right: 1px solid %(chrome);
-            border-top: none;
-            border-bottom: none;
+            color: %(text);
+            border: none;
+            border-top-left-radius: 11px;
+            border-top-right-radius: 11px;
+            border-bottom-left-radius: 0;
+            border-bottom-right-radius: 0;
+            margin-bottom: 0;
         }
-        QTabBar#repositoryTabBar::tab:first:selected { border-left: none; }
-        QTabBar#repositoryTabBar::tab:hover { background: %(toolbar); }
+        QTabBar#repositoryTabBar::tab:hover:!selected { background: rgba(62, 124, 164, 210); }
         QTabBar#repositoryTabBar::close-button { subcontrol-position: right; }
         QLabel#repositoryTabTitle {
             background: transparent;
-            color: %(text);
+            color: %(chromeText);
             font-family: "Arial";
             font-size: 12px;
             font-weight: 400;
             padding: 0 2px 0 11px;
         }
+        QLabel#repositoryTabTitle[selected="true"] { color: %(text); }
         QWidget#tabTitleArea QLabel#repositoryTabTitle { padding-left: 2px; }
         QToolButton#addTabButton {
-            background: transparent;
+            background: rgba(58, 116, 153, 145);
             border: none;
+            border-radius: 9px;
             color: %(chromeText);
             min-width: 28px;
             max-width: 28px;
             padding: 0;
             margin: 0;
         }
-        QToolButton#addTabButton:hover { background: rgba(255, 255, 255, 40); border-radius: 0; }
+        QToolButton#addTabButton:hover { background: rgba(255, 255, 255, 40); border-radius: 9px; }
         QToolButton#addTabButton:pressed { background: rgba(255, 255, 255, 70); }
 
         QPushButton#viewSwitchButton {
             background: transparent;
             border: none;
-            border-radius: 0;
-            min-height: 25px;
-            padding: 0 4px 0 45px;
+            border-radius: 8px;
+            min-height: 31px;
+            margin: 1px 0;
+            padding: 0 8px 0 14px;
             text-align: left;
-            color: %(text);
+            color: %(sidebarText);
         }
-        QPushButton#viewSwitchButton:hover { background: %(hover); }
+        QPushButton#viewSwitchButton:hover { background: rgba(255, 255, 255, 22); }
         QPushButton#viewSwitchButton:checked {
             background: %(sidebarSelection);
-            color: %(selectionText);
-            font-weight: 400;
+            color: #FFFFFF;
+            font-weight: 600;
         }
 
         /* Checkboxes are intentionally left unstyled: touching them in a
@@ -374,9 +389,9 @@ QString Theme::styleSheet() const {
             border-bottom: 1px solid %(border);
         }
         QLabel#stateBadge { color: %(removedText); font-weight: 400; }
-        QWidget#viewSwitcher { background: %(window); border: none; }
+        QWidget#viewSwitcher { background: transparent; border: none; }
         QWidget#workspaceHeader { min-height: 30px; background: transparent; }
-        QLabel#workspaceTitle { min-height: 30px; color: %(sectionText); font-size: 12px; font-weight: 600; }
+        QLabel#workspaceTitle { min-height: 30px; color: #86AFCB; font-size: 11px; font-weight: 700; }
         QFrame#sidebarTopSeparator {
             border: none;
             border-top: 1px solid %(border);
@@ -391,9 +406,9 @@ QString Theme::styleSheet() const {
         }
 
         QWidget#sidebar {
-            background: %(sidebar);
+            background: rgba(14, 57, 82, 218);
             border: none;
-            border-right: 1px solid %(border);
+            border-right: 1px solid rgba(255, 255, 255, 22);
         }
         QTreeWidget#navigationTree {
             background: transparent;
@@ -405,27 +420,42 @@ QString Theme::styleSheet() const {
             font-weight: 400;
         }
         QTreeWidget#navigationTree::item {
-            border-radius: 0;
-            padding: 0;
+            border-radius: 7px;
+            padding: 1px 2px;
         }
         QTreeWidget#navigationTree::item:hover {
-            border-radius: 0;
-            padding: 0;
-            background: %(hover);
+            border-radius: 7px;
+            padding: 1px 2px;
+            background: rgba(255, 255, 255, 18);
         }
         QTreeWidget#navigationTree::item:selected {
-            border-radius: 0;
-            padding: 0;
+            border-radius: 7px;
+            padding: 1px 2px;
             background: %(sidebarSelection);
-            color: %(selectionText);
+            color: #FFFFFF;
         }
         QLineEdit#navigationFilter {
-            min-height: 21px;
-            max-height: 21px;
-            margin: 4px 2px 4px 0;
-            padding: 0 5px;
+            min-height: 29px;
+            max-height: 29px;
+            margin: 5px 0;
+            padding: 0 8px;
             font-size: 12px;
+            color: %(sidebarText);
+            background: rgba(4, 31, 49, 74);
+            border: 1px solid rgba(255, 255, 255, 38);
+            border-radius: 7px;
         }
+        QLineEdit#navigationFilter:focus { border-color: rgba(123, 184, 225, 170); }
+        QWidget#repositorySummaryCard {
+            background: rgba(255, 255, 255, 17);
+            border: 1px solid rgba(255, 255, 255, 43);
+            border-radius: 12px;
+        }
+        QLabel#repositorySummaryName { color: #FFFFFF; font-size: 12px; font-weight: 700; }
+        QLabel#repositorySummaryBranch,
+        QLabel#repositorySummarySync,
+        QLabel#repositorySummaryState { color: #C6DEEC; font-size: 11px; }
+        QFrame#repositoryCardSeparator { border: none; border-top: 1px solid rgba(255, 255, 255, 28); }
 
         QComboBox#historyScope, QComboBox#historyOrder,
         QLineEdit#historyAuthorFilter, QToolButton#historyJumpButton {

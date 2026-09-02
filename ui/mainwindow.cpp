@@ -6,6 +6,9 @@
 #include "core/gitclient.h"
 #include "core/gitprocess.h"
 #include "icons.h"
+#ifdef Q_OS_MACOS
+#include "macosvibrancy.h"
+#endif
 #include "platform/platformservices.h"
 #include "repositoryview.h"
 #include "theme.h"
@@ -56,10 +59,12 @@ constexpr int MaximumBookmarks = 40;
 constexpr int MaximumLogLines = 500;
 /// Height of the combined menu/title row.
 constexpr int TitleBarHeight = Icons::WindowControlButtonHeight;
-/// macOS keeps its native traffic lights in a dedicated top row, with the
-/// repository tabs directly below it inside the same dark chrome area.
-constexpr int MacTrafficLightRowHeight = 38;
-constexpr int RepositoryTabStripHeight = 26;
+/// The macOS traffic lights and repository tabs share one generous chrome row.
+/// The left inset keeps the first tab clear of the native window controls.
+constexpr int MacChromeHeight = 58;
+constexpr int MacTabLeftInset = 116;
+constexpr int RepositoryTabStripHeight = 38;
+constexpr int ShellSidebarWidth = 232;
 /// Transparent space reserved around the custom frame for its compositor-like
 /// drop shadow. It is also a convenient resize target.
 constexpr int WindowShadowMargin = 14;
@@ -192,6 +197,8 @@ MainWindow::MainWindow(QWidget *parent)
         // The strip handles the traffic-light exclusion itself, so let the
         // main-window layout occupy the complete expanded client rectangle.
         setAttribute(Qt::WA_ContentsMarginsRespectsSafeArea, false);
+        setAttribute(Qt::WA_TranslucentBackground, true);
+        setAutoFillBackground(false);
         // The active repository is already visible in the selected tab. An
         // empty native caption keeps it from being painted over those tabs.
         setWindowTitle(QString());
@@ -256,28 +263,29 @@ void MainWindow::buildInterface() {
 
     auto *workspace = new QWidget;
     workspace->setObjectName(QStringLiteral("workspace"));
+#ifdef Q_OS_MACOS
+    workspace->setAttribute(Qt::WA_TranslucentBackground, true);
+    workspace->setAutoFillBackground(false);
+#endif
     auto *workspaceLayout = new QVBoxLayout(workspace);
     workspaceLayout->setContentsMargins(0, 0, 0, 0);
     workspaceLayout->setSpacing(0);
 
-    QWidget *macTitleBar = nullptr;
-    if (useExpandedMacChrome_) {
-        macTitleBar = new QWidget;
-        macTitleBar->setObjectName(QStringLiteral("macTitleBar"));
-        macTitleBar->setFixedHeight(MacTrafficLightRowHeight);
-        // This row deliberately has no Qt controls: AppKit draws the native
-        // traffic lights over its left side, and the rest is a generous drag
-        // target like the title area in other native macOS applications.
-        titleBar_ = macTitleBar;
-        titleBar_->installEventFilter(this);
-    }
-
     auto *tabStrip = new QWidget;
     tabStrip->setObjectName(QStringLiteral("repositoryTabStrip"));
-    tabStrip->setFixedHeight(RepositoryTabStripHeight);
+    tabStrip->setFixedHeight(useExpandedMacChrome_ ? MacChromeHeight
+                                                   : RepositoryTabStripHeight);
     auto *tabStripLayout = new QHBoxLayout(tabStrip);
-    tabStripLayout->setContentsMargins(8, 0, 4, 0);
-    tabStripLayout->setSpacing(0);
+    tabStripLayout->setContentsMargins(useExpandedMacChrome_ ? MacTabLeftInset : 12,
+                                       useExpandedMacChrome_ ? 10 : 0,
+                                       10,
+                                       0);
+    tabStripLayout->setSpacing(6);
+    if (useExpandedMacChrome_) {
+        // Blank portions of the combined strip remain native drag targets.
+        titleBar_ = tabStrip;
+        titleBar_->installEventFilter(this);
+    }
 
     tabs_ = new RepositoryTabBar;
     tabs_->setObjectName(QStringLiteral("repositoryTabBar"));
@@ -300,6 +308,7 @@ void MainWindow::buildInterface() {
     homeTabTitle->setObjectName(QStringLiteral("repositoryTabTitle"));
     homeTabTitle->setFont(topBarFont());
     homeTabTitle->setProperty("fullTitle", tr("Repositories"));
+    homeTabTitle->setProperty("selected", true);
     homeTabTitle->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Preferred);
     tabs_->setTabButton(0, QTabBar::LeftSide, homeTabTitle);
     tabs_->setTabButton(0, QTabBar::RightSide, nullptr);
@@ -318,20 +327,30 @@ void MainWindow::buildInterface() {
     connect(addTabButton_, &QToolButton::clicked, this, [this] { openRepositoryDialog(); });
     // Keep the add button attached to the last visible tab instead of pinning
     // it to the far edge of the window.
-    tabStripLayout->addWidget(tabs_);
-    tabStripLayout->addWidget(addTabButton_);
+    tabStripLayout->addWidget(tabs_, 0, Qt::AlignBottom);
+    tabStripLayout->addWidget(addTabButton_, 0, Qt::AlignBottom);
     tabStripLayout->addStretch(1);
 
-    // The vertical order is title/menu, repository tabs, actions,
-    // repository content. Keeping these as explicit widgets avoids the native
-    // QMainWindow toolbar area placing the actions above the tabs.
-    if (macTitleBar != nullptr) {
-        workspaceLayout->addWidget(macTitleBar);
-    }
+    // The toolbar begins where the repository content begins. Its dark left
+    // shelf visually extends the sidebar all the way up to the tab strip.
+    auto *toolbarShelf = new QWidget;
+    toolbarShelf->setObjectName(QStringLiteral("toolbarShelf"));
+    auto *toolbarShelfLayout = new QHBoxLayout(toolbarShelf);
+    toolbarShelfLayout->setContentsMargins(0, 0, 0, 0);
+    toolbarShelfLayout->setSpacing(0);
+    auto *sidebarToolbarBackdrop = new QWidget;
+    sidebarToolbarBackdrop->setObjectName(QStringLiteral("sidebarToolbarBackdrop"));
+    sidebarToolbarBackdrop->setFixedWidth(ShellSidebarWidth);
+    toolbarShelfLayout->addWidget(sidebarToolbarBackdrop);
+    toolbarShelfLayout->addWidget(mainToolbar_, 1);
+
     workspaceLayout->addWidget(tabStrip);
-    workspaceLayout->addWidget(mainToolbar_);
+    workspaceLayout->addWidget(toolbarShelf);
     workspaceLayout->addWidget(tabPages_, 1);
     setCentralWidget(workspace);
+#ifdef Q_OS_MACOS
+    MacOSVibrancy::install(workspace);
+#endif
 
     connect(tabs_, &QTabBar::tabCloseRequested, this,
             [this](const int index) { closeTab(index); });
@@ -339,7 +358,12 @@ void MainWindow::buildInterface() {
             [this](const QPoint &position) { showTabContextMenu(position); });
     connect(tabs_, &QTabBar::currentChanged, this, [this](const int index) {
         tabPages_->setCurrentIndex(index);
-        for (int tab = 1; tab < tabs_->count(); ++tab) {
+        for (int tab = 0; tab < tabs_->count(); ++tab) {
+            if (QLabel *label = tabTitleLabel(tabs_->tabButton(tab, QTabBar::LeftSide))) {
+                label->setProperty("selected", tab == index);
+                label->style()->unpolish(label);
+                label->style()->polish(label);
+            }
             if (QWidget *button = tabs_->tabButton(tab, QTabBar::RightSide)) {
                 button->setVisible(tab == index);
             }
@@ -692,6 +716,11 @@ bool MainWindow::eventFilter(QObject *watched, QEvent *event) {
 
 void MainWindow::showEvent(QShowEvent *event) {
     QMainWindow::showEvent(event);
+#ifdef Q_OS_MACOS
+    if (useExpandedMacChrome_) {
+        MacOSVibrancy::configureWindow(this);
+    }
+#endif
     updateTabMetrics();
     // On Windows the final client geometry is committed after the show event,
     // especially when restoreGeometry also restores a maximized window.
@@ -1182,6 +1211,7 @@ bool MainWindow::openRepository(const QString &path, const bool activate) {
     tabTitle->setObjectName(QStringLiteral("repositoryTabTitle"));
     tabTitle->setFont(topBarFont());
     tabTitle->setProperty("fullTitle", view->repositoryName());
+    tabTitle->setProperty("selected", false);
     tabTitle->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Preferred);
     titleLayout->addWidget(tabTitle, 1);
     tabs_->setTabButton(index, QTabBar::LeftSide, titleArea);

@@ -112,6 +112,16 @@ add_library(squidygit_ui STATIC
         ui/updatechecker.cpp
         ui/updatechecker.h)
 
+if (APPLE)
+    enable_language(OBJCXX)
+    target_sources(squidygit_ui PRIVATE
+            ui/macosvibrancy.h
+            ui/macosvibrancy.mm)
+    set_source_files_properties(ui/macosvibrancy.mm PROPERTIES
+            COMPILE_FLAGS "-fobjc-arc")
+    target_link_libraries(squidygit_ui PRIVATE "-framework AppKit")
+endif ()
+
 target_link_libraries(squidygit_ui PUBLIC
         squidygit_core
         squidygit_platform

@@ -83,6 +83,7 @@ constexpr int RepositorySplitterWidth = 0;
 constexpr int MinimumPaneHeight = 80;
 constexpr int MinimumPaneWidth = 180;
 constexpr int SeparatorHeight = 1;
+constexpr int ShellSidebarWidth = 232;
 constexpr int JumpListVisibleRows = 12;
 constexpr int CounterHeight = 16;
 constexpr int CounterPadding = 4;
@@ -121,7 +122,7 @@ enum NavigationKind {
 
 QColor navigationTextColor() {
     return Theme::instance()->mode() == Theme::Mode::Light
-               ? QColor(QStringLiteral("#454545"))
+               ? QColor(QStringLiteral("#EAF5FC"))
                : Theme::instance()->palette().text;
 }
 
@@ -447,6 +448,7 @@ RepositoryView::RepositoryView(const QString &path, QWidget *parent)
       autoFetchWatcher_(new QFutureWatcher<GitCommandResult>(this)),
       diskWatcher_(new RepositoryWatcher(this)),
       snapshotWatcher_(new QFutureWatcher<RepositorySnapshot>(this)) {
+    setObjectName(QStringLiteral("repositoryView"));
     valid_ = git_.openRepository(path).succeeded();
 
     auto *layout = new QVBoxLayout(this);
@@ -460,6 +462,7 @@ RepositoryView::RepositoryView(const QString &path, QWidget *parent)
     workspaceSplitter_->addWidget(buildSidebar());
 
     pages_ = new QStackedWidget;
+    pages_->setObjectName(QStringLiteral("repositoryContentPages"));
     pages_->addWidget(buildFileStatusPage());
     pages_->addWidget(buildHistoryPage());
     pages_->addWidget(buildSearchPage());
@@ -662,22 +665,21 @@ QWidget *RepositoryView::buildViewSwitcher() {
 QWidget *RepositoryView::buildSidebar() {
     auto *sidebar = new QWidget;
     sidebar->setObjectName(QStringLiteral("sidebar"));
-    sidebar->setMinimumWidth(180);
-    sidebar->setMaximumWidth(280);
+    sidebar->setFixedWidth(ShellSidebarWidth);
 
     auto *layout = new QVBoxLayout(sidebar);
-    layout->setContentsMargins(9, 5, 11, 5);
+    layout->setContentsMargins(14, 26, 14, 14);
     layout->setSpacing(0);
 
     auto *workspaceHeader = new QWidget;
     workspaceHeader->setObjectName(QStringLiteral("workspaceHeader"));
-    workspaceHeader->setMaximumWidth(184);
+    workspaceHeader->setMaximumWidth(ShellSidebarWidth - 28);
     auto *workspaceHeaderLayout = new QHBoxLayout(workspaceHeader);
     workspaceHeaderLayout->setContentsMargins(18, 0, 0, 0);
     workspaceHeaderLayout->setSpacing(5);
     auto *workspaceIcon = new QLabel;
     const QColor workspaceIconColor = Theme::instance()->mode() == Theme::Mode::Light
-                                          ? QColor(QStringLiteral("#4F6B92"))
+                                          ? QColor(QStringLiteral("#86AFCB"))
                                           : Theme::instance()->palette().sectionText;
     workspaceIcon->setPixmap(Icons::pixmap(Icons::Glyph::FileStatus, 20,
                                            workspaceIconColor));
@@ -694,13 +696,13 @@ QWidget *RepositoryView::buildSidebar() {
     topSeparator->setObjectName(QStringLiteral("sidebarTopSeparator"));
     topSeparator->setFrameShape(QFrame::HLine);
     topSeparator->setFixedHeight(SeparatorHeight);
-    topSeparator->setMaximumWidth(184);
+    topSeparator->setMaximumWidth(ShellSidebarWidth - 28);
     layout->addWidget(topSeparator);
     layout->addSpacing(9);
 
     auto *navigationFilter = new QLineEdit;
     navigationFilter->setObjectName(QStringLiteral("navigationFilter"));
-    navigationFilter->setMaximumWidth(182);
+    navigationFilter->setMaximumWidth(ShellSidebarWidth - 28);
     navigationFilter->setPlaceholderText(tr("Search"));
     navigationFilter->setClearButtonEnabled(true);
     navigationFilter->addAction(
@@ -720,6 +722,46 @@ QWidget *RepositoryView::buildSidebar() {
     navigationTree_->setItemDelegate(new NavigationDelegate(navigationTree_));
     navigationTree_->setContextMenuPolicy(Qt::CustomContextMenu);
     layout->addWidget(navigationTree_, 1);
+
+    auto *repositoryCard = new QWidget;
+    repositoryCard->setObjectName(QStringLiteral("repositorySummaryCard"));
+    auto *cardLayout = new QVBoxLayout(repositoryCard);
+    cardLayout->setContentsMargins(12, 12, 12, 12);
+    cardLayout->setSpacing(5);
+
+    auto *identityRow = new QHBoxLayout;
+    identityRow->setSpacing(9);
+    auto *repositoryIcon = new QLabel;
+    repositoryIcon->setObjectName(QStringLiteral("repositorySummaryIcon"));
+    repositoryIcon->setPixmap(Icons::applicationPixmap(30));
+    repositoryIcon->setFixedSize(34, 34);
+    repositoryIcon->setAlignment(Qt::AlignCenter);
+    identityRow->addWidget(repositoryIcon);
+
+    auto *identityText = new QVBoxLayout;
+    identityText->setSpacing(0);
+    repositoryNameLabel_ = new QLabel(git_.repositoryName());
+    repositoryNameLabel_->setObjectName(QStringLiteral("repositorySummaryName"));
+    repositoryBranchLabel_ = new QLabel;
+    repositoryBranchLabel_->setObjectName(QStringLiteral("repositorySummaryBranch"));
+    identityText->addWidget(repositoryNameLabel_);
+    identityText->addWidget(repositoryBranchLabel_);
+    identityRow->addLayout(identityText, 1);
+    cardLayout->addLayout(identityRow);
+
+    auto *cardSeparator = new QFrame;
+    cardSeparator->setObjectName(QStringLiteral("repositoryCardSeparator"));
+    cardSeparator->setFrameShape(QFrame::HLine);
+    cardLayout->addWidget(cardSeparator);
+
+    repositorySyncLabel_ = new QLabel;
+    repositorySyncLabel_->setObjectName(QStringLiteral("repositorySummarySync"));
+    repositoryStateLabel_ = new QLabel;
+    repositoryStateLabel_->setObjectName(QStringLiteral("repositorySummaryState"));
+    cardLayout->addWidget(repositorySyncLabel_);
+    cardLayout->addWidget(repositoryStateLabel_);
+    layout->addSpacing(10);
+    layout->addWidget(repositoryCard);
 
     connect(navigationFilter, &QLineEdit::textChanged, navigationTree_,
             [this](const QString &text) {
@@ -1398,6 +1440,23 @@ void RepositoryView::refreshHeader() {
                                        "settings")
                                   : QStringLiteral("%1 <%2>").arg(author, email));
     }
+
+    if (repositoryNameLabel_ != nullptr) {
+        repositoryNameLabel_->setText(git_.repositoryName());
+    }
+    if (repositoryBranchLabel_ != nullptr) {
+        repositoryBranchLabel_->setText(currentBranch_.isEmpty()
+                                            ? tr("No branch")
+                                            : QStringLiteral("⌘ %1").arg(currentBranch_));
+    }
+    if (repositorySyncLabel_ != nullptr) {
+        repositorySyncLabel_->setText(QStringLiteral("↑ %1   ↓ %2").arg(ahead_).arg(behind_));
+    }
+    if (repositoryStateLabel_ != nullptr) {
+        repositoryStateLabel_->setText(files_.isEmpty()
+                                           ? tr("Clean working directory")
+                                           : tr("%n changed file(s)", "", files_.size()));
+    }
 }
 
 void RepositoryView::refreshNavigation() {
@@ -1417,9 +1476,11 @@ void RepositoryView::refreshNavigation() {
     QTreeWidgetItem *itemToSelect = nullptr;
 
     const ThemePalette &palette = Theme::instance()->palette();
-    const QColor sectionColor = palette.sectionText;
+    const QColor sectionColor = Theme::instance()->mode() == Theme::Mode::Light
+                                    ? QColor(QStringLiteral("#86AFCB"))
+                                    : palette.sectionText;
     const QColor sectionIconColor = Theme::instance()->mode() == Theme::Mode::Light
-                                        ? QColor(QStringLiteral("#4F6B92"))
+                                        ? QColor(QStringLiteral("#86AFCB"))
                                         : sectionColor;
     auto *branchesSection = addSection(navigationTree_, tr("Branches"),
                                        navigationSectionIcon(Icons::Glyph::Branch,
