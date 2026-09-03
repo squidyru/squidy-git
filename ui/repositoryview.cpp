@@ -11,6 +11,7 @@
 #include "icons.h"
 #include "platform/platformservices.h"
 #include "repositorywatcher.h"
+#include "shellmetrics.h"
 #include "theme.h"
 
 #include <QAbstractItemView>
@@ -75,15 +76,11 @@ constexpr int NavigationAheadRole = Qt::UserRole + 33;
 constexpr int NavigationBehindRole = Qt::UserRole + 34;
 constexpr int HistoryRevisionRole = Qt::UserRole + 35;
 constexpr int FullDiffContextLines = 1'000'000;
-// The handle is both the grip and a gap, and the pages are drawn with their
-// panes flush. Safe only while collapsing stays disabled: a pane shut against
-// a zero width handle could never be reopened.
-constexpr int RepositorySplitterWidth = 0;
+constexpr int RepositorySplitterWidth = 4;
 // Keeps a pane from being squeezed down to a couple of rows.
 constexpr int MinimumPaneHeight = 80;
 constexpr int MinimumPaneWidth = 180;
 constexpr int SeparatorHeight = 1;
-constexpr int ShellSidebarWidth = 232;
 constexpr int JumpListVisibleRows = 12;
 constexpr int CounterHeight = 16;
 constexpr int CounterPadding = 4;
@@ -415,7 +412,7 @@ int autoFetchIntervalMinutes() {
 QString historyHeaderSettingsKey(const QString &repositoryRoot) {
     const QByteArray digest = QCryptographicHash::hash(repositoryRoot.toUtf8(),
                                                        QCryptographicHash::Md5);
-    return QStringLiteral("historyColumns/%1").arg(QString::fromLatin1(digest.toHex()));
+    return QStringLiteral("historyColumns/v2/%1").arg(QString::fromLatin1(digest.toHex()));
 }
 
 QTreeWidgetItem *firstLeaf(QTreeWidgetItem *item) {
@@ -457,6 +454,7 @@ RepositoryView::RepositoryView(const QString &path, QWidget *parent)
     layout->addWidget(buildStateBanner());
 
     workspaceSplitter_ = new QSplitter(Qt::Horizontal);
+    workspaceSplitter_->setObjectName(QStringLiteral("workspaceSplitter"));
     workspaceSplitter_->setHandleWidth(RepositorySplitterWidth);
     workspaceSplitter_->setChildrenCollapsible(false);
     workspaceSplitter_->addWidget(buildSidebar());
@@ -479,15 +477,17 @@ RepositoryView::RepositoryView(const QString &path, QWidget *parent)
     });
 
     auto *content = new QWidget;
+    content->setObjectName(QStringLiteral("repositoryContentShell"));
     auto *contentLayout = new QVBoxLayout(content);
-    contentLayout->setContentsMargins(0, 0, 0, 0);
+    contentLayout->setContentsMargins(0, ShellMetrics::ToolbarHeight,
+                                      0, ShellMetrics::FooterHeight);
     contentLayout->setSpacing(0);
     contentLayout->addWidget(pages_, 1);
 
     workspaceSplitter_->addWidget(content);
     workspaceSplitter_->setStretchFactor(0, 0);
     workspaceSplitter_->setStretchFactor(1, 1);
-    workspaceSplitter_->setSizes({210, 1150});
+    workspaceSplitter_->setSizes({ShellMetrics::SidebarWidth, 1150});
     layout->addWidget(workspaceSplitter_, 1);
 
     connect(operationWatcher_, &QFutureWatcher<GitCommandResult>::finished, this,
@@ -628,7 +628,7 @@ QWidget *RepositoryView::buildStateBanner() {
 QWidget *RepositoryView::buildViewSwitcher() {
     auto *switcher = new QWidget;
     switcher->setObjectName(QStringLiteral("viewSwitcher"));
-    switcher->setMaximumWidth(184);
+    switcher->setFixedWidth(ShellMetrics::SidebarWidth - 28);
     auto *layout = new QVBoxLayout(switcher);
     layout->setContentsMargins(0, 0, 0, 0);
     layout->setSpacing(0);
@@ -665,7 +665,7 @@ QWidget *RepositoryView::buildViewSwitcher() {
 QWidget *RepositoryView::buildSidebar() {
     auto *sidebar = new QWidget;
     sidebar->setObjectName(QStringLiteral("sidebar"));
-    sidebar->setFixedWidth(ShellSidebarWidth);
+    sidebar->setFixedWidth(ShellMetrics::SidebarWidth);
 
     auto *layout = new QVBoxLayout(sidebar);
     layout->setContentsMargins(14, 26, 14, 14);
@@ -673,7 +673,7 @@ QWidget *RepositoryView::buildSidebar() {
 
     auto *workspaceHeader = new QWidget;
     workspaceHeader->setObjectName(QStringLiteral("workspaceHeader"));
-    workspaceHeader->setMaximumWidth(ShellSidebarWidth - 28);
+    workspaceHeader->setMaximumWidth(ShellMetrics::SidebarWidth - 28);
     auto *workspaceHeaderLayout = new QHBoxLayout(workspaceHeader);
     workspaceHeaderLayout->setContentsMargins(18, 0, 0, 0);
     workspaceHeaderLayout->setSpacing(5);
@@ -696,13 +696,13 @@ QWidget *RepositoryView::buildSidebar() {
     topSeparator->setObjectName(QStringLiteral("sidebarTopSeparator"));
     topSeparator->setFrameShape(QFrame::HLine);
     topSeparator->setFixedHeight(SeparatorHeight);
-    topSeparator->setMaximumWidth(ShellSidebarWidth - 28);
+    topSeparator->setMaximumWidth(ShellMetrics::SidebarWidth - 28);
     layout->addWidget(topSeparator);
     layout->addSpacing(9);
 
     auto *navigationFilter = new QLineEdit;
     navigationFilter->setObjectName(QStringLiteral("navigationFilter"));
-    navigationFilter->setMaximumWidth(ShellSidebarWidth - 28);
+    navigationFilter->setFixedWidth(ShellMetrics::SidebarWidth - 28);
     navigationFilter->setPlaceholderText(tr("Search"));
     navigationFilter->setClearButtonEnabled(true);
     navigationFilter->addAction(
@@ -725,6 +725,7 @@ QWidget *RepositoryView::buildSidebar() {
 
     auto *repositoryCard = new QWidget;
     repositoryCard->setObjectName(QStringLiteral("repositorySummaryCard"));
+    repositoryCard->setFixedHeight(148);
     auto *cardLayout = new QVBoxLayout(repositoryCard);
     cardLayout->setContentsMargins(12, 12, 12, 12);
     cardLayout->setSpacing(5);
@@ -733,8 +734,8 @@ QWidget *RepositoryView::buildSidebar() {
     identityRow->setSpacing(9);
     auto *repositoryIcon = new QLabel;
     repositoryIcon->setObjectName(QStringLiteral("repositorySummaryIcon"));
-    repositoryIcon->setPixmap(Icons::applicationPixmap(30));
-    repositoryIcon->setFixedSize(34, 34);
+    repositoryIcon->setPixmap(Icons::applicationPixmap(38));
+    repositoryIcon->setFixedSize(42, 42);
     repositoryIcon->setAlignment(Qt::AlignCenter);
     identityRow->addWidget(repositoryIcon);
 
@@ -793,28 +794,37 @@ QWidget *RepositoryView::buildSidebar() {
 
 QWidget *RepositoryView::buildFileStatusPage() {
     auto *page = new QWidget;
+    page->setObjectName(QStringLiteral("fileStatusPage"));
     auto *layout = new QVBoxLayout(page);
-    layout->setContentsMargins(10, 8, 10, 8);
-    layout->setSpacing(6);
+    layout->setContentsMargins(12, 10, 12, 10);
+    layout->setSpacing(10);
 
-    auto *toolRow = new QHBoxLayout;
+    auto *toolbar = new QWidget;
+    toolbar->setObjectName(QStringLiteral("fileStatusToolbar"));
+    auto *toolRow = new QHBoxLayout(toolbar);
+    toolRow->setContentsMargins(0, 0, 0, 0);
+    toolRow->setSpacing(8);
     fileFilter_ = new QLineEdit;
+    fileFilter_->setObjectName(QStringLiteral("fileStatusFilter"));
     fileFilter_->setPlaceholderText(tr("Filter files…"));
     fileFilter_->setClearButtonEnabled(true);
     fileFilter_->setMaximumWidth(260);
     treeModeButton_ = new QToolButton;
+    treeModeButton_->setObjectName(QStringLiteral("treeModeButton"));
     treeModeButton_->setText(tr("Tree"));
     treeModeButton_->setCheckable(true);
     treeModeButton_->setToolTip(tr("Show the files as a directory tree"));
     toolRow->addWidget(treeModeButton_);
     toolRow->addStretch();
     toolRow->addWidget(fileFilter_);
-    layout->addLayout(toolRow);
+    layout->addWidget(toolbar);
 
     auto *verticalSplitter = new QSplitter(Qt::Vertical);
+    verticalSplitter->setObjectName(QStringLiteral("fileStatusVerticalSplitter"));
     verticalSplitter->setHandleWidth(RepositorySplitterWidth);
     verticalSplitter->setChildrenCollapsible(false);
     auto *topSplitter = new QSplitter(Qt::Horizontal);
+    topSplitter->setObjectName(QStringLiteral("fileStatusTopSplitter"));
     topSplitter->setHandleWidth(RepositorySplitterWidth);
     topSplitter->setChildrenCollapsible(false);
 
@@ -824,6 +834,7 @@ QWidget *RepositoryView::buildFileStatusPage() {
     filesLayout->setSpacing(4);
 
     auto *fileSplitter = new QSplitter(Qt::Vertical);
+    fileSplitter->setObjectName(QStringLiteral("fileListsSplitter"));
     fileSplitter->setHandleWidth(RepositorySplitterWidth);
     fileSplitter->setChildrenCollapsible(false);
 
@@ -833,6 +844,7 @@ QWidget *RepositoryView::buildFileStatusPage() {
                                        QPushButton **primaryButton,
                                        QPushButton **secondaryButton) {
         auto *panel = new QWidget;
+        panel->setObjectName(QStringLiteral("fileChangesPanel"));
         auto *panelLayout = new QVBoxLayout(panel);
         panelLayout->setContentsMargins(0, 0, 0, 0);
         panelLayout->setSpacing(4);
@@ -844,6 +856,8 @@ QWidget *RepositoryView::buildFileStatusPage() {
         headerRow->addStretch();
         *primaryButton = new QPushButton(primaryText);
         *secondaryButton = new QPushButton(secondaryText);
+        (*primaryButton)->setObjectName(QStringLiteral("filePanelAction"));
+        (*secondaryButton)->setObjectName(QStringLiteral("filePanelAction"));
         headerRow->addWidget(*secondaryButton);
         headerRow->addWidget(*primaryButton);
         panelLayout->addLayout(headerRow);
@@ -905,6 +919,7 @@ QWidget *RepositoryView::buildFileStatusPage() {
     verticalSplitter->addWidget(topSplitter);
 
     auto *commitPanel = new QWidget;
+    commitPanel->setObjectName(QStringLiteral("commitPanel"));
     auto *commitLayout = new QVBoxLayout(commitPanel);
     commitLayout->setContentsMargins(0, 4, 0, 0);
     commitLayout->setSpacing(4);
@@ -919,6 +934,7 @@ QWidget *RepositoryView::buildFileStatusPage() {
     commitLayout->addLayout(commitHeader);
 
     commitMessage_ = new QPlainTextEdit;
+    commitMessage_->setObjectName(QStringLiteral("commitMessage"));
     commitMessage_->setPlaceholderText(tr("Commit message"));
     commitMessage_->setMaximumHeight(96);
     commitLayout->addWidget(commitMessage_);
@@ -1000,15 +1016,17 @@ QWidget *RepositoryView::buildHistoryPage() {
     auto *page = new QWidget;
     page->setObjectName(QStringLiteral("historyPage"));
     auto *layout = new QVBoxLayout(page);
-    layout->setContentsMargins(0, 4, 0, 0);
+    layout->setContentsMargins(0, 0, 0, 0);
     layout->setSpacing(0);
 
-    auto *toolRow = new QHBoxLayout;
-    toolRow->setContentsMargins(4, 0, 0, 2);
-    toolRow->setSpacing(8);
+    auto *toolbar = new QWidget;
+    toolbar->setObjectName(QStringLiteral("historyToolbar"));
+    auto *toolRow = new QHBoxLayout(toolbar);
+    toolRow->setContentsMargins(12, 10, 12, 10);
+    toolRow->setSpacing(10);
     historyScope_ = new FlatComboBox;
     historyScope_->setObjectName(QStringLiteral("historyScope"));
-    historyScope_->setFixedWidth(88);
+    historyScope_->setFixedWidth(124);
     historyScope_->addItem(tr("All branches"),
                            static_cast<int>(GitHistoryScope::AllBranches));
     historyScope_->addItem(tr("Current branch"),
@@ -1017,24 +1035,27 @@ QWidget *RepositoryView::buildHistoryPage() {
     showRemoteBranches_->setChecked(true);
     historyOrder_ = new FlatComboBox;
     historyOrder_->setObjectName(QStringLiteral("historyOrder"));
-    historyOrder_->setFixedWidth(154);
+    historyOrder_->setFixedWidth(270);
     historyOrder_->addItem(tr("Sort by date"), true);
     historyOrder_->addItem(tr("Sort by ancestry"), false);
     historyFilter_ = new QLineEdit(page);
     historyFilter_->setObjectName(QStringLiteral("historyAuthorFilter"));
     historyFilter_->setPlaceholderText(tr("Author Name"));
     historyFilter_->setClearButtonEnabled(false);
-    historyFilter_->setFixedWidth(150);
+    historyFilter_->setFixedWidth(154);
     historyFilter_->addAction(
         Icons::icon(Icons::Glyph::Search, Theme::instance()->palette().mutedText),
         QLineEdit::TrailingPosition);
 
     auto *jumpToButton = new QToolButton;
     jumpToButton->setObjectName(QStringLiteral("historyJumpButton"));
-    jumpToButton->setText(tr("Go to:"));
-    jumpToButton->setToolButtonStyle(Qt::ToolButtonTextOnly);
+    jumpToButton->setIcon(Icons::icon(Icons::Glyph::History,
+                                      Theme::instance()->palette().mutedText));
+    jumpToButton->setIconSize(QSize(17, 17));
+    jumpToButton->setToolTip(tr("Go to a commit or reference"));
+    jumpToButton->setToolButtonStyle(Qt::ToolButtonIconOnly);
     jumpToButton->setPopupMode(QToolButton::InstantPopup);
-    jumpToButton->setFixedWidth(78);
+    jumpToButton->setFixedWidth(38);
     auto *jumpMenu = new QMenu(jumpToButton);
     jumpMenu->setObjectName(QStringLiteral("historyJumpMenu"));
     jumpMenu->setMinimumWidth(198);
@@ -1046,9 +1067,10 @@ QWidget *RepositoryView::buildHistoryPage() {
     toolRow->addStretch(1);
     toolRow->addWidget(historyFilter_);
     toolRow->addWidget(jumpToButton);
-    layout->addLayout(toolRow);
+    layout->addWidget(toolbar);
 
     auto *verticalSplitter = new QSplitter(Qt::Vertical);
+    verticalSplitter->setObjectName(QStringLiteral("historyVerticalSplitter"));
     verticalSplitter->setHandleWidth(RepositorySplitterWidth);
     verticalSplitter->setChildrenCollapsible(false);
 
@@ -1081,18 +1103,14 @@ QWidget *RepositoryView::buildHistoryPage() {
             const QByteArray savedState =
                 QSettings().value(historyHeaderSettingsKey(git_.repositoryRoot())).toByteArray();
             if (savedState.isEmpty() || !header->restoreState(savedState)) {
-                const int graphWidth = 80;
-                const int dateWidth = 112;
-                const int authorWidth = 114;
-                const int commitWidth = 60;
-                const int descriptionWidth = qMax(
-                    240, historyView_->viewport()->width() - graphWidth - dateWidth
-                             - authorWidth - commitWidth);
+                const int graphWidth = 72;
+                const int descriptionWidth = 520;
+                const int dateWidth = 140;
+                const int authorWidth = 170;
                 header->resizeSection(0, graphWidth);
                 header->resizeSection(1, descriptionWidth);
                 header->resizeSection(2, dateWidth);
                 header->resizeSection(3, authorWidth);
-                header->resizeSection(4, commitWidth);
             }
             // Keep the Commit section anchored to the viewport edge.
             header->setStretchLastSection(true);
@@ -1106,9 +1124,11 @@ QWidget *RepositoryView::buildHistoryPage() {
     verticalSplitter->addWidget(historyView_);
 
     auto *detailsSplitter = new QSplitter(Qt::Horizontal);
+    detailsSplitter->setObjectName(QStringLiteral("historyDetailsSplitter"));
     detailsSplitter->setHandleWidth(RepositorySplitterWidth);
     detailsSplitter->setChildrenCollapsible(false);
     auto *leftSplitter = new QSplitter(Qt::Vertical);
+    leftSplitter->setObjectName(QStringLiteral("historyLeftSplitter"));
     leftSplitter->setHandleWidth(RepositorySplitterWidth);
     leftSplitter->setChildrenCollapsible(false);
 
@@ -1142,9 +1162,9 @@ QWidget *RepositoryView::buildHistoryPage() {
             });
     commitFilesTree_->setMinimumHeight(MinimumPaneHeight);
     leftSplitter->addWidget(commitFilesTree_);
-    leftSplitter->setStretchFactor(0, 5);
-    leftSplitter->setStretchFactor(1, 4);
-    leftSplitter->setSizes({220, 175});
+    leftSplitter->setStretchFactor(0, 1);
+    leftSplitter->setStretchFactor(1, 1);
+    leftSplitter->setSizes({210, 210});
 
     commitDiffView_ = new DiffView;
     commitDiffView_->setMode(DiffView::Mode::ReadOnly);
@@ -1154,15 +1174,15 @@ QWidget *RepositoryView::buildHistoryPage() {
     commitDiffView_->setMinimumWidth(MinimumPaneWidth);
     detailsSplitter->addWidget(leftSplitter);
     detailsSplitter->addWidget(commitDiffView_);
-    detailsSplitter->setStretchFactor(0, 1);
-    detailsSplitter->setStretchFactor(1, 1);
-    detailsSplitter->setSizes({620, 620});
+    detailsSplitter->setStretchFactor(0, 2);
+    detailsSplitter->setStretchFactor(1, 3);
+    detailsSplitter->setSizes({520, 760});
 
     detailsSplitter->setMinimumHeight(MinimumPaneHeight);
     verticalSplitter->addWidget(detailsSplitter);
-    verticalSplitter->setStretchFactor(0, 3);
-    verticalSplitter->setStretchFactor(1, 2);
-    verticalSplitter->setSizes({255, 325});
+    verticalSplitter->setStretchFactor(0, 2);
+    verticalSplitter->setStretchFactor(1, 3);
+    verticalSplitter->setSizes({260, 390});
     layout->addWidget(verticalSplitter, 1);
 
     connect(historyScope_, &QComboBox::currentIndexChanged, this, [this] {

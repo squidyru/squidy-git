@@ -56,7 +56,7 @@ int CommitGraphDelegate::graphWidthForLanes(const int lanes) {
 QSize CommitGraphDelegate::sizeHint(const QStyleOptionViewItem &option,
                                     const QModelIndex &index) const {
     QSize size = QStyledItemDelegate::sizeHint(option, index);
-    size.setHeight(19);
+    size.setHeight(23);
     return size;
 }
 
@@ -100,19 +100,19 @@ void CommitGraphDelegate::paint(QPainter *painter, const QStyleOptionViewItem &o
         const QFontMetrics chipMetrics(chipFont);
 
         int x = option.rect.left() + 4;
-        const int chipHeight = qMin(15, option.rect.height() - 2);
+        const int chipHeight = qMin(18, option.rect.height() - 3);
         const int chipTop = option.rect.top() + (option.rect.height() - chipHeight) / 2;
         const int iconCellWidth = 18;
-        const int chipGap = 9;
+        const int chipGap = 6;
         const int subjectReserve = 80;
         const int referencesRight = option.rect.right() - subjectReserve;
         const QColor referenceColor =
             laneColor(graphIndex.data(CommitRoles::ColorIndex).toInt());
         const QColor chipSurface = Theme::instance()->mode() == Theme::Mode::Light
-                                       ? QColor(QStringLiteral("#F7F7F7"))
+                                       ? QColor(QStringLiteral("#EAF2FF"))
                                        : palette.surface;
         const QColor chipBorder = Theme::instance()->mode() == Theme::Mode::Light
-                                      ? QColor(QStringLiteral("#C5C5C5"))
+                                      ? QColor(QStringLiteral("#AFC8F3"))
                                       : palette.border;
 
         const auto drawChip = [&](const ReferenceChip &chip, const int left,
@@ -120,7 +120,7 @@ void CommitGraphDelegate::paint(QPainter *painter, const QStyleOptionViewItem &o
             const QRectF chipRect(left + 0.5, chipTop + 0.5,
                                   width - 1.0, chipHeight - 1.0);
             QPainterPath pill;
-            pill.addRoundedRect(chipRect, 2.5, 2.5);
+            pill.addRoundedRect(chipRect, 4.5, 4.5);
             painter->fillPath(pill, chipSurface);
 
             painter->save();
@@ -152,7 +152,7 @@ void CommitGraphDelegate::paint(QPainter *painter, const QStyleOptionViewItem &o
                               width - 1.0, chipHeight - 1.0);
             painter->setPen(Qt::NoPen);
             painter->setBrush(referenceColor);
-            painter->drawRoundedRect(rect, 2.5, 2.5);
+            painter->drawRoundedRect(rect, 4.5, 4.5);
             painter->setBrush(Qt::white);
             const qreal dotY = rect.center().y() + 2.0;
             for (const qreal dotX : {rect.center().x() - 4.0,

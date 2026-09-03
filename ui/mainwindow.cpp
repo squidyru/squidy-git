@@ -9,8 +9,12 @@
 #ifdef Q_OS_MACOS
 #include "macosvibrancy.h"
 #endif
+#ifdef Q_OS_WIN
+#include "windowsbackdrop.h"
+#endif
 #include "platform/platformservices.h"
 #include "repositoryview.h"
+#include "shellmetrics.h"
 #include "theme.h"
 #include "updatechecker.h"
 
@@ -45,7 +49,6 @@
 #include <QShowEvent>
 #include <QSignalBlocker>
 #include <QStackedWidget>
-#include <QStatusBar>
 #include <QTabBar>
 #include <QTextBrowser>
 #include <QToolBar>
@@ -61,10 +64,10 @@ constexpr int MaximumLogLines = 500;
 constexpr int TitleBarHeight = Icons::WindowControlButtonHeight;
 /// The macOS traffic lights and repository tabs share one generous chrome row.
 /// The left inset keeps the first tab clear of the native window controls.
-constexpr int MacChromeHeight = 58;
-constexpr int MacTabLeftInset = 116;
-constexpr int RepositoryTabStripHeight = 38;
-constexpr int ShellSidebarWidth = 232;
+constexpr int MacChromeHeight = 60;
+constexpr int MacTabLeftInset = 112;
+constexpr int RepositoryTabStripHeight = 46;
+constexpr int AddTabButtonSize = 38;
 /// Transparent space reserved around the custom frame for its compositor-like
 /// drop shadow. It is also a convenient resize target.
 constexpr int WindowShadowMargin = 14;
@@ -79,14 +82,14 @@ constexpr int BadgeHeight = 14;
 constexpr int BadgePadding = 12;
 constexpr int BadgeMargin = 2;
 constexpr int TabBadgeHeight = 14;
-constexpr int TabBadgeSpacing = 4;
-constexpr int TabTitleLeftMargin = 9;
+constexpr int TabBadgeSpacing = 3;
+constexpr int TabTitleLeftMargin = 8;
+constexpr int TabRepositoryIconWidth = 16;
 
 QFont topBarFont() {
-    QFont font(QStringLiteral("Arial"));
+    QFont font = QFontDatabase::systemFont(QFontDatabase::GeneralFont);
     font.setPixelSize(12);
     font.setWeight(QFont::Normal);
-    font.setHintingPreference(QFont::PreferFullHinting);
     font.setStyleStrategy(QFont::PreferAntialias);
     return font;
 }
@@ -230,6 +233,11 @@ MainWindow::MainWindow(QWidget *parent)
     }
 
     buildInterface();
+#ifdef Q_OS_WIN
+    connect(Theme::instance(), &Theme::changed, this, [this] {
+        QTimer::singleShot(0, this, [this] { updatePlatformBackdrop(); });
+    });
+#endif
     // A frameless window owns its resize cursor. Watching application-wide
     // pointer transitions ensures it is reset even when the pointer moves
     // from the resize margin onto a child widget.
@@ -277,7 +285,7 @@ void MainWindow::buildInterface() {
                                                    : RepositoryTabStripHeight);
     auto *tabStripLayout = new QHBoxLayout(tabStrip);
     tabStripLayout->setContentsMargins(useExpandedMacChrome_ ? MacTabLeftInset : 12,
-                                       useExpandedMacChrome_ ? 10 : 0,
+                                       0,
                                        10,
                                        0);
     tabStripLayout->setSpacing(6);
@@ -304,13 +312,28 @@ void MainWindow::buildInterface() {
     tabs_->setMouseTracking(true);
     tabs_->installEventFilter(this);
     tabs_->addTab(QString());
+
+    auto *homeTitleArea = new QWidget;
+    homeTitleArea->setObjectName(QStringLiteral("tabTitleArea"));
+    homeTitleArea->setAttribute(Qt::WA_TransparentForMouseEvents);
+    auto *homeTitleLayout = new QHBoxLayout(homeTitleArea);
+    homeTitleLayout->setContentsMargins(11, 0, 0, 0);
+    homeTitleLayout->setSpacing(7);
+    auto *homeTabIcon = new QLabel;
+    homeTabIcon->setObjectName(QStringLiteral("repositoryTabIcon"));
+    homeTabIcon->setPixmap(Icons::pixmap(Icons::Glyph::Repository, 15,
+                                         Theme::instance()->palette().text));
+    homeTabIcon->setFixedSize(16, 16);
+    homeTabIcon->setAlignment(Qt::AlignCenter);
+    homeTitleLayout->addWidget(homeTabIcon);
     auto *homeTabTitle = new QLabel(tr("Repositories"));
     homeTabTitle->setObjectName(QStringLiteral("repositoryTabTitle"));
     homeTabTitle->setFont(topBarFont());
     homeTabTitle->setProperty("fullTitle", tr("Repositories"));
     homeTabTitle->setProperty("selected", true);
     homeTabTitle->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Preferred);
-    tabs_->setTabButton(0, QTabBar::LeftSide, homeTabTitle);
+    homeTitleLayout->addWidget(homeTabTitle, 1);
+    tabs_->setTabButton(0, QTabBar::LeftSide, homeTitleArea);
     tabs_->setTabButton(0, QTabBar::RightSide, nullptr);
 
     tabPages_ = new QStackedWidget;
@@ -319,10 +342,9 @@ void MainWindow::buildInterface() {
 
     addTabButton_ = new QToolButton;
     addTabButton_->setObjectName(QStringLiteral("addTabButton"));
-    addTabButton_->setFixedHeight(RepositoryTabStripHeight);
+    addTabButton_->setFixedSize(AddTabButtonSize, AddTabButtonSize);
     addTabButton_->setIcon(Icons::icon(Icons::Glyph::Add, Qt::white));
-    addTabButton_->setIconSize(QSize(18, 18));
-    addTabButton_->setFixedWidth(28);
+    addTabButton_->setIconSize(QSize(20, 20));
     addTabButton_->setToolTip(tr("Open a repository in a new tab"));
     connect(addTabButton_, &QToolButton::clicked, this, [this] { openRepositoryDialog(); });
     // Keep the add button attached to the last visible tab instead of pinning
@@ -331,26 +353,21 @@ void MainWindow::buildInterface() {
     tabStripLayout->addWidget(addTabButton_, 0, Qt::AlignBottom);
     tabStripLayout->addStretch(1);
 
-    // The toolbar begins where the repository content begins. Its dark left
-    // shelf visually extends the sidebar all the way up to the tab strip.
-    auto *toolbarShelf = new QWidget;
-    toolbarShelf->setObjectName(QStringLiteral("toolbarShelf"));
-    auto *toolbarShelfLayout = new QHBoxLayout(toolbarShelf);
-    toolbarShelfLayout->setContentsMargins(0, 0, 0, 0);
-    toolbarShelfLayout->setSpacing(0);
-    auto *sidebarToolbarBackdrop = new QWidget;
-    sidebarToolbarBackdrop->setObjectName(QStringLiteral("sidebarToolbarBackdrop"));
-    sidebarToolbarBackdrop->setFixedWidth(ShellSidebarWidth);
-    toolbarShelfLayout->addWidget(sidebarToolbarBackdrop);
-    toolbarShelfLayout->addWidget(mainToolbar_, 1);
-
     workspaceLayout->addWidget(tabStrip);
-    workspaceLayout->addWidget(toolbarShelf);
-    workspaceLayout->addWidget(tabPages_, 1);
+    workspaceBody_ = new QWidget;
+    workspaceBody_->setObjectName(QStringLiteral("workspaceBody"));
+    auto *bodyLayout = new QVBoxLayout(workspaceBody_);
+    bodyLayout->setContentsMargins(0, 0, 0, 0);
+    bodyLayout->setSpacing(0);
+    bodyLayout->addWidget(tabPages_, 1);
+    workspaceLayout->addWidget(workspaceBody_, 1);
+
+    // The repository owns the full-height sidebar. The global controls float
+    // only over the right content column, matching that sidebar/content split.
+    mainToolbar_->setParent(workspaceBody_);
+    mainToolbar_->hide();
+    workspaceBody_->installEventFilter(this);
     setCentralWidget(workspace);
-#ifdef Q_OS_MACOS
-    MacOSVibrancy::install(workspace);
-#endif
 
     connect(tabs_, &QTabBar::tabCloseRequested, this,
             [this](const int index) { closeTab(index); });
@@ -364,10 +381,25 @@ void MainWindow::buildInterface() {
                 label->style()->unpolish(label);
                 label->style()->polish(label);
             }
+            if (QWidget *title = tabs_->tabButton(tab, QTabBar::LeftSide)) {
+                if (QLabel *icon = title->findChild<QLabel *>(
+                        QStringLiteral("repositoryTabIcon"))) {
+                    const QColor color = tab == index
+                                             ? Theme::instance()->palette().text
+                                             : QColor(QStringLiteral("#C7DDEB"));
+                    icon->setPixmap(Icons::pixmap(Icons::Glyph::Repository, 15, color));
+                }
+            }
             if (QWidget *button = tabs_->tabButton(tab, QTabBar::RightSide)) {
                 button->setVisible(tab == index);
             }
         }
+        const bool repositoryVisible = index > 0;
+        mainToolbar_->setVisible(repositoryVisible);
+        if (statusOverlay_ != nullptr) {
+            statusOverlay_->setVisible(repositoryVisible);
+        }
+        updateWorkspaceOverlays();
         updateTabMetrics();
         updateActions();
     });
@@ -393,14 +425,20 @@ void MainWindow::buildInterface() {
     addDockWidget(Qt::BottomDockWidgetArea, logDock_);
     logDock_->hide();
 
+    statusOverlay_ = new QWidget(workspaceBody_);
+    statusOverlay_->setObjectName(QStringLiteral("workspaceStatusBar"));
+    auto *statusLayout = new QHBoxLayout(statusOverlay_);
+    statusLayout->setContentsMargins(12, 0, 10, 0);
+    statusLayout->setSpacing(8);
     statusLabel_ = new QLabel(tr("Open or clone a repository"));
-    statusBar()->addWidget(statusLabel_, 1);
+    statusLabel_->setObjectName(QStringLiteral("workspaceStatusText"));
+    statusLayout->addWidget(statusLabel_, 1);
     busyIndicator_ = new QProgressBar;
     busyIndicator_->setRange(0, 0);
     busyIndicator_->setFixedWidth(120);
     busyIndicator_->setTextVisible(false);
     busyIndicator_->hide();
-    statusBar()->addPermanentWidget(busyIndicator_);
+    statusLayout->addWidget(busyIndicator_);
 
     // The way out of a command that waits on an unreachable remote.
     cancelOperationButton_ = new QToolButton;
@@ -412,7 +450,9 @@ void MainWindow::buildInterface() {
             view->cancelOperation();
         }
     });
-    statusBar()->addPermanentWidget(cancelOperationButton_);
+    statusLayout->addWidget(cancelOperationButton_);
+    statusOverlay_->hide();
+    updateWorkspaceOverlays();
 }
 
 void MainWindow::buildToolbar() {
@@ -421,8 +461,8 @@ void MainWindow::buildToolbar() {
     mainToolbar_->setMovable(false);
     mainToolbar_->setFloatable(false);
     mainToolbar_->setToolButtonStyle(Qt::ToolButtonTextUnderIcon);
-    mainToolbar_->setIconSize(QSize(24, 24));
-    mainToolbar_->setFixedHeight(60);
+    mainToolbar_->setIconSize(QSize(20, 20));
+    mainToolbar_->setFixedHeight(ShellMetrics::ToolbarHeight);
 
     const auto addAction = [this](const Icons::Glyph glyph, const QString &text,
                                   const QString &tip) {
@@ -656,6 +696,7 @@ void MainWindow::mousePressEvent(QMouseEvent *event) {
 void MainWindow::resizeEvent(QResizeEvent *event) {
     QMainWindow::resizeEvent(event);
     updateWindowFrame();
+    updateWorkspaceOverlays();
     updateTabMetrics();
 }
 
@@ -687,6 +728,9 @@ bool MainWindow::eventFilter(QObject *watched, QEvent *event) {
     }
 
     if (event->type() == QEvent::Resize) {
+        if (watched == workspaceBody_) {
+            updateWorkspaceOverlays();
+        }
         for (QLabel *badge : {commitBadge_, pushBadge_, pullBadge_}) {
             if (badge != nullptr && watched == badge->parentWidget()) {
                 positionToolbarBadge(badge);
@@ -718,13 +762,35 @@ void MainWindow::showEvent(QShowEvent *event) {
     QMainWindow::showEvent(event);
 #ifdef Q_OS_MACOS
     if (useExpandedMacChrome_) {
+        MacOSVibrancy::install(centralWidget());
         MacOSVibrancy::configureWindow(this);
     }
 #endif
+    updatePlatformBackdrop();
     updateTabMetrics();
     // On Windows the final client geometry is committed after the show event,
     // especially when restoreGeometry also restores a maximized window.
     QTimer::singleShot(0, this, [this] { updateTabMetrics(); });
+}
+
+void MainWindow::updatePlatformBackdrop() {
+#ifdef Q_OS_WIN
+    if (!useCustomChrome_) {
+        return;
+    }
+
+    const bool active = WindowsBackdrop::apply(
+        this, Theme::instance()->mode() == Theme::Mode::Dark);
+    for (QWidget *surface : {windowFrame_, titleBar_}) {
+        if (surface == nullptr || surface->property("nativeBackdrop").toBool() == active) {
+            continue;
+        }
+        surface->setProperty("nativeBackdrop", active);
+        surface->style()->unpolish(surface);
+        surface->style()->polish(surface);
+        surface->update();
+    }
+#endif
 }
 
 void MainWindow::updateTabCloseButtons(const int hoveredTab) {
@@ -734,12 +800,34 @@ void MainWindow::updateTabCloseButtons(const int hoveredTab) {
     for (int index = 1; index < tabs_->count(); ++index) {
         if (QWidget *area = tabs_->tabButton(index, QTabBar::RightSide)) {
             auto *button = area->findChild<QToolButton *>(QStringLiteral("tabCloseButton"));
+            const bool visible = index == tabs_->currentIndex() || index == hoveredTab;
             if (button != nullptr) {
-                button->setVisible(index == hoveredTab);
+                button->setVisible(visible);
             }
             area->setFixedWidth(24);
-            area->setVisible(index == hoveredTab);
+            area->setVisible(visible);
         }
+    }
+}
+
+void MainWindow::updateWorkspaceOverlays() {
+    if (workspaceBody_ == nullptr) {
+        return;
+    }
+
+    const int left = ShellMetrics::SidebarWidth;
+    const int overlayWidth = qMax(0, workspaceBody_->width() - left);
+    if (mainToolbar_ != nullptr) {
+        mainToolbar_->setGeometry(left, 0, overlayWidth, ShellMetrics::ToolbarHeight);
+        mainToolbar_->raise();
+    }
+    if (statusOverlay_ != nullptr) {
+        statusOverlay_->setGeometry(left,
+                                    qMax(0, workspaceBody_->height()
+                                                - ShellMetrics::FooterHeight),
+                                    overlayWidth,
+                                    ShellMetrics::FooterHeight);
+        statusOverlay_->raise();
     }
 }
 
@@ -1197,6 +1285,15 @@ bool MainWindow::openRepository(const QString &path, const bool activate) {
     titleLayout->setContentsMargins(TabTitleLeftMargin, 0, 0, 0);
     titleLayout->setSpacing(TabBadgeSpacing);
 
+    auto *tabIcon = new QLabel;
+    tabIcon->setObjectName(QStringLiteral("repositoryTabIcon"));
+    tabIcon->setPixmap(Icons::pixmap(Icons::Glyph::Repository, 15,
+                                     QColor(QStringLiteral("#C7DDEB"))));
+    tabIcon->setFixedSize(16, 16);
+    tabIcon->setAlignment(Qt::AlignCenter);
+    tabIcon->setAttribute(Qt::WA_TransparentForMouseEvents);
+    titleLayout->addWidget(tabIcon);
+
     for (const QString &name : tabBadgeNames()) {
         auto *badge = new QLabel;
         badge->setObjectName(name);
@@ -1414,7 +1511,7 @@ void MainWindow::updateTabMetrics() {
                                                : QString();
         // Leave a small reserve beyond the measured text. QTabBar applies its
         // own subcontrol margins and rounds widths at fractional DPI scales.
-        const int controls = index == 0 ? 52 : 62;
+        const int controls = index == 0 ? 58 : 76;
         const int desired = qBound(index == 0 ? 128 : 112,
                                    (label != nullptr
                                         ? label->fontMetrics().horizontalAdvance(title)
@@ -1460,6 +1557,8 @@ void MainWindow::updateTabMetrics() {
         button->setFixedWidth(buttonWidth);
         const int titleMargin = index == 0 ? 0 : TabTitleLeftMargin;
         const int textWidth = qMax(0, buttonWidth - titleMargin
+                                          - TabRepositoryIconWidth
+                                          - TabBadgeSpacing
                                           - tabBadgeWidth(button) - 2);
         const QString visibleTitle = textWidth == 0
                                          ? QString()

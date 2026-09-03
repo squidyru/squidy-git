@@ -3,6 +3,7 @@
 #include "theme.h"
 
 #include <QApplication>
+#include <QFontDatabase>
 #include <QPalette>
 #include <QSettings>
 
@@ -14,20 +15,20 @@ ThemePalette lightPalette() {
     palette.chrome = QColor(QStringLiteral("#0B3A5B"));
     palette.chromeText = QColor(QStringLiteral("#EDF7FD"));
     palette.tabInactive = QColor(QStringLiteral("#245777"));
-    palette.sidebarSelection = QColor(QStringLiteral("#347FD3"));
-    palette.toolbar = QColor(QStringLiteral("#FBFCFE"));
+    palette.sidebarSelection = QColor(QStringLiteral("#347FCF"));
+    palette.toolbar = QColor(QStringLiteral("#FCFDFE"));
     palette.sidebar = QColor(QStringLiteral("#123F5B"));
     palette.surface = QColor(QStringLiteral("#FFFFFF"));
     palette.surfaceAlternate = QColor(QStringLiteral("#FAFBFD"));
-    palette.rowStripe = QColor(QStringLiteral("#F7F9FC"));
-    palette.border = QColor(QStringLiteral("#DCE3EA"));
-    palette.text = QColor(QStringLiteral("#1E2333"));
-    palette.mutedText = QColor(QStringLiteral("#6E7488"));
-    palette.sectionText = QColor(QStringLiteral("#6E7488"));
+    palette.rowStripe = QColor(QStringLiteral("#F8FAFC"));
+    palette.border = QColor(QStringLiteral("#E1E7ED"));
+    palette.text = QColor(QStringLiteral("#202938"));
+    palette.mutedText = QColor(QStringLiteral("#697386"));
+    palette.sectionText = QColor(QStringLiteral("#748096"));
     palette.accent = QColor(QStringLiteral("#3478F6"));
     palette.accentHover = QColor(QStringLiteral("#4B8BFA"));
     palette.accentText = QColor(QStringLiteral("#FFFFFF"));
-    palette.selection = QColor(QStringLiteral("#DFEAFE"));
+    palette.selection = QColor(QStringLiteral("#DDEAFF"));
     palette.selectionText = QColor(QStringLiteral("#172033"));
     palette.hover = QColor(QStringLiteral("#EDF3FA"));
     palette.success = QColor(QStringLiteral("#1A7F4B"));
@@ -176,6 +177,8 @@ void Theme::applyToApplication() const {
 
 QString Theme::styleSheet() const {
     const ThemePalette &p = palette_;
+    const QString interfaceFont =
+        QFontDatabase::systemFont(QFontDatabase::GeneralFont).family();
     const QColor sidebarText = mode_ == Mode::Light
                                    ? QColor(QStringLiteral("#EAF5FC"))
                                    : p.text;
@@ -197,31 +200,30 @@ QString Theme::styleSheet() const {
         (p.border.blue() + p.chrome.blue()) / 2);
     return QStringLiteral(R"(
         QWidget {
-            background: %(window);
             color: %(text);
             font-size: 12px;
-            font-family: "Noto Sans";
+            font-family: %(interfaceFont);
         }
         QMainWindow::separator { background: %(border); width: 1px; height: 1px; }
         QToolBar#mainToolbar {
             background: %(toolbar);
             border: none;
             border-bottom: 1px solid %(border);
-            border-top-left-radius: 14px;
-            border-top-right-radius: 14px;
-            spacing: 2px;
-            padding: 5px 10px 5px 10px;
+            border-top-left-radius: 16px;
+            border-top-right-radius: 16px;
+            spacing: 1px;
+            padding: 7px 12px 6px 12px;
         }
         QToolBar#mainToolbar QToolButton {
             background: transparent;
             border: 1px solid transparent;
             border-radius: 8px;
             color: %(text);
-            font-family: "Arial";
-            font-size: 12px;
+            font-family: %(interfaceFont);
+            font-size: 11px;
             font-weight: 400;
-            min-width: 52px;
-            padding: 2px 5px;
+            min-width: 68px;
+            padding: 2px 6px;
         }
         QToolBar#mainToolbar QToolButton:hover {
             background: %(hover);
@@ -236,7 +238,7 @@ QString Theme::styleSheet() const {
             font-weight: 800;
         }
         QLabel#tabCommitBadge, QLabel#tabPushBadge, QLabel#tabPullBadge {
-            padding: 0 6px;
+            padding: 0 4px;
         }
         QLabel#commitBadge, QLabel#tabCommitBadge {
             background: %(accent);
@@ -253,7 +255,7 @@ QString Theme::styleSheet() const {
         QToolBar#mainToolbar::separator {
             background: transparent;
             width: 1px;
-            margin: 4px 10px;
+            margin: 6px 4px;
         }
 
         /* Paint the title bar, menu and tab strip as one dark blue
@@ -265,6 +267,13 @@ QString Theme::styleSheet() const {
             border: 1px solid %(windowFrameBorder);
         }
         QWidget#titleBar { background: %(chrome); }
+        QWidget#windowShadowFrame[nativeBackdrop="true"] {
+            background: rgba(8, 39, 65, 110);
+            border-color: rgba(255, 255, 255, 30);
+        }
+        QWidget#titleBar[nativeBackdrop="true"] {
+            background: rgba(10, 48, 78, 126);
+        }
         QToolButton#windowButton, QToolButton#windowCloseButton {
             background: transparent;
             border: none;
@@ -291,7 +300,7 @@ QString Theme::styleSheet() const {
             border: none;
             padding: 0;
             spacing: 3px;
-            font-family: "Arial";
+            font-family: %(interfaceFont);
             font-size: 12px;
             font-weight: 400;
         }
@@ -300,31 +309,28 @@ QString Theme::styleSheet() const {
         QMenuBar::item:pressed { background: rgba(255, 255, 255, 70); border-radius: 3px; }
 
         QWidget#workspace {
-            background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
-                        stop:0 rgba(12, 62, 91, 244),
-                        stop:0.62 rgba(20, 82, 116, 238),
-                        stop:1 rgba(10, 45, 72, 246));
+            background: transparent;
         }
         QWidget#repositoryTabStrip {
             background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
-                        stop:0 rgba(11, 52, 78, 246),
-                        stop:0.7 rgba(20, 77, 110, 240),
-                        stop:1 rgba(12, 48, 75, 246));
+                        stop:0 rgba(12, 51, 82, 162),
+                        stop:0.7 rgba(18, 67, 104, 150),
+                        stop:1 rgba(8, 40, 72, 170));
         }
-        QWidget#toolbarShelf { background: transparent; }
-        QWidget#sidebarToolbarBackdrop { background: rgba(14, 57, 82, 218); }
+        QWidget#workspaceBody { background: transparent; }
         QStackedWidget#repositoryPages { background: transparent; }
         QWidget#repositoryView { background: transparent; }
+        QWidget#repositoryContentShell { background: %(surface); }
         QStackedWidget#repositoryContentPages { background: %(surface); }
         QTabBar#repositoryTabBar { background: transparent; qproperty-drawBase: 0; }
         QTabBar#repositoryTabBar::tab {
             background: %(tabInactive);
             color: %(chromeText);
             border: 1px solid rgba(255, 255, 255, 16);
-            border-radius: 9px;
-            min-height: 34px;
-            max-height: 34px;
-            padding: 1px 10px 0 10px;
+            border-radius: 11px;
+            min-height: 42px;
+            max-height: 42px;
+            padding: 1px 12px 0 12px;
             margin: 0 2px 4px 0;
             min-width: 118px;
             max-width: 250px;
@@ -338,39 +344,39 @@ QString Theme::styleSheet() const {
             border-bottom-left-radius: 0;
             border-bottom-right-radius: 0;
             margin-bottom: 0;
+            font-weight: 600;
         }
         QTabBar#repositoryTabBar::tab:hover:!selected { background: rgba(62, 124, 164, 210); }
         QTabBar#repositoryTabBar::close-button { subcontrol-position: right; }
         QLabel#repositoryTabTitle {
             background: transparent;
             color: %(chromeText);
-            font-family: "Arial";
+            font-family: %(interfaceFont);
             font-size: 12px;
             font-weight: 400;
             padding: 0 2px 0 11px;
         }
-        QLabel#repositoryTabTitle[selected="true"] { color: %(text); }
+        QLabel#repositoryTabTitle[selected="true"] { color: %(text); font-weight: 600; }
         QWidget#tabTitleArea QLabel#repositoryTabTitle { padding-left: 2px; }
         QToolButton#addTabButton {
             background: rgba(58, 116, 153, 145);
             border: none;
-            border-radius: 9px;
+            border-radius: 10px;
             color: %(chromeText);
-            min-width: 28px;
-            max-width: 28px;
             padding: 0;
             margin: 0;
         }
-        QToolButton#addTabButton:hover { background: rgba(255, 255, 255, 40); border-radius: 9px; }
+        QToolButton#addTabButton:hover { background: rgba(255, 255, 255, 40); border-radius: 10px; }
         QToolButton#addTabButton:pressed { background: rgba(255, 255, 255, 70); }
 
         QPushButton#viewSwitchButton {
             background: transparent;
             border: none;
             border-radius: 8px;
-            min-height: 31px;
+            min-height: 32px;
+            max-height: 32px;
             margin: 1px 0;
-            padding: 0 8px 0 14px;
+            padding: 0 10px 0 14px;
             text-align: left;
             color: %(sidebarText);
         }
@@ -394,7 +400,7 @@ QString Theme::styleSheet() const {
         QLabel#workspaceTitle { min-height: 30px; color: #86AFCB; font-size: 11px; font-weight: 700; }
         QFrame#sidebarTopSeparator {
             border: none;
-            border-top: 1px solid %(border);
+            border-top: 1px solid rgba(255, 255, 255, 48);
             margin: 0;
         }
         QLabel#mutedText { color: %(mutedText); }
@@ -406,7 +412,10 @@ QString Theme::styleSheet() const {
         }
 
         QWidget#sidebar {
-            background: rgba(14, 57, 82, 218);
+            background: qlineargradient(x1:0, y1:0, x2:0.9, y2:1,
+                        stop:0 rgba(20, 72, 108, 94),
+                        stop:0.62 rgba(12, 55, 86, 78),
+                        stop:1 rgba(8, 43, 70, 100));
             border: none;
             border-right: 1px solid rgba(255, 255, 255, 22);
         }
@@ -415,7 +424,7 @@ QString Theme::styleSheet() const {
             border: none;
             outline: none;
             color: %(sidebarText);
-            font-family: "Arial";
+            font-family: %(interfaceFont);
             font-size: 12px;
             font-weight: 400;
         }
@@ -435,21 +444,21 @@ QString Theme::styleSheet() const {
             color: #FFFFFF;
         }
         QLineEdit#navigationFilter {
-            min-height: 29px;
-            max-height: 29px;
+            min-height: 32px;
+            max-height: 32px;
             margin: 5px 0;
             padding: 0 8px;
             font-size: 12px;
             color: %(sidebarText);
-            background: rgba(4, 31, 49, 74);
+            background: rgba(3, 29, 45, 66);
             border: 1px solid rgba(255, 255, 255, 38);
             border-radius: 7px;
         }
         QLineEdit#navigationFilter:focus { border-color: rgba(123, 184, 225, 170); }
         QWidget#repositorySummaryCard {
-            background: rgba(255, 255, 255, 17);
-            border: 1px solid rgba(255, 255, 255, 43);
-            border-radius: 12px;
+            background: rgba(255, 255, 255, 20);
+            border: 1px solid rgba(255, 255, 255, 50);
+            border-radius: 14px;
         }
         QLabel#repositorySummaryName { color: #FFFFFF; font-size: 12px; font-weight: 700; }
         QLabel#repositorySummaryBranch,
@@ -457,17 +466,33 @@ QString Theme::styleSheet() const {
         QLabel#repositorySummaryState { color: #C6DEEC; font-size: 11px; }
         QFrame#repositoryCardSeparator { border: none; border-top: 1px solid rgba(255, 255, 255, 28); }
 
+        QWidget#workspaceStatusBar {
+            background: %(toolbar);
+            border-top: 1px solid %(border);
+            border-bottom-right-radius: 16px;
+        }
+        QLabel#workspaceStatusText {
+            color: %(mutedText);
+            font-size: 11px;
+            background: transparent;
+        }
+
+        QWidget#historyToolbar {
+            background: %(surface);
+            border-bottom: 1px solid %(border);
+        }
         QComboBox#historyScope, QComboBox#historyOrder,
         QLineEdit#historyAuthorFilter, QToolButton#historyJumpButton {
-            min-height: 20px;
-            max-height: 20px;
-            padding: 0 5px;
-            font-family: "Arial";
+            min-height: 30px;
+            max-height: 30px;
+            padding: 0 10px;
+            font-family: %(interfaceFont);
             font-size: 12px;
+            border-radius: 8px;
         }
         QComboBox#historyScope, QComboBox#historyOrder {
-            background: %(historyControl);
-            border-color: %(historyControlBorder);
+            background: %(surfaceAlternate);
+            border: 1px solid %(border);
         }
         QComboBox#historyScope::down-arrow,
         QComboBox#historyOrder::down-arrow {
@@ -477,18 +502,19 @@ QString Theme::styleSheet() const {
         }
         QLineEdit#historyAuthorFilter {
             padding-right: 20px;
+            background: %(surface);
         }
         QToolButton#historyJumpButton {
-            background: transparent;
+            background: %(surfaceAlternate);
             color: %(text);
-            border: 1px solid transparent;
-            border-radius: 0;
-            padding: 0 3px;
+            border: 1px solid %(border);
+            border-radius: 8px;
+            padding: 0;
         }
         QToolButton#historyJumpButton:hover,
         QToolButton#historyJumpButton:focus {
-            background: %(historyControl);
-            border-color: %(historyControlBorder);
+            background: %(hover);
+            border-color: %(accent);
         }
         QToolButton#historyJumpButton::menu-indicator {
             image: none;
@@ -499,24 +525,62 @@ QString Theme::styleSheet() const {
             border: 1px solid %(historyControlBorder);
         }
         QMenu#historyJumpMenu::item {
-            padding: 5px 4px;
-            border-radius: 0;
+            padding: 6px 8px;
+            border-radius: 5px;
         }
         QMenu#historyJumpMenu::separator {
             margin: 2px 0;
         }
         QWidget#historyPage QCheckBox, QWidget#historyPage QLabel,
         QWidget#filesPage QCheckBox, QWidget#filesPage QLabel {
-            font-family: "Arial";
+            font-family: %(interfaceFont);
             font-size: 12px;
+        }
+
+        QWidget#fileStatusPage,
+        QWidget#fileStatusToolbar,
+        QWidget#fileChangesPanel,
+        QWidget#workingTreeDiffPanel,
+        QWidget#commitPanel {
+            background: %(surface);
+        }
+        QLineEdit#fileStatusFilter {
+            min-height: 30px;
+            max-height: 30px;
+            padding: 0 10px;
+            border-radius: 8px;
+        }
+        QToolButton#treeModeButton {
+            min-height: 30px;
+            max-height: 30px;
+            padding: 0 12px;
+            background: %(surfaceAlternate);
+            color: %(text);
+            border: 1px solid %(border);
+            border-radius: 8px;
+        }
+        QToolButton#treeModeButton:hover { background: %(hover); }
+        QToolButton#treeModeButton:checked {
+            background: %(selection);
+            border-color: %(accent);
+        }
+        QPushButton#filePanelAction {
+            min-height: 28px;
+            max-height: 28px;
+            padding: 0 11px;
+            border-radius: 7px;
+        }
+        QTreeWidget#unstagedTree, QTreeWidget#stagedTree,
+        QPlainTextEdit#commitMessage {
+            border-radius: 8px;
         }
 
         QLineEdit, QComboBox, QPlainTextEdit, QTextEdit, QSpinBox {
             background: %(surface);
             color: %(text);
             border: 1px solid %(border);
-            border-radius: 1px;
-            padding: 5px 7px;
+            border-radius: 7px;
+            padding: 6px 9px;
             selection-background-color: %(selection);
             selection-color: %(selectionText);
         }
@@ -525,7 +589,7 @@ QString Theme::styleSheet() const {
         }
         QTextBrowser#commitDetails {
             padding: 3px;
-            font-family: "Noto Sans";
+            font-family: %(interfaceFont);
             font-size: 12px;
         }
         QPlainTextEdit#diffView, QPlainTextEdit#fileContents { padding: 0; }
@@ -537,7 +601,7 @@ QString Theme::styleSheet() const {
         QWidget#sideDiffTitleBar { background: %(chrome); }
         QLabel#sideDiffWindowTitle {
             color: %(chromeText);
-            font-family: "Arial";
+            font-family: %(interfaceFont);
             font-size: 12px;
             font-weight: 400;
         }
@@ -559,7 +623,7 @@ QString Theme::styleSheet() const {
         QWidget#sideDiffControls QCheckBox {
             background: transparent;
             color: %(text);
-            font-family: "Arial";
+            font-family: %(interfaceFont);
             font-size: 12px;
         }
         QWidget#sideDiffPanel { background: %(surface); }
@@ -569,7 +633,7 @@ QString Theme::styleSheet() const {
             border: 1px solid %(border);
             border-bottom: none;
             padding: 0 8px;
-            font-family: "Arial";
+            font-family: %(interfaceFont);
             font-size: 11px;
             font-weight: 700;
         }
@@ -599,7 +663,7 @@ QString Theme::styleSheet() const {
             alternate-background-color: %(rowStripe);
             color: %(text);
             border: 1px solid %(border);
-            border-radius: 1px;
+            border-radius: 0;
             outline: none;
             selection-background-color: %(selection);
             selection-color: %(selectionText);
@@ -607,15 +671,15 @@ QString Theme::styleSheet() const {
         /* Every state repeats the metrics. A state rule that names only its
            colours leaves Qt to lay the row out with the metrics of the native
            style instead, and the content jumps as the pointer passes over. */
-        QTreeWidget::item, QListWidget::item { min-height: 18px; padding: 0 3px; }
+        QTreeWidget::item, QListWidget::item { min-height: 22px; padding: 0 5px; }
         QTreeWidget::item:hover, QListWidget::item:hover {
-            min-height: 18px;
-            padding: 0 3px;
+            min-height: 22px;
+            padding: 0 5px;
             background: %(hover);
         }
         QTreeWidget::item:selected, QListWidget::item:selected {
-            min-height: 18px;
-            padding: 0 3px;
+            min-height: 22px;
+            padding: 0 5px;
             background: %(selection);
             color: %(selectionText);
         }
@@ -626,13 +690,13 @@ QString Theme::styleSheet() const {
             background: %(surface);
             alternate-background-color: %(rowStripe);
             color: %(text);
-            font-family: "Noto Sans";
+            font-family: %(interfaceFont);
             font-size: 12px;
         }
         QTreeView#historyTree::item, QTreeView#fileTimeline::item, QTreeView#fileTree::item {
-            min-height: 19px;
-            max-height: 19px;
-            padding: 0 3px;
+            min-height: 23px;
+            max-height: 23px;
+            padding: 0 5px;
         }
         QTreeView#historyTree QHeaderView::section,
         QTreeView#fileTimeline QHeaderView::section,
@@ -642,10 +706,10 @@ QString Theme::styleSheet() const {
             border: none;
             border-right: 1px solid %(border);
             border-bottom: 1px solid %(border);
-            min-height: 19px;
-            max-height: 19px;
-            padding: 0 6px;
-            font-family: "Arial";
+            min-height: 25px;
+            max-height: 25px;
+            padding: 0 8px;
+            font-family: %(interfaceFont);
             font-size: 12px;
             font-weight: 400;
         }
@@ -653,15 +717,15 @@ QString Theme::styleSheet() const {
         QTreeView#fileTimeline QScrollBar:vertical,
         QTreeView#fileTree QScrollBar:vertical {
             background: %(historyScrollTrack);
-            border-left: 1px solid %(border);
-            width: 14px;
+            border: none;
+            width: 10px;
         }
         QTreeView#historyTree QScrollBar:horizontal,
         QTreeView#fileTimeline QScrollBar:horizontal,
         QTreeView#fileTree QScrollBar:horizontal {
             background: %(historyScrollTrack);
-            border-top: 1px solid %(border);
-            height: 14px;
+            border: none;
+            height: 10px;
         }
         QTreeView#historyTree QScrollBar::handle:vertical,
         QTreeView#historyTree QScrollBar::handle:horizontal,
@@ -669,8 +733,9 @@ QString Theme::styleSheet() const {
         QTreeView#fileTimeline QScrollBar::handle:horizontal,
         QTreeView#fileTree QScrollBar::handle:vertical,
         QTreeView#fileTree QScrollBar::handle:horizontal {
-            background: %(border);
-            border-radius: 0;
+            background: #C5CED8;
+            border-radius: 5px;
+            margin: 2px;
         }
         QHeaderView::section {
             background: %(window);
@@ -686,8 +751,9 @@ QString Theme::styleSheet() const {
             background: %(surface);
             color: %(text);
             border: 1px solid %(border);
-            border-radius: 1px;
-            padding: 6px 12px;
+            border-radius: 7px;
+            min-height: 30px;
+            padding: 0 12px;
         }
         QPushButton:hover { background: %(hover); }
         QPushButton:pressed { background: %(border); }
@@ -721,15 +787,26 @@ QString Theme::styleSheet() const {
         }
         QGroupBox::title { subcontrol-origin: margin; left: 10px; padding: 0 4px; }
 
-        /* Handles take no room, so the panes meet flush. Nothing may be
-           dragged shut against them: see RepositorySplitterWidth. */
         QSplitter::handle {
             background: transparent;
             border: none;
             margin: 0;
         }
-        QStatusBar { background: %(toolbar); color: %(mutedText); border-top: 1px solid %(border); }
-        QStatusBar::item { border: none; }
+        QSplitter#fileStatusVerticalSplitter::handle:vertical,
+        QSplitter#fileListsSplitter::handle:vertical,
+        QSplitter#historyVerticalSplitter::handle:vertical,
+        QSplitter#historyLeftSplitter::handle:vertical {
+            background: %(border);
+            margin: 1px 0;
+        }
+        QSplitter#fileStatusTopSplitter::handle:horizontal,
+        QSplitter#historyDetailsSplitter::handle:horizontal {
+            background: %(border);
+            margin: 0 1px;
+        }
+        QSplitter#workspaceSplitter::handle:horizontal {
+            background: rgba(255, 255, 255, 24);
+        }
         QProgressBar {
             border: 1px solid %(border);
             border-radius: 3px;
@@ -740,20 +817,19 @@ QString Theme::styleSheet() const {
         QScrollBar:vertical {
             background: %(historyScrollTrack);
             border: none;
-            border-left: 1px solid %(border);
-            width: 14px;
+            width: 10px;
             margin: 0;
         }
         QScrollBar:horizontal {
             background: %(historyScrollTrack);
             border: none;
-            border-top: 1px solid %(border);
-            height: 14px;
+            height: 10px;
             margin: 0;
         }
         QScrollBar::handle:vertical, QScrollBar::handle:horizontal {
-            background: %(border);
-            border-radius: 0;
+            background: #C5CED8;
+            border-radius: 5px;
+            margin: 2px;
         }
         QScrollBar::handle:vertical { min-height: 24px; }
         QScrollBar::handle:horizontal { min-width: 24px; }
@@ -797,7 +873,7 @@ QString Theme::styleSheet() const {
         QWidget#aboutTitleBar { background: %(chrome); }
         QLabel#aboutTitleBarText {
             color: %(chromeText);
-            font-family: "Arial";
+            font-family: %(interfaceFont);
             font-size: 12px;
             font-weight: 400;
         }
@@ -812,13 +888,13 @@ QString Theme::styleSheet() const {
         QWidget#aboutApplicationInfo { background: %(surface); }
         QLabel#aboutTitle {
             color: %(text);
-            font-family: "Arial";
+            font-family: %(interfaceFont);
             font-size: 20px;
             font-weight: 700;
         }
         QLabel#aboutMeta {
             color: %(text);
-            font-family: "Arial";
+            font-family: %(interfaceFont);
             font-size: 11px;
             font-weight: 400;
         }
@@ -830,6 +906,7 @@ QString Theme::styleSheet() const {
             padding: 0;
         }
     )")
+        .replace(QStringLiteral("%(interfaceFont)"), interfaceFont)
         .replace(QStringLiteral("%(window)"), name(p.window))
         .replace(QStringLiteral("%(chromeText)"), name(p.chromeText))
         .replace(QStringLiteral("%(chrome)"), name(p.chrome))

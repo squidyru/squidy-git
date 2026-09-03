@@ -52,6 +52,7 @@ private:
     void updateWindowButtons();
     void updateWindowFrame();
     void updateResizeCursor(const QPoint &position);
+    void updatePlatformBackdrop();
     [[nodiscard]] Qt::Edges resizeEdgesAt(const QPoint &position) const;
 
     void openRepositoryDialog();
@@ -73,6 +74,7 @@ private:
     void updateTabTitle(RepositoryView *view);
     void updateTabMetrics();
     void updateTabCloseButtons(int hoveredTab = -1);
+    void updateWorkspaceOverlays();
 
     void addBookmark(const QString &path);
     void removeSelectedBookmark();
@@ -94,6 +96,8 @@ private:
     QToolButton *addTabButton_ = nullptr;
     QTabBar *tabs_ = nullptr;
     QStackedWidget *tabPages_ = nullptr;
+    QWidget *workspaceBody_ = nullptr;
+    QWidget *statusOverlay_ = nullptr;
     QToolBar *mainToolbar_ = nullptr;
     QListWidget *bookmarksList_ = nullptr;
     QProgressBar *busyIndicator_ = nullptr;

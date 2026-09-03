@@ -82,6 +82,7 @@ add_library(squidygit_ui STATIC
         ui/mainwindow.h
         ui/repositoryview.cpp
         ui/repositoryview.h
+        ui/shellmetrics.h
         ui/repositorywatcher.cpp
         ui/repositorywatcher.h
         ui/commitmodel.cpp
@@ -120,6 +121,13 @@ if (APPLE)
     set_source_files_properties(ui/macosvibrancy.mm PROPERTIES
             COMPILE_FLAGS "-fobjc-arc")
     target_link_libraries(squidygit_ui PRIVATE "-framework AppKit")
+endif ()
+
+if (WIN32)
+    target_sources(squidygit_ui PRIVATE
+            ui/windowsbackdrop.h
+            ui/windowsbackdrop.cpp)
+    target_link_libraries(squidygit_ui PRIVATE dwmapi)
 endif ()
 
 target_link_libraries(squidygit_ui PUBLIC
