@@ -198,7 +198,7 @@ SquidyGit держит основные операции Git на виду и н
 
 SquidyGit — нативное приложение на C++20, использующее:
 
-- Qt 6.11.1 или новее: Core, Gui, Widgets, Concurrent, Network и SVG;
+- Qt 6.10.2 или новее: Core, Gui, Widgets, Concurrent, Network и SVG;
   PDF/PdfWidgets — необязательно
 - CMake 3.16 или новее
 - Системный клиент Git
@@ -227,7 +227,7 @@ SquidyGit умеет проверять GitHub Releases автоматическ
 
 ### Linux
 
-Установите компилятор с поддержкой C++20, CMake, Git и пакеты разработки Qt 6.11.1 или новее,
+Установите компилятор с поддержкой C++20, CMake, Git и пакеты разработки Qt 6.10.2 или новее,
 включая инструменты Qt Linguist (в Debian и Ubuntu — `qt6-l10n-tools` и `qt6-tools-dev`):
 
 ```bash
@@ -259,7 +259,7 @@ cmake --build build --target deb_package
 
 ### Windows
 
-Установите Qt 6.11.1 или новее с MinGW и передайте CMake путь к Qt:
+Установите Qt 6.10.2 или новее с MinGW и передайте CMake путь к Qt:
 
 ```powershell
 cmake -S . -B build -DCMAKE_PREFIX_PATH=C:/Qt/6.x.x/mingw_64
@@ -290,7 +290,7 @@ cmake --build build --target windows_portable
 
 ### macOS (экспериментально)
 
-Установите компилятор с поддержкой C++20, CMake, Git и Qt 6.11.1 или новее. Если Qt установлен через
+Установите компилятор с поддержкой C++20, CMake, Git и Qt 6.10.2 или новее. Если Qt установлен через
 Homebrew, локальную сборку можно создать так:
 
 ```bash
