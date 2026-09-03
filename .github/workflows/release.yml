@@ -15,7 +15,7 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  QT_VERSION: '6.11.2'
+  QT_VERSION: '6.10.2'
   AQT_WINDOWS_SOURCE: 'git+https://github.com/miurahr/aqtinstall.git@9e49c82edc6d946db376dec907cca5b4b486eec5'
 
 jobs:

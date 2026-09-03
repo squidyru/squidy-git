@@ -180,7 +180,7 @@ SquidyGit 默认跟随操作系统语言。也可以通过 **视图 → 语言**
 
 SquidyGit 是一款使用 C++20 构建的原生应用，依赖：
 
-- Qt 6.11.1 或更高版本：Core、Gui、Widgets、Concurrent、Network 和 SVG；
+- Qt 6.10.2 或更高版本：Core、Gui、Widgets、Concurrent、Network 和 SVG；
   PDF/PdfWidgets 为可选模块
 - CMake 3.16 或更高版本
 - 系统 Git 命令行客户端
@@ -207,7 +207,7 @@ SquidyGit 可以自动或按需检查 GitHub Releases。打开更新前，应用
 
 ### Linux
 
-安装支持 C++20 的编译器、CMake、Git、Qt 6.11.1 或更高版本开发包以及 Qt Linguist 工具
+安装支持 C++20 的编译器、CMake、Git、Qt 6.10.2 或更高版本开发包以及 Qt Linguist 工具
 （在 Debian 和 Ubuntu 上为 `qt6-l10n-tools` 和 `qt6-tools-dev`），然后运行：
 
 ```bash
@@ -238,7 +238,7 @@ cmake --build build --target deb_package
 
 ### Windows
 
-安装带有 MinGW 的 Qt 6.11.1 或更高版本，然后将 CMake 指向 Qt 安装目录：
+安装带有 MinGW 的 Qt 6.10.2 或更高版本，然后将 CMake 指向 Qt 安装目录：
 
 ```powershell
 cmake -S . -B build -DCMAKE_PREFIX_PATH=C:/Qt/6.x.x/mingw_64
@@ -267,7 +267,7 @@ cmake --build build --target windows_portable
 
 ### macOS（实验性）
 
-安装支持 C++20 的编译器、CMake、Git 和 Qt 6.11.1 或更高版本。如果通过 Homebrew 安装 Qt，
+安装支持 C++20 的编译器、CMake、Git 和 Qt 6.10.2 或更高版本。如果通过 Homebrew 安装 Qt，
 可以使用以下命令进行本地构建：
 
 ```bash
