@@ -52,7 +52,7 @@ add_test(NAME gitremote COMMAND tst_gitremote)
 set_tests_properties(gitremote PROPERTIES LABELS integration)
 
 # Widget integration tests
-foreach (suite IN ITEMS diffview filespage)
+foreach (suite IN ITEMS diffview filespage windowbackground icons mainwindow)
     add_executable(tst_${suite} tst_${suite}.cpp)
     target_link_libraries(tst_${suite} PRIVATE squidygit_ui Qt6::Test)
     if (MSVC)
@@ -86,6 +86,8 @@ set(REPOSITORY_VIEW_CASES
         keepsTheInterfaceLiveWhileAnOperationRuns
         refusesToStartASecondOperation
         keepsEveryPaneReachable
+        togglesSidebarSections
+        paintsSidebarSelectionAsOneRow
         readsTheWorkingTreeDiffOffTheUiThread
         dropsADiffTheSelectionHasMovedPast
         listsCommitFilesWithoutBlocking)

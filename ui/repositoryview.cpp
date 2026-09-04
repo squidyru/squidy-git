@@ -21,6 +21,7 @@
 #include <QClipboard>
 #include <QComboBox>
 #include <QCryptographicHash>
+#include <QCursor>
 #include <QDir>
 #include <QFontDatabase>
 #include <QGuiApplication>
@@ -75,12 +76,12 @@ constexpr int NavigationExtraRole = Qt::UserRole + 32;
 constexpr int NavigationAheadRole = Qt::UserRole + 33;
 constexpr int NavigationBehindRole = Qt::UserRole + 34;
 constexpr int HistoryRevisionRole = Qt::UserRole + 35;
+constexpr int NavigationCurrentRole = Qt::UserRole + 36;
 constexpr int FullDiffContextLines = 1'000'000;
 constexpr int RepositorySplitterWidth = 4;
 // Keeps a pane from being squeezed down to a couple of rows.
 constexpr int MinimumPaneHeight = 80;
 constexpr int MinimumPaneWidth = 180;
-constexpr int SeparatorHeight = 1;
 constexpr int JumpListVisibleRows = 12;
 constexpr int CounterHeight = 16;
 constexpr int CounterPadding = 4;
@@ -123,50 +124,70 @@ QColor navigationTextColor() {
                : Theme::instance()->palette().text;
 }
 
-/// Compact history combo with a custom dropdown arrow.
+QColor navigationSectionColor() {
+    return Theme::instance()->mode() == Theme::Mode::Light
+               ? QColor(QStringLiteral("#91AEC4"))
+               : Theme::instance()->palette().sectionText;
+}
+
 QIcon navigationSectionIcon(const Icons::Glyph glyph, const QColor &color) {
-    // Toolbar glyphs intentionally have generous whitespace. Trim only two
-    // logical pixels here: this enlarges sidebar icons slightly while leaving
-    // enough room for antialiasing and rounded pen caps on every edge.
-    const QPixmap source = Icons::pixmap(glyph, 32, color);
-    const int inset = qRound(2.0 * source.devicePixelRatio());
-    QPixmap enlarged = source.copy(inset, inset,
-                                   source.width() - inset * 2,
-                                   source.height() - inset * 2);
-    enlarged.setDevicePixelRatio(source.devicePixelRatio());
-    return QIcon(enlarged);
+    return QIcon(Icons::pixmap(glyph, 18, color));
+}
+
+void drawNavigationChevron(QPainter *painter, const QPointF &center, bool expanded) {
+    QPainterPath chevron;
+    if (expanded) {
+        chevron.moveTo(center.x() - 3.5, center.y() - 1.5);
+        chevron.lineTo(center.x(), center.y() + 2.0);
+        chevron.lineTo(center.x() + 3.5, center.y() - 1.5);
+    } else {
+        chevron.moveTo(center.x() - 1.5, center.y() - 3.5);
+        chevron.lineTo(center.x() + 2.0, center.y());
+        chevron.lineTo(center.x() - 1.5, center.y() + 3.5);
+    }
+    painter->save();
+    painter->setRenderHint(QPainter::Antialiasing);
+    painter->setBrush(Qt::NoBrush);
+    painter->setPen(QPen(navigationSectionColor(), 1.3, Qt::SolidLine,
+                         Qt::RoundCap, Qt::RoundJoin));
+    painter->drawPath(chevron);
+    painter->restore();
 }
 
 class NavigationTree final : public QTreeWidget {
 protected:
+    void drawRow(QPainter *painter, const QStyleOptionViewItem &option,
+                 const QModelIndex &index) const override {
+        // Paint one background across the indentation and the item contents.
+        // Separate styled panels leave rounded seams beside nested branches.
+        const bool selected = selectionModel()->isSelected(index);
+        const bool hovered = viewport()->underMouse()
+                             && indexAt(viewport()->mapFromGlobal(QCursor::pos())) == index;
+        if (selected || hovered) {
+            painter->save();
+            painter->setRenderHint(QPainter::Antialiasing);
+            painter->setPen(Qt::NoPen);
+            painter->setBrush(selected
+                                  ? Theme::instance()->palette().sidebarSelection
+                                  : QColor(255, 255, 255, 18));
+            painter->drawRoundedRect(QRectF(0, option.rect.y(), viewport()->width(),
+                                            option.rect.height()), 7, 7);
+            painter->restore();
+        }
+        QStyleOptionViewItem rowOption(option);
+        rowOption.palette.setColor(QPalette::Highlight, Qt::transparent);
+        rowOption.state &= ~QStyle::State_HasFocus;
+        QTreeWidget::drawRow(painter, rowOption, index);
+    }
+
     void drawBranches(QPainter *painter, const QRect &rect,
                       const QModelIndex &index) const override {
         if (!model()->hasChildren(index)) {
             return;
         }
 
-        const qreal centerX = rect.right() - 7.0;
-        const qreal centerY = rect.center().y();
-        QPainterPath chevron;
-        if (isExpanded(index)) {
-            chevron.moveTo(centerX - 5.0, centerY - 2.0);
-            chevron.lineTo(centerX, centerY + 3.0);
-            chevron.lineTo(centerX + 5.0, centerY - 2.0);
-        } else {
-            chevron.moveTo(centerX - 2.0, centerY - 5.0);
-            chevron.lineTo(centerX + 3.0, centerY);
-            chevron.lineTo(centerX - 2.0, centerY + 5.0);
-        }
-
-        painter->save();
-        painter->setRenderHint(QPainter::Antialiasing, true);
-        painter->setBrush(Qt::NoBrush);
-        painter->setPen(QPen(Theme::instance()->mode() == Theme::Mode::Light
-                                 ? QColor(QStringLiteral("#B5B5B5"))
-                                 : Theme::instance()->palette().mutedText,
-                             1.4, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
-        painter->drawPath(chevron);
-        painter->restore();
+        drawNavigationChevron(painter, QPointF(rect.right() - 7.0, rect.center().y()),
+                              isExpanded(index));
     }
 };
 
@@ -178,6 +199,15 @@ public:
 
     void paint(QPainter *painter, const QStyleOptionViewItem &option,
                const QModelIndex &index) const override {
+        if (index.data(NavigationKindRole).toInt() == NavigationSection) {
+            QStyleOptionViewItem titleOption(option);
+            titleOption.rect.adjust(0, 0, -20, 0);
+            QStyledItemDelegate::paint(painter, titleOption, index);
+            drawNavigationChevron(painter,
+                                  QPointF(option.rect.right() - 9, option.rect.center().y()),
+                                  option.state.testFlag(QStyle::State_Open));
+            return;
+        }
         if (index.data(NavigationKindRole).toInt() != NavigationBranch) {
             QStyledItemDelegate::paint(painter, option, index);
             return;
@@ -249,7 +279,10 @@ public:
         painter->save();
         painter->setRenderHint(QPainter::Antialiasing, true);
         painter->setBrush(Qt::NoBrush);
-        painter->setPen(QPen(navigationTextColor(), 2.0, Qt::SolidLine,
+        const QColor ringColor = index.data(NavigationCurrentRole).toBool()
+                                     ? QColor(QStringLiteral("#418DFF"))
+                                     : navigationTextColor();
+        painter->setPen(QPen(ringColor, 2.0, Qt::SolidLine,
                              Qt::RoundCap, Qt::RoundJoin));
         painter->drawEllipse(QPointF(option.rect.left() - 5.0,
                                      option.rect.center().y()), 4.0, 4.0);
@@ -333,11 +366,11 @@ QTreeWidgetItem *addSection(QTreeWidget *tree, const QString &title, const QIcon
     section->setFlags(section->flags() & ~Qt::ItemIsSelectable);
     QFont font = section->font(0);
     font.setPixelSize(12);
-    font.setWeight(QFont::DemiBold);
+    font.setWeight(QFont::Medium);
     font.setLetterSpacing(QFont::AbsoluteSpacing, 0.2);
     section->setFont(0, font);
-    section->setSizeHint(0, QSize(0, 30));
-    section->setForeground(0, Theme::instance()->palette().sectionText);
+    section->setSizeHint(0, QSize(0, 42));
+    section->setForeground(0, navigationSectionColor());
     section->setExpanded(expanded);
     return section;
 }
@@ -455,7 +488,9 @@ RepositoryView::RepositoryView(const QString &path, QWidget *parent)
 
     workspaceSplitter_ = new QSplitter(Qt::Horizontal);
     workspaceSplitter_->setObjectName(QStringLiteral("workspaceSplitter"));
-    workspaceSplitter_->setHandleWidth(RepositorySplitterWidth);
+    // The sidebar has a fixed width; keep the content edge aligned with the
+    // toolbar and footer overlays rather than reserving a resize gutter.
+    workspaceSplitter_->setHandleWidth(0);
     workspaceSplitter_->setChildrenCollapsible(false);
     workspaceSplitter_->addWidget(buildSidebar());
 
@@ -668,37 +703,22 @@ QWidget *RepositoryView::buildSidebar() {
     sidebar->setFixedWidth(ShellMetrics::SidebarWidth);
 
     auto *layout = new QVBoxLayout(sidebar);
-    layout->setContentsMargins(14, 26, 14, 14);
+    layout->setContentsMargins(14, 64, 14, 14);
     layout->setSpacing(0);
 
     auto *workspaceHeader = new QWidget;
     workspaceHeader->setObjectName(QStringLiteral("workspaceHeader"));
     workspaceHeader->setMaximumWidth(ShellMetrics::SidebarWidth - 28);
     auto *workspaceHeaderLayout = new QHBoxLayout(workspaceHeader);
-    workspaceHeaderLayout->setContentsMargins(18, 0, 0, 0);
+    workspaceHeaderLayout->setContentsMargins(10, 0, 0, 0);
     workspaceHeaderLayout->setSpacing(5);
-    auto *workspaceIcon = new QLabel;
-    const QColor workspaceIconColor = Theme::instance()->mode() == Theme::Mode::Light
-                                          ? QColor(QStringLiteral("#86AFCB"))
-                                          : Theme::instance()->palette().sectionText;
-    workspaceIcon->setPixmap(Icons::pixmap(Icons::Glyph::FileStatus, 20,
-                                           workspaceIconColor));
-    workspaceHeaderLayout->addWidget(workspaceIcon);
     auto *workspaceTitle = new QLabel(tr("WORKSPACE"));
     workspaceTitle->setObjectName(QStringLiteral("workspaceTitle"));
     workspaceHeaderLayout->addWidget(workspaceTitle);
     workspaceHeaderLayout->addStretch();
     layout->addWidget(workspaceHeader);
     layout->addWidget(buildViewSwitcher());
-    layout->addSpacing(6);
-
-    auto *topSeparator = new QFrame;
-    topSeparator->setObjectName(QStringLiteral("sidebarTopSeparator"));
-    topSeparator->setFrameShape(QFrame::HLine);
-    topSeparator->setFixedHeight(SeparatorHeight);
-    topSeparator->setMaximumWidth(ShellMetrics::SidebarWidth - 28);
-    layout->addWidget(topSeparator);
-    layout->addSpacing(9);
+    layout->addSpacing(13);
 
     auto *navigationFilter = new QLineEdit;
     navigationFilter->setObjectName(QStringLiteral("navigationFilter"));
@@ -706,19 +726,21 @@ QWidget *RepositoryView::buildSidebar() {
     navigationFilter->setPlaceholderText(tr("Search"));
     navigationFilter->setClearButtonEnabled(true);
     navigationFilter->addAction(
-        Icons::icon(Icons::Glyph::Search, Theme::instance()->palette().mutedText),
+        Icons::icon(Icons::Glyph::Search, navigationSectionColor()),
         QLineEdit::TrailingPosition);
     layout->addWidget(navigationFilter);
 
-    layout->addSpacing(8);
+    layout->addSpacing(12);
 
     navigationTree_ = new NavigationTree;
     navigationTree_->setObjectName(QStringLiteral("navigationTree"));
     navigationTree_->setHeaderHidden(true);
-    navigationTree_->setRootIsDecorated(true);
+    navigationTree_->setRootIsDecorated(false);
+    navigationTree_->setExpandsOnDoubleClick(false);
     navigationTree_->setIndentation(17);
     navigationTree_->setUniformRowHeights(false);
-    navigationTree_->setIconSize(QSize(20, 20));
+    navigationTree_->setIconSize(QSize(18, 18));
+    navigationTree_->setContentsMargins(8, 0, 0, 0);
     navigationTree_->setItemDelegate(new NavigationDelegate(navigationTree_));
     navigationTree_->setContextMenuPolicy(Qt::CustomContextMenu);
     layout->addWidget(navigationTree_, 1);
@@ -784,6 +806,12 @@ QWidget *RepositoryView::buildSidebar() {
 
     connect(navigationTree_, &QTreeWidget::currentItemChanged, this,
             [this](QTreeWidgetItem *current) { activateNavigationItem(current); });
+    connect(navigationTree_, &QTreeWidget::itemClicked, this,
+            [](QTreeWidgetItem *item) {
+                if (item->data(0, NavigationKindRole).toInt() == NavigationSection) {
+                    item->setExpanded(!item->isExpanded());
+                }
+            });
     connect(navigationTree_, &QTreeWidget::itemDoubleClicked, this,
             [this](QTreeWidgetItem *item) { handleNavigationDoubleClick(item); });
     connect(navigationTree_, &QTreeWidget::customContextMenuRequested, this,
@@ -1495,13 +1523,7 @@ void RepositoryView::refreshNavigation() {
     navigationTree_->clear();
     QTreeWidgetItem *itemToSelect = nullptr;
 
-    const ThemePalette &palette = Theme::instance()->palette();
-    const QColor sectionColor = Theme::instance()->mode() == Theme::Mode::Light
-                                    ? QColor(QStringLiteral("#86AFCB"))
-                                    : palette.sectionText;
-    const QColor sectionIconColor = Theme::instance()->mode() == Theme::Mode::Light
-                                        ? QColor(QStringLiteral("#86AFCB"))
-                                        : sectionColor;
+    const QColor sectionIconColor = navigationSectionColor();
     auto *branchesSection = addSection(navigationTree_, tr("Branches"),
                                        navigationSectionIcon(Icons::Glyph::Branch,
                                                              sectionIconColor),
@@ -1530,6 +1552,7 @@ void RepositoryView::refreshNavigation() {
         item->setData(0, NavigationExtraRole, branch.upstream);
         item->setData(0, NavigationAheadRole, branch.ahead);
         item->setData(0, NavigationBehindRole, branch.behind);
+        item->setData(0, NavigationCurrentRole, branch.current);
         item->setToolTip(0, QStringLiteral("%1\n%2\n%3")
                                 .arg(branch.name, branch.subject,
                                      branch.upstream.isEmpty()
@@ -2306,6 +2329,8 @@ void RepositoryView::handleNavigationDoubleClick(QTreeWidgetItem *item) {
     } else if (kind == NavigationSubmodule) {
         static_cast<void>(PlatformServices::instance().openPath(
             QDir(git_.repositoryRoot()).filePath(value)));
+    } else if (kind == NavigationBranchFolder || kind == NavigationRemote) {
+        item->setExpanded(!item->isExpanded());
     }
 }
 

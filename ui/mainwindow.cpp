@@ -14,6 +14,7 @@
 #endif
 #include "platform/platformservices.h"
 #include "repositoryview.h"
+#include "repositorytabstrip.h"
 #include "shellmetrics.h"
 #include "theme.h"
 #include "updatechecker.h"
@@ -65,9 +66,8 @@ constexpr int TitleBarHeight = Icons::WindowControlButtonHeight;
 /// The macOS traffic lights and repository tabs share one generous chrome row.
 /// The left inset keeps the first tab clear of the native window controls.
 constexpr int MacChromeHeight = 60;
-constexpr int MacTabLeftInset = 112;
-constexpr int RepositoryTabStripHeight = 46;
-constexpr int AddTabButtonSize = 38;
+constexpr int RepositoryTabStripHeight = ShellMetrics::RepositoryTabHeight;
+constexpr int AddTabButtonSize = 28;
 /// Transparent space reserved around the custom frame for its compositor-like
 /// drop shadow. It is also a convenient resize target.
 constexpr int WindowShadowMargin = 14;
@@ -93,27 +93,6 @@ QFont topBarFont() {
     font.setStyleStrategy(QFont::PreferAntialias);
     return font;
 }
-
-class RepositoryTabBar final : public QTabBar {
-public:
-    using QTabBar::QTabBar;
-
-    void setCalculatedWidths(const QList<int> &widths) {
-        widths_ = widths;
-        updateGeometry();
-    }
-
-    QSize tabSizeHint(const int index) const override {
-        QSize size = QTabBar::tabSizeHint(index);
-        if (index >= 0 && index < widths_.size()) {
-            size.setWidth(widths_.at(index));
-        }
-        return size;
-    }
-
-private:
-    QList<int> widths_;
-};
 
 const QStringList &tabBadgeNames() {
     static const QStringList names{QStringLiteral("tabCommitBadge"),
@@ -271,24 +250,22 @@ void MainWindow::buildInterface() {
 
     auto *workspace = new QWidget;
     workspace->setObjectName(QStringLiteral("workspace"));
-#ifdef Q_OS_MACOS
-    workspace->setAttribute(Qt::WA_TranslucentBackground, true);
+    workspace->setAttribute(Qt::WA_StyledBackground, true);
     workspace->setAutoFillBackground(false);
-#endif
     auto *workspaceLayout = new QVBoxLayout(workspace);
     workspaceLayout->setContentsMargins(0, 0, 0, 0);
     workspaceLayout->setSpacing(0);
 
-    auto *tabStrip = new QWidget;
+    auto *tabStrip = new RepositoryTabStrip;
     tabStrip->setObjectName(QStringLiteral("repositoryTabStrip"));
     tabStrip->setFixedHeight(useExpandedMacChrome_ ? MacChromeHeight
                                                    : RepositoryTabStripHeight);
     auto *tabStripLayout = new QHBoxLayout(tabStrip);
-    tabStripLayout->setContentsMargins(useExpandedMacChrome_ ? MacTabLeftInset : 12,
+    tabStripLayout->setContentsMargins(ShellMetrics::SidebarWidth,
                                        0,
                                        10,
                                        0);
-    tabStripLayout->setSpacing(6);
+    tabStripLayout->setSpacing(0);
     if (useExpandedMacChrome_) {
         // Blank portions of the combined strip remain native drag targets.
         titleBar_ = tabStrip;
@@ -305,36 +282,18 @@ void MainWindow::buildInterface() {
     tabs_->setExpanding(false);
     tabs_->setSizePolicy(QSizePolicy::Maximum, QSizePolicy::Preferred);
     tabs_->setElideMode(Qt::ElideRight);
-    // Repository names may collapse down to the close-button width. Native
-    // scroll arrows would otherwise separate the + button from the last tab.
-    tabs_->setUsesScrollButtons(false);
+    // Preserve readable tabs and scroll when the strip runs out of room.
+    tabs_->setUsesScrollButtons(true);
     tabs_->setContextMenuPolicy(Qt::CustomContextMenu);
     tabs_->setMouseTracking(true);
     tabs_->installEventFilter(this);
     tabs_->addTab(QString());
-
-    auto *homeTitleArea = new QWidget;
-    homeTitleArea->setObjectName(QStringLiteral("tabTitleArea"));
-    homeTitleArea->setAttribute(Qt::WA_TransparentForMouseEvents);
-    auto *homeTitleLayout = new QHBoxLayout(homeTitleArea);
-    homeTitleLayout->setContentsMargins(11, 0, 0, 0);
-    homeTitleLayout->setSpacing(7);
-    auto *homeTabIcon = new QLabel;
-    homeTabIcon->setObjectName(QStringLiteral("repositoryTabIcon"));
-    homeTabIcon->setPixmap(Icons::pixmap(Icons::Glyph::Repository, 15,
-                                         Theme::instance()->palette().text));
-    homeTabIcon->setFixedSize(16, 16);
-    homeTabIcon->setAlignment(Qt::AlignCenter);
-    homeTitleLayout->addWidget(homeTabIcon);
-    auto *homeTabTitle = new QLabel(tr("Repositories"));
-    homeTabTitle->setObjectName(QStringLiteral("repositoryTabTitle"));
-    homeTabTitle->setFont(topBarFont());
-    homeTabTitle->setProperty("fullTitle", tr("Repositories"));
-    homeTabTitle->setProperty("selected", true);
-    homeTabTitle->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Preferred);
-    homeTitleLayout->addWidget(homeTabTitle, 1);
-    tabs_->setTabButton(0, QTabBar::LeftSide, homeTitleArea);
-    tabs_->setTabButton(0, QTabBar::RightSide, nullptr);
+    // Keep page zero for the overview and existing saved-session indices,
+    // but expose it through sidebar navigation instead of the tab strip.
+    tabs_->setTabVisible(0, false);
+    tabs_->setCurrentIndex(0);
+    tabs_->setProperty("overviewActive", true);
+    tabStrip->setTabBar(tabs_);
 
     tabPages_ = new QStackedWidget;
     tabPages_->setObjectName(QStringLiteral("repositoryPages"));
@@ -344,13 +303,22 @@ void MainWindow::buildInterface() {
     addTabButton_->setObjectName(QStringLiteral("addTabButton"));
     addTabButton_->setFixedSize(AddTabButtonSize, AddTabButtonSize);
     addTabButton_->setIcon(Icons::icon(Icons::Glyph::Add, Qt::white));
-    addTabButton_->setIconSize(QSize(20, 20));
+    addTabButton_->setIconSize(QSize(16, 16));
     addTabButton_->setToolTip(tr("Open a repository in a new tab"));
     connect(addTabButton_, &QToolButton::clicked, this, [this] { openRepositoryDialog(); });
     // Keep the add button attached to the last visible tab instead of pinning
     // it to the far edge of the window.
     tabStripLayout->addWidget(tabs_, 0, Qt::AlignBottom);
-    tabStripLayout->addWidget(addTabButton_, 0, Qt::AlignBottom);
+    auto *addTabSlot = new QWidget;
+    addTabSlot->setFixedSize(AddTabButtonSize + ShellMetrics::AddTabButtonGap,
+                            RepositoryTabStripHeight);
+    auto *addTabLayout = new QVBoxLayout(addTabSlot);
+    const int addTabTopMargin = (RepositoryTabStripHeight - AddTabButtonSize) / 2;
+    addTabLayout->setContentsMargins(ShellMetrics::AddTabButtonGap, addTabTopMargin, 0,
+                                    RepositoryTabStripHeight - AddTabButtonSize - addTabTopMargin);
+    addTabLayout->setSpacing(0);
+    addTabLayout->addWidget(addTabButton_);
+    tabStripLayout->addWidget(addTabSlot, 0, Qt::AlignBottom);
     tabStripLayout->addStretch(1);
 
     workspaceLayout->addWidget(tabStrip);
@@ -367,44 +335,31 @@ void MainWindow::buildInterface() {
     mainToolbar_->setParent(workspaceBody_);
     mainToolbar_->hide();
     workspaceBody_->installEventFilter(this);
+    connect(static_cast<RepositoryTabBar *>(tabs_), &RepositoryTabBar::leadingEdgeJoinedChanged,
+            this, &MainWindow::updateWorkspaceOverlays);
+    repositoriesButton_ = new QPushButton(
+        Icons::icon(Icons::Glyph::Repository, QColor(QStringLiteral("#C7DDEB"))),
+        tr("Repositories"), workspaceBody_);
+    repositoriesButton_->setObjectName(QStringLiteral("repositoriesButton"));
+    repositoriesButton_->setIconSize(QSize(16, 16));
+    repositoriesButton_->hide();
+    connect(repositoriesButton_, &QPushButton::clicked, this, [this] {
+        activateTab(0);
+    });
     setCentralWidget(workspace);
 
     connect(tabs_, &QTabBar::tabCloseRequested, this,
             [this](const int index) { closeTab(index); });
     connect(tabs_, &QWidget::customContextMenuRequested, this,
             [this](const QPoint &position) { showTabContextMenu(position); });
-    connect(tabs_, &QTabBar::currentChanged, this, [this](const int index) {
-        tabPages_->setCurrentIndex(index);
-        for (int tab = 0; tab < tabs_->count(); ++tab) {
-            if (QLabel *label = tabTitleLabel(tabs_->tabButton(tab, QTabBar::LeftSide))) {
-                label->setProperty("selected", tab == index);
-                label->style()->unpolish(label);
-                label->style()->polish(label);
-            }
-            if (QWidget *title = tabs_->tabButton(tab, QTabBar::LeftSide)) {
-                if (QLabel *icon = title->findChild<QLabel *>(
-                        QStringLiteral("repositoryTabIcon"))) {
-                    const QColor color = tab == index
-                                             ? Theme::instance()->palette().text
-                                             : QColor(QStringLiteral("#C7DDEB"));
-                    icon->setPixmap(Icons::pixmap(Icons::Glyph::Repository, 15, color));
-                }
-            }
-            if (QWidget *button = tabs_->tabButton(tab, QTabBar::RightSide)) {
-                button->setVisible(tab == index);
-            }
+    connect(tabs_, &QTabBar::currentChanged, this, &MainWindow::activateTab);
+    connect(tabs_, &QTabBar::tabBarClicked, this, [this](const int index) {
+        if (index > 0) {
+            activateTab(index);
         }
-        const bool repositoryVisible = index > 0;
-        mainToolbar_->setVisible(repositoryVisible);
-        if (statusOverlay_ != nullptr) {
-            statusOverlay_->setVisible(repositoryVisible);
-        }
-        updateWorkspaceOverlays();
-        updateTabMetrics();
-        updateActions();
     });
     connect(tabs_, &QTabBar::tabMoved, this, [this](const int from, const int to) {
-        // The repositories overview is an anchored home tab.
+        // The hidden overview keeps its saved-session index at zero.
         if (from == 0 || to == 0) {
             const QSignalBlocker blocker(tabs_);
             tabs_->moveTab(to, from);
@@ -745,15 +700,6 @@ bool MainWindow::eventFilter(QObject *watched, QEvent *event) {
         } else if (event->type() == QEvent::Leave) {
             updateTabCloseButtons();
         }
-    } else if (auto *closeButton = qobject_cast<QToolButton *>(watched);
-               closeButton != nullptr
-               && closeButton->objectName() == QStringLiteral("tabCloseButton")) {
-        if (event->type() == QEvent::Enter) {
-            closeButton->setIcon(Icons::icon(Icons::Glyph::TabClose, Qt::white));
-        } else if (event->type() == QEvent::Leave) {
-            closeButton->setIcon(Icons::icon(Icons::Glyph::TabClose,
-                                             Theme::instance()->palette().text));
-        }
     }
     return QMainWindow::eventFilter(watched, event);
 }
@@ -762,7 +708,7 @@ void MainWindow::showEvent(QShowEvent *event) {
     QMainWindow::showEvent(event);
 #ifdef Q_OS_MACOS
     if (useExpandedMacChrome_) {
-        MacOSVibrancy::install(centralWidget());
+        MacOSVibrancy::install(this);
         MacOSVibrancy::configureWindow(this);
     }
 #endif
@@ -800,11 +746,21 @@ void MainWindow::updateTabCloseButtons(const int hoveredTab) {
     for (int index = 1; index < tabs_->count(); ++index) {
         if (QWidget *area = tabs_->tabButton(index, QTabBar::RightSide)) {
             auto *button = area->findChild<QToolButton *>(QStringLiteral("tabCloseButton"));
-            const bool visible = index == tabs_->currentIndex() || index == hoveredTab;
+            const bool visible = index == tabPages_->currentIndex() || index == hoveredTab;
             if (button != nullptr) {
                 button->setVisible(visible);
+                const bool selected = index == tabPages_->currentIndex();
+                button->setIcon(Icons::icon(Icons::Glyph::TabClose,
+                    selected ? Theme::instance()->palette().text
+                             : Theme::instance()->palette().chromeText));
+                if (!button->property("selected").isValid()
+                    || button->property("selected").toBool() != selected) {
+                    button->setProperty("selected", selected);
+                    button->style()->unpolish(button);
+                    button->style()->polish(button);
+                }
             }
-            area->setFixedWidth(24);
+            area->setFixedWidth(38);
             area->setVisible(visible);
         }
     }
@@ -816,7 +772,30 @@ void MainWindow::updateWorkspaceOverlays() {
     }
 
     const int left = ShellMetrics::SidebarWidth;
+    const bool leadingTabJoined = currentRepository() != nullptr
+        && static_cast<RepositoryTabBar *>(tabs_)->activeTabTouchesLeadingEdge();
+    if (tabs_ != nullptr) {
+        static_cast<RepositoryTabStrip *>(tabs_->parentWidget())
+            ->setLeadingTabJoined(leadingTabJoined);
+    }
+    QWidget *content = currentRepository() != nullptr
+                           ? currentRepository()->findChild<QWidget *>(
+                                 QStringLiteral("repositoryContentShell"))
+                           : nullptr;
+    for (QWidget *surface : {static_cast<QWidget *>(mainToolbar_), content}) {
+        if (surface != nullptr
+            && surface->property("leadingTabJoined").toBool() != leadingTabJoined) {
+            surface->setProperty("leadingTabJoined", leadingTabJoined);
+            surface->style()->unpolish(surface);
+            surface->style()->polish(surface);
+            surface->update();
+        }
+    }
     const int overlayWidth = qMax(0, workspaceBody_->width() - left);
+    if (repositoriesButton_ != nullptr) {
+        repositoriesButton_->setGeometry(14, 14, ShellMetrics::SidebarWidth - 28, 34);
+        repositoriesButton_->raise();
+    }
     if (mainToolbar_ != nullptr) {
         mainToolbar_->setGeometry(left, 0, overlayWidth, ShellMetrics::ToolbarHeight);
         mainToolbar_->raise();
@@ -1150,6 +1129,7 @@ void MainWindow::selectLanguage(const QString &language) {
 
 QWidget *MainWindow::buildWelcomePage() {
     auto *page = new QWidget;
+    page->setObjectName(QStringLiteral("repositoryOverview"));
     auto *layout = new QVBoxLayout(page);
     layout->setContentsMargins(28, 24, 28, 24);
     layout->setSpacing(14);
@@ -1260,7 +1240,7 @@ bool MainWindow::openRepository(const QString &path, const bool activate) {
         RepositoryView *view = repositoryAt(index);
         if (view != nullptr && view->repositoryRoot() == QDir::cleanPath(path)) {
             if (activate) {
-                tabs_->setCurrentIndex(index);
+                activateTab(index);
             }
             return true;
         }
@@ -1274,6 +1254,7 @@ bool MainWindow::openRepository(const QString &path, const bool activate) {
         return false;
     }
 
+    const QSignalBlocker tabSignals(tabs_);
     const int index = tabs_->addTab(QString());
     tabPages_->insertWidget(index, view);
     tabs_->setTabToolTip(index, QDir::toNativeSeparators(view->repositoryRoot()));
@@ -1316,9 +1297,9 @@ bool MainWindow::openRepository(const QString &path, const bool activate) {
     // Reserve space at the tab edge without enlarging the close button.
     auto *closeArea = new QWidget;
     closeArea->setObjectName(QStringLiteral("tabCloseArea"));
-    closeArea->setFixedSize(QSize(24, 20));
+    closeArea->setFixedSize(QSize(38, 20));
     auto *closeLayout = new QHBoxLayout(closeArea);
-    closeLayout->setContentsMargins(0, 0, 5, 0);
+    closeLayout->setContentsMargins(4, 0, 14, 0);
     closeLayout->setSpacing(0);
     closeLayout->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
 
@@ -1329,7 +1310,6 @@ bool MainWindow::openRepository(const QString &path, const bool activate) {
     closeButton->setIconSize(QSize(14, 14));
     closeButton->setFixedSize(QSize(18, 18));
     closeButton->setToolTip(tr("Close Tab"));
-    closeButton->installEventFilter(this);
     closeLayout->addWidget(closeButton);
     connect(closeButton, &QToolButton::clicked, this,
             [this, view] { closeTab(tabPages_->indexOf(view)); });
@@ -1337,6 +1317,8 @@ bool MainWindow::openRepository(const QString &path, const bool activate) {
     closeArea->hide();
     updateTabMetrics();
     if (activate) {
+        activateTab(index);
+    } else if (tabs_->currentIndex() <= 0) {
         tabs_->setCurrentIndex(index);
     }
 
@@ -1394,20 +1376,65 @@ void MainWindow::createRepository() {
     openRepository(directory);
 }
 
+void MainWindow::activateTab(const int index) {
+    const int page = index > 0 && index < tabPages_->count() ? index : 0;
+    // The overview is a page, not a visible tab. Keep Qt's current tab on a
+    // visible project to avoid painting the hidden slot over its neighbour.
+    const QSignalBlocker blocker(tabs_);
+    if (page > 0) {
+        tabs_->setCurrentIndex(page);
+    } else if (tabs_->currentIndex() <= 0 && tabs_->count() > 1) {
+        tabs_->setCurrentIndex(1);
+    }
+    tabPages_->setCurrentIndex(page);
+    tabs_->setProperty("overviewActive", page == 0);
+    tabs_->style()->unpolish(tabs_);
+    tabs_->style()->polish(tabs_);
+    tabs_->update();
+    tabs_->parentWidget()->update();
+    for (int tab = 1; tab < tabs_->count(); ++tab) {
+        const bool selected = tab == page;
+        QWidget *title = tabs_->tabButton(tab, QTabBar::LeftSide);
+        if (QLabel *label = tabTitleLabel(title)) {
+            label->setProperty("selected", selected);
+            label->style()->unpolish(label);
+            label->style()->polish(label);
+        }
+        if (title != nullptr) {
+            if (QLabel *icon = title->findChild<QLabel *>(QStringLiteral("repositoryTabIcon"))) {
+                const QColor color = selected ? Theme::instance()->palette().text
+                                              : QColor(QStringLiteral("#C7DDEB"));
+                icon->setPixmap(Icons::pixmap(Icons::Glyph::Repository, 15, color));
+            }
+        }
+    }
+    repositoriesButton_->setVisible(page > 0);
+    mainToolbar_->setVisible(page > 0);
+    if (statusOverlay_ != nullptr) {
+        statusOverlay_->setVisible(page > 0);
+    }
+    updateTabMetrics();
+    updateActions();
+}
+
 void MainWindow::closeTab(const int index) {
     if (index <= 0 || index >= tabs_->count()) {
         return;
     }
     QWidget *widget = tabPages_->widget(index);
+    const bool overviewActive = tabPages_->currentIndex() == 0;
+    const QSignalBlocker blocker(tabs_);
     tabs_->removeTab(index);
     tabPages_->removeWidget(widget);
     widget->deleteLater();
-    updateTabMetrics();
-    updateActions();
+    if (tabs_->count() == 1) {
+        tabs_->setCurrentIndex(0);
+    }
+    activateTab(overviewActive ? 0 : tabs_->currentIndex());
 }
 
 void MainWindow::closeCurrentTab() {
-    closeTab(tabs_->currentIndex());
+    closeTab(tabPages_->currentIndex());
 }
 
 void MainWindow::showTabContextMenu(const QPoint &position) {
@@ -1443,7 +1470,7 @@ void MainWindow::showTabContextMenu(const QPoint &position) {
 }
 
 RepositoryView *MainWindow::currentRepository() const {
-    return repositoryAt(tabs_->currentIndex());
+    return repositoryAt(tabPages_->currentIndex());
 }
 
 RepositoryView *MainWindow::repositoryAt(const int index) const {
@@ -1489,30 +1516,35 @@ void MainWindow::updateTabMetrics() {
         return;
     }
 
-    // Fit every tab before the + button. At the narrowest size a repository
-    // title disappears completely, leaving only its close-button area.
+    // Share space down to a readable minimum, then use native tab scrolling.
     const QWidget *strip = tabs_->parentWidget();
     const QMargins margins = strip != nullptr && strip->layout() != nullptr
                                  ? strip->layout()->contentsMargins()
                                  : QMargins();
     const int stripWidth = strip != nullptr ? strip->width() : width();
     const int addButtonWidth = addTabButton_ != nullptr
-                                   ? addTabButton_->sizeHint().width()
+                                   ? addTabButton_->parentWidget()->width()
                                    : 48;
     const int available = qMax(1, stripWidth - margins.left() - margins.right()
-                                      - addButtonWidth);
+                                      - addButtonWidth
+                                      - (strip != nullptr && strip->layout() != nullptr
+                                             ? strip->layout()->spacing() : 0));
     QList<int> tabWidths;
     tabWidths.reserve(tabs_->count());
     int desiredTotal = 0;
     for (int index = 0; index < tabs_->count(); ++index) {
+        if (!tabs_->isTabVisible(index)) {
+            tabWidths.append(0);
+            continue;
+        }
         QWidget *button = tabs_->tabButton(index, QTabBar::LeftSide);
         const QLabel *label = tabTitleLabel(button);
         const QString title = label != nullptr ? label->property("fullTitle").toString()
                                                : QString();
         // Leave a small reserve beyond the measured text. QTabBar applies its
         // own subcontrol margins and rounds widths at fractional DPI scales.
-        const int controls = index == 0 ? 58 : 76;
-        const int desired = qBound(index == 0 ? 128 : 112,
+        const int controls = 98 + ShellMetrics::RepositoryTabGap;
+        const int desired = qBound(ShellMetrics::RepositoryTabMinimumWidth,
                                    (label != nullptr
                                         ? label->fontMetrics().horizontalAdvance(title)
                                         : 70) + controls + tabBadgeWidth(button),
@@ -1524,9 +1556,8 @@ void MainWindow::updateTabMetrics() {
     const int repositoryCount = tabs_->count() - 1;
     int repositoryWidthLimit = 260;
     if (repositoryCount > 0 && desiredTotal > available) {
-        // The overview is pinned and remains readable. Repository tabs share
-        // everything that remains and may collapse to their close-button slot.
-        repositoryWidthLimit = qBound(40,
+        // The hidden overview contributes no width.
+        repositoryWidthLimit = qBound(ShellMetrics::RepositoryTabMinimumWidth,
                                       (available - homeWidth) / repositoryCount,
                                       260);
     }
@@ -1553,13 +1584,15 @@ void MainWindow::updateTabMetrics() {
         const int tabWidth = index == 0
                                  ? homeWidth
                                  : qMin(tabWidths.at(index), repositoryWidthLimit);
-        const int buttonWidth = qMax(0, tabWidth - (index == 0 ? 22 : 38));
+        const int buttonWidth = qMax(0, tabWidth - (index == 0 ? 22 : 66)
+                                               - ShellMetrics::RepositoryTabGap);
         button->setFixedWidth(buttonWidth);
-        const int titleMargin = index == 0 ? 0 : TabTitleLeftMargin;
+        const QMargins titleMargins = button->layout()->contentsMargins();
+        const int titleMargin = titleMargins.left() + titleMargins.right();
         const int textWidth = qMax(0, buttonWidth - titleMargin
                                           - TabRepositoryIconWidth
-                                          - TabBadgeSpacing
-                                          - tabBadgeWidth(button) - 2);
+                                          - button->layout()->spacing()
+                                          - tabBadgeWidth(button) - 4);
         const QString visibleTitle = textWidth == 0
                                          ? QString()
                                          : label->fontMetrics().elidedText(
@@ -1568,6 +1601,7 @@ void MainWindow::updateTabMetrics() {
     }
     updateTabCloseButtons();
     tabs_->updateGeometry();
+    updateWorkspaceOverlays();
 }
 
 void MainWindow::updateActions() {
@@ -1732,9 +1766,7 @@ void MainWindow::restoreSession() {
     }
 
     const int activeTab = settings.value(QStringLiteral("activeTab"), 0).toInt();
-    if (activeTab > 0 && activeTab < tabs_->count()) {
-        tabs_->setCurrentIndex(activeTab);
-    }
+    activateTab(activeTab);
     updateTabMetrics();
 }
 
@@ -1749,7 +1781,7 @@ void MainWindow::saveSession() {
 
     QSettings settings;
     settings.setValue(QStringLiteral("openTabs"), openTabs);
-    settings.setValue(QStringLiteral("activeTab"), tabs_->currentIndex());
+    settings.setValue(QStringLiteral("activeTab"), tabPages_->currentIndex());
     settings.setValue(QStringLiteral("bookmarks"), bookmarks_);
     settings.setValue(QStringLiteral("windowGeometry"), saveGeometry());
     settings.setValue(QStringLiteral("windowState"), saveState());

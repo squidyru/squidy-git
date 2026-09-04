@@ -94,6 +94,7 @@ add_library(squidygit_ui STATIC
         ui/filespage.cpp
         ui/filespage.h
         ui/flatcombobox.h
+        ui/repositorytabstrip.h
         ui/commitgraph.cpp
         ui/commitgraph.h
         ui/credentialprompter.cpp

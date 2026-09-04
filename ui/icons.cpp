@@ -91,9 +91,10 @@ void paintGlyph(QPainter &painter, const Icons::Glyph glyph, const QColor &color
         painter.setPen(QPen(color, 1.15, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
     };
 
-    const auto drawHollowNode = [&painter, &color](const QPointF &center) {
+    const auto drawHollowNode = [&painter, &color](const QPointF &center,
+                                                 const QBrush &fill = QBrush(Qt::white)) {
         painter.setPen(QPen(color, 1.25, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
-        painter.setBrush(Qt::white);
+        painter.setBrush(fill);
         painter.drawEllipse(center, 2.05, 2.05);
         painter.setBrush(Qt::NoBrush);
     };
@@ -199,9 +200,9 @@ void paintGlyph(QPainter &painter, const Icons::Glyph glyph, const QColor &color
             path.moveTo(7, 14.5);
             path.cubicTo(7, 11.0, 17, 13.0, 17, 10.0);
             painter.drawPath(path);
-            drawHollowNode(QPointF(7, 4.0));
-            drawHollowNode(QPointF(7, 20.0));
-            drawHollowNode(QPointF(17, 8.0));
+            drawHollowNode(QPointF(7, 4.0), Qt::NoBrush);
+            drawHollowNode(QPointF(7, 20.0), Qt::NoBrush);
+            drawHollowNode(QPointF(17, 8.0), Qt::NoBrush);
             break;
         }
         case Icons::Glyph::Merge: {

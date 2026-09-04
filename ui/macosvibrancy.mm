@@ -42,8 +42,10 @@ void install(QWidget *host) {
         return;
     }
 
-    auto *effect = [[SquidyVisualEffectView alloc] initWithFrame:hostView.frame];
-    effect.autoresizingMask = hostView.autoresizingMask;
+    // Cover the complete native container, not the central widget's client
+    // rectangle. Its title-bar offset can leave an unblurred band at the bottom.
+    auto *effect = [[SquidyVisualEffectView alloc] initWithFrame:containerView.bounds];
+    effect.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
     effect.material = NSVisualEffectMaterialSidebar;
     effect.blendingMode = NSVisualEffectBlendingModeBehindWindow;
     effect.state = NSVisualEffectStateActive;

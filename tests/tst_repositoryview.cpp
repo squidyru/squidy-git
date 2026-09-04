@@ -5,6 +5,7 @@
 #include "ui/commitmodel.h"
 #include "ui/diffview.h"
 #include "ui/repositoryview.h"
+#include "ui/theme.h"
 
 #include <QAbstractItemModel>
 #include <QApplication>
@@ -37,6 +38,8 @@ private Q_SLOTS:
     void keepsTheInterfaceLiveWhileAnOperationRuns();
     void refusesToStartASecondOperation();
     void keepsEveryPaneReachable();
+    void togglesSidebarSections();
+    void paintsSidebarSelectionAsOneRow();
     void readsTheWorkingTreeDiffOffTheUiThread();
     void dropsADiffTheSelectionHasMovedPast();
     void listsCommitFilesWithoutBlocking();
@@ -341,6 +344,78 @@ void TestRepositoryView::keepsEveryPaneReachable() {
         QVERIFY2(reachable,
                  qPrintable(QStringLiteral("%1 can hide a pane with no way back")
                                 .arg(name)));
+    }
+}
+
+void TestRepositoryView::togglesSidebarSections() {
+    RepositoryView view(directory_->path());
+    view.resize(1100, 800);
+    view.show();
+    QSignalSpy refreshed(&view, &RepositoryView::repositoryChanged);
+    QVERIFY(refreshed.wait(10'000));
+
+    auto *tree = view.findChild<QTreeWidget *>(QStringLiteral("navigationTree"));
+    QVERIFY(tree != nullptr);
+    QVERIFY(!tree->rootIsDecorated());
+    QVERIFY(tree->topLevelItemCount() >= 4);
+
+    auto *branches = tree->topLevelItem(0);
+    QVERIFY(branches->isExpanded());
+    QVERIFY(branches->childCount() > 0);
+    const QPoint heading = tree->visualItemRect(branches).center();
+    QTest::mouseMove(tree->viewport(), heading);
+    const QRect arrowRect(tree->viewport()->width() - 17, heading.y() - 6, 14, 13);
+    const QImage openArrow = tree->viewport()->grab(arrowRect).toImage();
+    QTest::mouseClick(tree->viewport(), Qt::LeftButton, Qt::NoModifier, heading);
+    QVERIFY(!branches->isExpanded());
+    QVERIFY(openArrow != tree->viewport()->grab(arrowRect).toImage());
+    QTest::mouseClick(tree->viewport(), Qt::LeftButton, Qt::NoModifier, heading);
+    QVERIFY(branches->isExpanded());
+
+    auto *tags = tree->topLevelItem(1);
+    QVERIFY(!tags->isExpanded());
+    QTest::mouseClick(tree->viewport(), Qt::LeftButton, Qt::NoModifier,
+                      tree->visualItemRect(tags).center());
+    QVERIFY(tags->isExpanded());
+    QVERIFY(branches->isExpanded());
+}
+
+void TestRepositoryView::paintsSidebarSelectionAsOneRow() {
+    GitClient git = repository();
+    QVERIFY(git.runCustom({QStringLiteral("remote"), QStringLiteral("add"),
+                           QStringLiteral("origin"), directory_->path()}).succeeded());
+    QVERIFY(git.runCustom({QStringLiteral("update-ref"),
+                           QStringLiteral("refs/remotes/origin/main"),
+                           QStringLiteral("HEAD")}).succeeded());
+    Theme::instance()->applyToApplication();
+    RepositoryView view(directory_->path());
+    view.resize(1100, 800);
+    view.show();
+    QSignalSpy refreshed(&view, &RepositoryView::repositoryChanged);
+    QVERIFY(refreshed.wait(10'000));
+
+    auto *tree = view.findChild<QTreeWidget *>(QStringLiteral("navigationTree"));
+    QVERIFY(tree != nullptr);
+    auto *branches = tree->topLevelItem(0);
+    QVERIFY(branches->childCount() > 0);
+    auto *remotes = tree->topLevelItem(2);
+    remotes->setExpanded(true);
+    QVERIFY(remotes->childCount() > 0);
+    auto *origin = remotes->child(0);
+    origin->setExpanded(true);
+    QVERIFY(origin->childCount() > 0);
+
+    for (QTreeWidgetItem *item : {branches->child(0), origin->child(0)}) {
+        tree->setCurrentItem(item);
+        const QRect row = tree->visualItemRect(item);
+        const QImage rendered = tree->viewport()->grab().toImage();
+        const qreal scale = rendered.devicePixelRatio();
+        // Just below the top edge, away from text and branch rings, the
+        // selection must be continuous through every indentation boundary.
+        for (int x = 10; x <= row.left() + 8; ++x) {
+            QCOMPARE(rendered.pixelColor(qRound(x * scale), qRound((row.top() + 2) * scale)),
+                     Theme::instance()->palette().sidebarSelection);
+        }
     }
 }
 

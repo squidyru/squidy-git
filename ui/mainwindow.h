@@ -16,6 +16,7 @@ class QMenu;
 class QMenuBar;
 class QPlainTextEdit;
 class QProgressBar;
+class QPushButton;
 class QResizeEvent;
 class QShowEvent;
 class QStackedWidget;
@@ -61,6 +62,7 @@ private:
     void createRepository();
     void showAboutDialog();
     void closeTab(int index);
+    void activateTab(int index);
     void closeCurrentTab();
     void showTabContextMenu(const QPoint &position);
 
@@ -97,6 +99,7 @@ private:
     QTabBar *tabs_ = nullptr;
     QStackedWidget *tabPages_ = nullptr;
     QWidget *workspaceBody_ = nullptr;
+    QPushButton *repositoriesButton_ = nullptr;
     QWidget *statusOverlay_ = nullptr;
     QToolBar *mainToolbar_ = nullptr;
     QListWidget *bookmarksList_ = nullptr;
